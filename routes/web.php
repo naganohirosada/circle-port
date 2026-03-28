@@ -1,7 +1,6 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
-
-Route::get('/', function () {
-    return view('welcome');
-});
+// ファン向けのルートを定義
+require __DIR__.'/fan.php';
+require __DIR__.'/creator.php';
+require __DIR__.'/admin.php';

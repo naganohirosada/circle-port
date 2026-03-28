@@ -38,9 +38,21 @@ return [
     */
 
     'guards' => [
-        'web' => [
+        'web' => [ // デフォルトは念のため残すか、fanに合わせる
             'driver' => 'session',
-            'provider' => 'users',
+            'provider' => 'fans',
+        ],
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'admin',
+        ],
+        'creator' => [
+            'driver' => 'session',
+            'provider' => 'creators',
+        ],
+        'fan' => [
+            'driver' => 'session',
+            'provider' => 'fans',
         ],
     ],
 
@@ -60,17 +72,19 @@ return [
     | Supported: "database", "eloquent"
     |
     */
-
     'providers' => [
-        'users' => [
+        'admins' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            'model' => App\Models\Admin::class,
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'creators' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Creator::class,
+        ],
+        'fans' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Fan::class,
+        ],
     ],
 
     /*
