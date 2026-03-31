@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'deepl' => [
+        'auth_key' => env('DEEPL_AUTH_KEY'),
+        'host' => env('DEEPL_PLAN') === 'pro' 
+                    ? 'https://api.deepl.com' 
+                    : 'https://api-free.deepl.com',
+    ],
+
 ];

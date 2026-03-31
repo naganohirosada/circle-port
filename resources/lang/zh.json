@@ -1,0 +1,23 @@
+{
+    "Artworks": "作品列表",
+    "Artwork Title": "作品名稱",
+    "Search by keyword...": "按關鍵字搜尋...",
+    "Creator": "創作者",
+    "Search by creator name...": "按創作者姓名搜尋...",
+    "Categories": "類別",
+    "Main Category": "主類別",
+    "Sub Category": "子類別",
+    "Price Range": "價格範圍",
+    "Min": "最小",
+    "Max": "最大",
+    "Reset": "重設",
+    "Apply Filters": "套用篩選",
+    "No Image": "暫無圖片",
+    "Local Artist": "本地藝術家",
+	"Description": "商品描述",
+    "Variations": "商品規格",
+    "Please select a variation": "請選擇規格",
+    "Add to Cart": "加入購物車",
+    "Select an option": "請選擇商品選項",
+    "Sold Out": "已售完"
+}

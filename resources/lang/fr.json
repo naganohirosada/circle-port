@@ -1,0 +1,23 @@
+{
+    "Artworks": "Œuvres d'art",
+    "Artwork Title": "Titre de l'œuvre",
+    "Search by keyword...": "Rechercher par mot-clé...",
+    "Creator": "Créateur",
+    "Search by creator name...": "Rechercher par nom de créateur...",
+    "Categories": "Catégories",
+    "Main Category": "Catégorie principale",
+    "Sub Category": "Sous-catégorie",
+    "Price Range": "Gamme de prix",
+    "Min": "Min",
+    "Max": "Max",
+    "Reset": "Réinitialiser",
+    "Apply Filters": "Appliquer les filtres",
+    "No Image": "Aucune image",
+    "Local Artist": "Artiste local",
+	"Description": "Description",
+    "Variations": "Variantes",
+    "Please select a variation": "Veuillez choisir une variante",
+    "Add to Cart": "Ajouter au panier",
+    "Select an option": "Choisir une option",
+    "Sold Out": "Épuisé"
+}

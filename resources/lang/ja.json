@@ -1,0 +1,22 @@
+{
+    "Artworks": "作品一覧",
+    "Artwork Title": "作品タイトル",
+    "Search by keyword...": "キーワードで検索...",
+    "Creator": "クリエイター",
+    "Search by creator name...": "クリエイター名で検索...",
+    "Categories": "カテゴリー",
+    "Main Category": "メインカテゴリ",
+    "Sub Category": "サブカテゴリ",
+    "Price Range": "価格帯",
+    "Min": "最小",
+    "Max": "最大",
+    "Reset": "リセット",
+    "Apply Filters": "条件を適用",
+    "No Image": "画像なし",
+    "Local Artist": "地元のアーティスト",
+    "Please select a variation": "バリエーションを選択してください",
+    "Variations": "バリエーション",
+    "Select Variation": "選択してください",
+    "Add to Cart": "カートに入れる",
+    "Sold Out": "完売しました"
+}

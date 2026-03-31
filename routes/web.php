@@ -4,3 +4,4 @@ use Illuminate\Support\Facades\Route;
 require __DIR__.'/fan.php';
 require __DIR__.'/creator.php';
 require __DIR__.'/admin.php';
+require __DIR__.'/auth.php';

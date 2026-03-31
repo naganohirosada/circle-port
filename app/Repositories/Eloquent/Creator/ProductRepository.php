@@ -69,6 +69,17 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function store(array $data): Product
     {
-        return Product::create($data);
+        return Product::create([
+            'creator_id'      => auth()->id(),
+            'category_id'     => $data['category_id'],
+            'sub_category_id' => $data['sub_category_id'],
+            'has_variants'    => $data['has_variants'],
+            'price'           => $data['has_variants'] ? null : $data['price'],
+            'stock_quantity'  => $data['has_variants'] ? null : $data['stock_quantity'],
+            'weight_g'        => $data['has_variants'] ? null : $data['weight_g'],
+            'hs_code_id'      => $data['has_variants'] ? null : $data['hs_code_id'],
+            'status'          => $data['status'],
+            'sku'             => 'P-' . strtoupper(bin2hex(random_bytes(4))),
+        ]);
     }
 }

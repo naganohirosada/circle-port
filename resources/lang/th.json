@@ -1,0 +1,23 @@
+{
+    "Artworks": "ผลงานศิลปะ",
+    "Artwork Title": "ชื่อผลงาน",
+    "Search by keyword...": "ค้นหาด้วยคำสำคัญ...",
+    "Creator": "ผู้สร้าง",
+    "Search by creator name...": "ค้นหาด้วยชื่อผู้สร้าง...",
+    "Categories": "หมวดหมู่",
+    "Main Category": "หมวดหมู่หลัก",
+    "Sub Category": "หมวดหมู่ย่อย",
+    "Price Range": "ช่วงราคา",
+    "Min": "ต่ำสุด",
+    "Max": "สูงสุด",
+    "Reset": "ล้างค่า",
+    "Apply Filters": "ใช้ตัวกรอง",
+    "No Image": "ไม่มีรูปภาพ",
+    "Local Artist": "ศิลปินท้องถิ่น",
+	"Description": "รายละเอียดสินค้า",
+    "Variations": "ตัวเลือกสินค้า",
+    "Please select a variation": "กรุณาเลือกตัวเลือก",
+    "Add to Cart": "หยิบลงตะกร้า",
+    "Select an option": "กรุณาเลือกตัวเลือกสินค้า",
+    "Sold Out": "สินค้าหมด"
+}

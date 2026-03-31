@@ -15,6 +15,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "spatie/laravel-medialibrary": "^11.21",
+        "stevebauman/location": "^7.6",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
