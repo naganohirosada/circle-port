@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Head, usePage, Link } from '@inertiajs/react';
+import { Head, usePage, Link, useForm } from '@inertiajs/react'; // useForm を追加
 import FanLayout from '@/Layouts/FanLayout';
-import { Tag, ShoppingBag, ChevronRight, User, Check } from 'lucide-react';
+import { Tag, ShoppingBag, ChevronRight, User, Check, Loader2 } from 'lucide-react'; // Loader2 追加
 
 export default function Show({ product }) {
     const { language, locale } = usePage().props;
-    // 翻訳用ヘルパー関数
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
-    // 1. バリエーション選択の状態管理
+    // 1. カート投入用のフォーム初期化
+    const { data, setData, post, processing } = useForm({
+        product_id: product.id,
+        variation_id: null,
+        quantity: 1,
+    });
+
     const [selectedVariation, setSelectedVariation] = useState(null);
-    
-    // バリエーションがある場合は初期値を null にして金額を隠す
     const [displayPrice, setDisplayPrice] = useState(
         product.variations?.length > 0 ? null : product.price
     );
@@ -20,7 +23,6 @@ export default function Show({ product }) {
         product.images?.find(img => img.is_primary)?.url || product.images?.[0]?.url || '/images/no-image.jpg'
     );
 
-    // 翻訳取得ヘルパー（商品名、バリエーション名、カテゴリ名共通）
     const getTranslation = (item, field) => {
         const t = item?.translations?.find(t => t.locale === locale) || 
                   item?.translations?.find(t => t.locale === 'en') || 
@@ -28,10 +30,23 @@ export default function Show({ product }) {
         return t ? t[field] : '-';
     };
 
-    // バリエーション選択時の処理
+    // 2. バリエーション選択時にフォームデータ(variation_id)も更新
     const handleVariationSelect = (variation) => {
         setSelectedVariation(variation);
-        setDisplayPrice(variation.price); // 選択されたバリエーションの価格に更新
+        setDisplayPrice(variation.price);
+        setData('variation_id', variation.id); 
+    };
+
+    // 3. カート追加処理 (Serviceへ送信)
+    const handleAddToCart = (e) => {
+        e.preventDefault();
+        post(route('fan.cart.add'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                // 必要に応じてトースト通知などを表示
+                console.log('Added to cart');
+            },
+        });
     };
 
     return (
@@ -79,7 +94,6 @@ export default function Show({ product }) {
                                 {getTranslation(product, 'name')}
                             </h1>
 
-                            {/* 価格表示エリア：バリエーション未選択時はメッセージを表示 */}
                             <div className="min-h-[4rem] pt-4">
                                 {displayPrice !== null ? (
                                     <div className="text-4xl font-light text-slate-900 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -93,7 +107,7 @@ export default function Show({ product }) {
                             </div>
                         </div>
 
-                        {/* --- バリエーション選択エリア --- */}
+                        {/* バリエーション選択 */}
                         {product.variations?.length > 0 && (
                             <div className="space-y-6 pt-6 border-t border-slate-100">
                                 <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -107,7 +121,7 @@ export default function Show({ product }) {
                                         return (
                                             <button
                                                 key={v.id}
-                                                disabled={isOutOfStock}
+                                                disabled={isOutOfStock || processing}
                                                 onClick={() => handleVariationSelect(v)}
                                                 className={`
                                                     relative p-5 rounded-2xl border-2 text-left transition-all
@@ -119,11 +133,9 @@ export default function Show({ product }) {
                                             >
                                                 <div className="flex justify-between items-center">
                                                     <div>
-                                                        {/* バリエーション名（翻訳対応） */}
                                                         <span className={`text-sm font-black ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
-                                                            {getTranslation(v, 'variant_name')}
+                                                            {getTranslation(v, 'name')}
                                                         </span>
-                                                        {/* バリエーション金額 */}
                                                         <div className="text-[10px] text-slate-400 mt-1 font-bold">
                                                             {isOutOfStock ? __('Sold Out') : `¥${Number(v.price).toLocaleString()}`}
                                                         </div>
@@ -144,13 +156,20 @@ export default function Show({ product }) {
                         {/* 購入ボタン */}
                         <div className="pt-6">
                             <button 
-                                disabled={product.variations?.length > 0 && !selectedVariation}
+                                onClick={handleAddToCart}
+                                disabled={processing || (product.variations?.length > 0 && !selectedVariation)}
                                 className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-cyan-600 active:scale-[0.98] transition-all shadow-xl shadow-slate-200 disabled:bg-slate-200 disabled:shadow-none disabled:cursor-not-allowed"
                             >
-                                <ShoppingBag size={20} />
-                                {product.variations?.length > 0 && !selectedVariation 
-                                    ? __('Select an option') 
-                                    : __('Add to Cart')}
+                                {processing ? (
+                                    <Loader2 className="animate-spin" size={20} />
+                                ) : (
+                                    <ShoppingBag size={20} />
+                                )}
+                                {processing ? __('Processing...') : 
+                                    (product.variations?.length > 0 && !selectedVariation 
+                                        ? __('Select an option') 
+                                        : __('Add to Cart'))
+                                }
                             </button>
                         </div>
 

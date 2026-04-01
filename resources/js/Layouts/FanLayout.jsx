@@ -1,98 +1,62 @@
-import React, { useState } from 'react';
-import { Link } from '@inertiajs/react';
-import { ShoppingBag, User, Menu, X, Search } from 'lucide-react';
+import React from 'react';
+import { Link, usePage } from '@inertiajs/react';
+import { ShoppingBag, User, Search } from 'lucide-react';
 
 export default function FanLayout({ children }) {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    // Shared Props から cartCount と翻訳関数を取得
+    const { cartCount, language } = usePage().props;
+    const __ = (key) => (language && language[key]) ? language[key] : key;
 
     return (
-        <div className="min-h-screen bg-white font-sans text-slate-900">
-            {/* --- Header: 洗練された一本線のナビゲーション --- */}
+        <div className="min-h-screen bg-white">
+            {/* Navigation */}
             <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-                <div className="max-w-[1600px] mx-auto px-6 h-20 flex items-center justify-between">
+                <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
                     
-                    {/* Logo: 墨色でタイポグラフィ重視 */}
-                    <Link href="/" className="text-2xl font-light tracking-[0.2em] uppercase">
-                        Circle<span className="font-bold text-cyan-600">Port</span>
+                    {/* Logo */}
+                    <Link href="/" className="text-2xl font-black tracking-tighter text-slate-900">
+                        Circle<span className="text-cyan-600">Port</span>
                     </Link>
 
-                    {/* Desktop Menu: 余白を広く取った配置 */}
-                    <div className="hidden md:flex items-center gap-12 text-[11px] font-bold tracking-[0.2em] uppercase text-slate-500">
-                        <Link href={route('fan.products.index')} className="hover:text-cyan-600 transition-colors">Artworks</Link>
-                        <Link href="#" className="hover:text-cyan-600 transition-colors">Creators</Link>
-                        <Link href="#" className="hover:text-cyan-600 transition-colors">About</Link>
-                    </div>
+                    {/* Menu Items */}
+                    <div className="flex items-center gap-8">
+                        {/* Search Link (例) */}
+                        <Link href={route('fan.products.index')} className="text-sm font-bold text-slate-600 hover:text-cyan-600 transition-colors">
+                            {__('Artworks')}
+                        </Link>
 
-                    {/* Action Icons: 記号的でスマートな配置 */}
-                    <div className="flex items-center gap-6">
-                        <button className="p-2 hover:text-cyan-600 transition-colors">
-                            <Search size={20} strokeWidth={1.5} />
-                        </button>
-                        <Link href="#" className="p-2 hover:text-cyan-600 transition-colors relative">
-                            <ShoppingBag size={20} strokeWidth={1.5} />
-                            {/* カートのバッジも最小限に */}
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-pink-500 rounded-full"></span>
-                        </Link>
-                        <Link href="#" className="hidden md:block p-2 hover:text-cyan-600 transition-colors">
-                            <User size={20} strokeWidth={1.5} />
-                        </Link>
-                        
-                        {/* Mobile Menu Button */}
-                        <button 
-                            className="md:hidden p-2"
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        {/* --- カートボタンここから --- */}
+                        <Link 
+                            href={route('fan.cart.index')} 
+                            className="relative p-2 text-slate-600 hover:text-cyan-600 transition-all group"
                         >
-                            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                        </button>
+                            <ShoppingBag size={24} strokeWidth={2} />
+                            
+                            {/* カートの個数バッジ (1個以上の時だけ表示) */}
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-cyan-600 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white animate-in zoom-in duration-300">
+                                    {cartCount > 99 ? '99+' : cartCount}
+                                </span>
+                            )}
+                            
+                            {/* ホバー時にツールチップ風のテキスト（任意） */}
+                            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap font-bold">
+                                {__('Shopping Cart')}
+                            </span>
+                        </Link>
+                        {/* --- カートボタンここまで --- */}
+
+                        <Link href={route('fan.mypage.dashboard')} className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 hover:border-cyan-500 hover:text-cyan-600 transition-all">
+                            <User size={20} />
+                        </Link>
                     </div>
                 </div>
             </nav>
 
-            {/* Mobile Navigation Overlay */}
-            {isMenuOpen && (
-                <div className="fixed inset-0 z-40 bg-white pt-24 px-8 space-y-8 text-2xl font-light">
-                    <Link href={route('fan.products.index')} className="block border-b border-slate-100 pb-4">Artworks</Link>
-                    <Link href="#" className="block border-b border-slate-100 pb-4">Creators</Link>
-                    <Link href="#" className="block border-b border-slate-100 pb-4">About</Link>
-                    <Link href="#" className="block border-b border-slate-100 pb-4">My Account</Link>
-                </div>
-            )}
-
-            {/* --- Main Content: 背景にノイズや装飾を入れず、作品を主役にする --- */}
-            <main className="relative">
-                {children}
-            </main>
-
-            {/* --- Footer: 控えめで上品なフッター --- */}
-            <footer className="border-t border-slate-100 py-20 bg-slate-50">
-                <div className="max-w-[1400px] mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
-                    <div className="col-span-1 md:col-span-2">
-                        <p className="text-xl font-light tracking-wider mb-6">CirclePort</p>
-                        <p className="text-sm text-slate-400 leading-relaxed max-w-sm">
-                            Connecting Japanese creators with fans worldwide. <br />
-                            Experience the authentic culture, directly from the studio.
-                        </p>
-                    </div>
-                    <div>
-                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-900 mb-6">Help</h4>
-                        <ul className="text-sm text-slate-400 space-y-4 font-light">
-                            <li><Link href="#">Shipping Policy</Link></li>
-                            <li><Link href="#">Payment Methods</Link></li>
-                            <li><Link href="#">Contact Us</Link></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-900 mb-6">Social</h4>
-                        <ul className="text-sm text-slate-400 space-y-4 font-light">
-                            <li><a href="#">Instagram</a></li>
-                            <li><a href="#">X (Twitter)</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div className="max-w-[1400px] mx-auto px-6 mt-20 text-[10px] text-slate-300 font-bold tracking-widest uppercase">
-                    &copy; 2026 CirclePort. All rights reserved.
-                </div>
-            </footer>
+            {/* Main Content */}
+            <main>{children}</main>
+            
+            {/* Footer etc... */}
         </div>
     );
 }

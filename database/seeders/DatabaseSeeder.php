@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
        $this->call([
             CategorySeeder::class,
             HsCodeSeeder::class,
+            TimezoneSeeder::class,
         ]);
 
         User::factory()->create([
