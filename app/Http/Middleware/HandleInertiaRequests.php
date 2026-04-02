@@ -50,6 +50,11 @@ class HandleInertiaRequests extends Middleware
                 $cart = session()->get('fan_cart', []);
                 return array_sum(array_column($cart, 'quantity'));
             },
+            'checkout_settings' => [
+                'tax_rate'     => config('circleport.checkout.tax_rate'), 
+                'fee_rate'     => config('circleport.checkout.gateway_fee_rate'),
+                'shipping_fee' => config('circleport.checkout.domestic_shipping_fee'),
+            ],
         ];
     }
 }

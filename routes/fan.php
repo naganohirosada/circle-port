@@ -10,6 +10,7 @@ use App\Http\Controllers\Fan\MypageController;
 use App\Http\Controllers\Fan\ProfileController;
 use App\Http\Controllers\Fan\AddressController;
 use App\Http\Controllers\Fan\PaymentController;
+use App\Http\Controllers\Fan\CheckoutController;
 
 Route::prefix('fan')->name('fan.')->group(function () {
     // 未ログイン時のみアクセス可能
@@ -58,5 +59,10 @@ Route::prefix('fan')->name('fan.')->group(function () {
 
         // 削除（論理削除）
         Route::delete('/payments/{id}', [PaymentController::class, 'destroy'])->name('mypage.payments.destroy');
+
+        // 注文実行
+        Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+        // 注文完了画面 (Success)
+        Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
     });
 });

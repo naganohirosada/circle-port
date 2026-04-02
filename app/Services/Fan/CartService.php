@@ -135,4 +135,18 @@ class CartService
             $this->cartRepo->updateCart($cart);
         }
     }
+
+    public function clearCart($fan): void
+    {
+        $this->cartRepo->clearCart($fan->id);
+    }
+
+    /**
+     * 任意のカート内の商品を削除
+     * @param array $keysToRemove
+     */
+    public function removeItemsFromSession(array $keysToRemove): void
+    {
+        $this->cartRepo->removeItems($keysToRemove);
+    }
 }
