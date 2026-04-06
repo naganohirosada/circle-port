@@ -25,4 +25,13 @@ interface OrderRepositoryInterface
      * @param array $data
      */
     public function createWithDetails(array $data): Order;
+
+    /**
+     * 指定されたステータスの注文数をカウントする
+     * @param int $fanId
+     * @param string $status
+     */
+    public function countByStatus(int $fanId, string $status): int;
+
+    public function getPaginatedForFan(int $fanId, int $perPage = 10);
 }

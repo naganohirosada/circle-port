@@ -20,7 +20,7 @@ class LoginController extends Controller
 
         if (Auth::guard('fan')->attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            return redirect()->intended(route('fan.dashboard'));
+            return redirect()->intended(route('fan.mypage.dashboard'));
         }
 
         return back()->withErrors(['email' => 'The provided credentials do not match our records.']);

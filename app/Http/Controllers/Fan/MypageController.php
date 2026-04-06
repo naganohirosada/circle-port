@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Fan\MypageService;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Auth;
 
 class MypageController extends Controller
 {
@@ -17,7 +18,7 @@ class MypageController extends Controller
     }
 
     /**
-     * Buyee風ダッシュボードの表示
+     * ダッシュボードの表示
      */
     public function dashboard(): Response
     {
@@ -28,6 +29,36 @@ class MypageController extends Controller
 
         return Inertia::render('Fan/Mypage/Dashboard', [
             'stats' => $stats
+        ]);
+    }
+
+    /**
+     * 主催したGroup Order一覧の表示
+     * * 追加項目
+     */
+    public function groupOrders(): Response
+    {
+        $userId = Auth::id();
+        
+        // サービス層から主催データを取得
+        $groupOrders = $this->mypageService->getOrganizedGroupOrders($userId);
+
+        return Inertia::render('Fan/Mypage/GroupOrders', [
+            'groupOrders' => $groupOrders
+        ]);
+    }
+
+    /**
+     * 
+     * 主催したGroup Order詳細の表示
+     */
+    public function show(int $id): Response
+    {
+        $userId = Auth::id();
+        $go = $this->mypageService->getOrganizedGroupOrderDetail($userId, $id);
+
+        return Inertia::render('Fan/Mypage/GroupOrderDetail', [
+            'go' => $go
         ]);
     }
 }

@@ -78,4 +78,27 @@ class OrderRepository implements OrderRepositoryInterface
             return $order;
         });
     }
+
+    /**
+     * 指定されたステータスの注文数をカウントする
+     * @param int $fanId
+     * @param string $status
+     */
+    public function countByStatus(int $fanId, string $status): int
+    {
+        return Order::where('fan_id', $fanId)
+            ->where('status', $status)
+            ->count();
+    }
+
+    public function getPaginatedForFan(int $fanId, int $perPage = 10) {
+        return Order::where('fan_id', $fanId)
+            ->with([
+                'orderItems.product.translations',
+                'orderItems.product.images',
+                'orderItems.variation.translations'
+            ])
+            ->latest()
+            ->paginate($perPage);
+    }
 }

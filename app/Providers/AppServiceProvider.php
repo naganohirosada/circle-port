@@ -16,6 +16,11 @@ use App\Repositories\Interfaces\FanRepositoryInterface;
 use App\Repositories\Eloquent\Fan\FanRepository;
 use App\Repositories\Eloquent\Order\OrderRepository;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
+use App\Repositories\Interfaces\GroupOrderRepositoryInterface;
+use App\Repositories\Eloquent\GroupOrder\GroupOrderRepository;
+use App\Repositories\Interfaces\CountryRepositoryInterface;
+use App\Repositories\Eloquent\CountryRepository;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +35,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PaymentRepositoryInterface::class, PaymentRepository::class);
         $this->app->bind(FanRepositoryInterface::class, FanRepository::class);
         $this->app->bind(OrderRepositoryInterface::class, OrderRepository::class);
+        $this->app->bind(GroupOrderRepositoryInterface::class, GroupOrderRepository::class);
+        $this->app->bind(CountryRepositoryInterface::class, CountryRepository::class);
     }
 
     /**

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Head, usePage, Link, useForm } from '@inertiajs/react'; // useForm を追加
+import { Head, usePage, Link, useForm } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { Tag, ShoppingBag, ChevronRight, User, Check, Loader2 } from 'lucide-react'; // Loader2 追加
+import { Tag, ShoppingBag, ChevronRight, User, Check, Loader2, Megaphone } from 'lucide-react';
 
 export default function Show({ product }) {
     const { language, locale } = usePage().props;
@@ -30,22 +30,17 @@ export default function Show({ product }) {
         return t ? t[field] : '-';
     };
 
-    // 2. バリエーション選択時にフォームデータ(variation_id)も更新
     const handleVariationSelect = (variation) => {
         setSelectedVariation(variation);
         setDisplayPrice(variation.price);
         setData('variation_id', variation.id); 
     };
 
-    // 3. カート追加処理 (Serviceへ送信)
     const handleAddToCart = (e) => {
         e.preventDefault();
         post(route('fan.cart.add'), {
             preserveScroll: true,
-            onSuccess: () => {
-                // 必要に応じてトースト通知などを表示
-                console.log('Added to cart');
-            },
+            onSuccess: () => console.log('Added to cart'),
         });
     };
 
@@ -153,27 +148,32 @@ export default function Show({ product }) {
                             </div>
                         )}
 
-                        {/* 購入ボタン */}
-                        <div className="pt-6">
+                        {/* アクションボタン：既存のロジック + 新規GO導線 */}
+                        <div className="pt-6 space-y-4">
                             <button 
                                 onClick={handleAddToCart}
                                 disabled={processing || (product.variations?.length > 0 && !selectedVariation)}
-                                className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-cyan-600 active:scale-[0.98] transition-all shadow-xl shadow-slate-200 disabled:bg-slate-200 disabled:shadow-none disabled:cursor-not-allowed"
+                                className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-cyan-600 active:scale-[0.98] transition-all shadow-xl shadow-slate-200 disabled:bg-slate-200"
                             >
-                                {processing ? (
-                                    <Loader2 className="animate-spin" size={20} />
-                                ) : (
-                                    <ShoppingBag size={20} />
-                                )}
+                                {processing ? <Loader2 className="animate-spin" size={20} /> : <ShoppingBag size={20} />}
                                 {processing ? __('Processing...') : 
                                     (product.variations?.length > 0 && !selectedVariation 
                                         ? __('Select an option') 
                                         : __('Add to Cart'))
                                 }
                             </button>
+
+                            {/* Show.jsx のデザインに合わせた GO作成ボタン */}
+                            <Link 
+                                href={route('fan.go.create', { item_id: product.id })} 
+                                className="w-full border-2 border-slate-900 text-slate-900 py-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-slate-900 hover:text-white transition-all active:scale-[0.98]"
+
+                            >
+                                {__('Create GO with this item')}
+                            </Link>
                         </div>
 
-                        {/* 説明文 */}
+                        {/* 商品説明 */}
                         <div className="pt-10 border-t border-slate-100">
                             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6">{__('Description')}</h3>
                             <div className="text-slate-600 leading-loose text-sm whitespace-pre-wrap">

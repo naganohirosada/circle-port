@@ -25,6 +25,18 @@ export default function Dashboard() {
 
                 {/* Dashboard Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+                    <Link href={route('fan.go.create')} className="group">
+                        <div className="bg-pink-500 p-8 rounded-[2rem] border-[6px] border-white shadow-[10px_10px_0px_#FDA4AF] h-full relative overflow-hidden transform hover:scale-105 transition-all">
+                            <div className="text-4xl mb-4 text-white">🚀</div>
+                            <h3 className="font-black text-2xl text-white mb-2 italic tracking-tighter">
+                                LAUNCH NEW GO
+                            </h3>
+                            <p className="text-white font-bold opacity-90">Start a new group order for your community.</p>
+                            {/* 装飾用背景文字 */}
+                            <div className="absolute -bottom-4 -right-4 text-white/20 text-8xl font-black uppercase pointer-events-none">NEW</div>
+                        </div>
+                    </Link>
                     {/* Status Card: Group Orders */}
                     <div className="bg-white p-8 rounded-[2rem] border-4 border-indigo-100 shadow-xl relative overflow-hidden group hover:border-indigo-600 transition-all">
                         <div className="text-4xl mb-4">📦</div>

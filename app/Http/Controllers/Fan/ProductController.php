@@ -90,8 +90,6 @@ class ProductController extends Controller
             'variations.translations'
         ]);
 
-        // dd($product);
-
         return Inertia::render('Fan/Product/Show', [
             'product' => $product,
         ]);

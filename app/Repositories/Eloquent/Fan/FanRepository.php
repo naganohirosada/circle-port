@@ -21,6 +21,7 @@ class FanRepository implements FanRepositoryInterface
             'password' => Hash::make($data['password']),
             'country_id' => $data['country_id'],
             'status' => Fan::STATUS_ACTIVE,
+            'unique_id' => $data['unique_id'],
         ]);
     }
 

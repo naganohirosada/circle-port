@@ -6,7 +6,7 @@ import {
     MapPin, CreditCard, Loader2, ArrowLeft, CheckSquare, Square 
 } from 'lucide-react';
 
-export default function Index({ cart, shippingAddresses, paymentMethods }) {
+export default function Index({ cart = { items: [] }, shippingAddresses, paymentMethods }) {
     const { language, auth, checkout_settings } = usePage().props;
     const [isProcessing, setIsProcessing] = useState(false);
     
@@ -28,8 +28,10 @@ export default function Index({ cart, shippingAddresses, paymentMethods }) {
     const totals = useMemo(() => {
         const { tax_rate, fee_rate, shipping_fee } = checkout_settings;
         
-        // 選択されている商品のみをフィルタリング
-        const selectedItems = cart.items.filter(item => selectedKeys.includes(item.cart_key));
+        // オプショナルチェイニング (?.) を使い、items が無い場合は空配列として扱います
+        const items = cart?.items || [];
+        const selectedItems = items.filter(item => selectedKeys.includes(item.cart_key));
+        
         const itemTotal = selectedItems.reduce((sum, item) => sum + item.subtotal, 0);
         
         if (itemTotal === 0) {

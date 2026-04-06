@@ -11,6 +11,8 @@ use App\Http\Controllers\Fan\ProfileController;
 use App\Http\Controllers\Fan\AddressController;
 use App\Http\Controllers\Fan\PaymentController;
 use App\Http\Controllers\Fan\CheckoutController;
+use App\Http\Controllers\Fan\OrderController;
+use App\Http\Controllers\Fan\GroupOrderController;
 
 Route::prefix('fan')->name('fan.')->group(function () {
     // 未ログイン時のみアクセス可能
@@ -64,5 +66,21 @@ Route::prefix('fan')->name('fan.')->group(function () {
         Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
         // 注文完了画面 (Success)
         Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
+
+        // 注文履歴
+        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+
+        Route::get('/go/create/{product_id?}', [GroupOrderController::class, 'create'])->name('go.create');
+        Route::post('/go', [GroupOrderController::class, 'store'])->name('go.store');
+        Route::get('/go/index', [GroupOrderController::class, 'index'])->name('go.index');
+        Route::get('/go/show/{id}', [MypageController::class, 'show'])->name('go.show');
+        Route::get('/go/managed', [MypageController::class, 'groupOrders'])->name('go.managed');
+        Route::get('/api/creators/{creator}/products', [GroupOrderController::class, 'getProducts'])->name('api.creators.products');
+
+        Route::get('/api/fans/search', [GroupOrderController::class, 'searchFan'])->name('api.fans.search');
+
+        Route::get('/go/published/', [GroupOrderController::class, 'index'])->name('go.published');
+
     });
 });

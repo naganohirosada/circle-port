@@ -158,6 +158,7 @@ class CheckoutService
                 ['type' => PaymentBreakdown::TYPE_ITEM_TOTAL, 'amount' => $amounts['item_total'], 'currency_id' => $fan->currency_id],
                 ['type' => PaymentBreakdown::TYPE_DOMESTIC_SHIPPING, 'amount' => $amounts['shipping'], 'currency_id' => $fan->currency_id],
                 ['type' => PaymentBreakdown::TYPE_HANDLING_FEE, 'amount' => $amounts['fee'], 'currency_id' => $fan->currency_id],
+                ['type' => PaymentBreakdown::TYPE_TAX, 'amount' => $amounts['tax'], 'currency_id' => $fan->currency_id],
             ],
         ];
     }
@@ -188,7 +189,7 @@ class CheckoutService
             }
         }
 
-        // 2. 国内送料 (固定額: 700円)
+        // 2. 国内送料 (固定額: 1200円)
         $domesticShipping = $shipping;
 
         // 3. 国内消費税 (10%)
@@ -196,8 +197,8 @@ class CheckoutService
         $taxableAmount = $itemTotal + $domesticShipping;
         $tax = floor($taxableAmount * $taxRate);
 
-        // 4. 決済手数料 (7.5%)
-        // (商品代 + 送料 + 消費税) の総額に対して 7.5%
+        // 4. 決済手数料 (8%)
+        // (商品代 + 送料 + 消費税) の総額に対して 8%
         // 憲法第3条：コスト回収のため、1円未満は「切り上げ(ceil)」
         $totalBeforeFee = $taxableAmount + $tax;
         $gatewayFee = ceil($totalBeforeFee * $feeRate);

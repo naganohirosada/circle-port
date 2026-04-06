@@ -69,14 +69,14 @@ export default function Success({ order_id }) {
                         {__('Continue Shopping')}
                     </Link>
 
-                    {/* <Link 
-                        href={route('fan.orders.index')} // 注文履歴ページ（後ほど作成）
+                    <Link 
+                        href={route('fan.orders.index')}
                         className="w-full sm:w-auto px-10 py-5 bg-white border-2 border-slate-100 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-xs hover:border-slate-900 transition-all flex items-center justify-center gap-3"
                     >
                         <Package size={18} />
                         {__('View Order History')}
                         <ArrowRight size={16} />
-                    </Link> */}
+                    </Link>
                 </div>
 
                 <div className="mt-16 pt-8 border-t border-slate-100">

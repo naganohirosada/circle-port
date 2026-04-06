@@ -4,17 +4,21 @@ namespace App\Http\Controllers\Fan\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Fan\RegisterRequest;
 use App\Services\Fan\FanAuthService;
-use App\Models\Country;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\CountryService; 
 
 class RegisterController extends Controller
 {
     protected $authService;
+    protected $countryService;
 
-    public function __construct(FanAuthService $authService)
-    {
+    public function __construct(
+        FanAuthService $authService,
+        CountryService $countryService
+    ) {
         $this->authService = $authService;
+        $this->countryService = $countryService;
     }
 
     /**
@@ -22,13 +26,8 @@ class RegisterController extends Controller
      */
     public function showRegistrationForm(): Response
     {
-        // アクティブな国リストを取得してReact側へ渡す
-        $countries = Country::where('status', 1)
-            ->select('id', 'name_en', 'iso_code') // 必要なデータだけに絞ると転送が軽くなります
-            ->get();
-
         return Inertia::render('Fan/Auth/Register', [
-            'countries' => $countries
+            'countries' => $this->countryService->getCountriesForRegistration()
         ]);
     }
 
@@ -41,6 +40,6 @@ class RegisterController extends Controller
         $this->authService->register($request->validated());
 
         // Inertiaの推奨に従い、リダイレクト
-        return redirect()->route('fan.dashboard');
+        return redirect()->route('fan.mypage.dashboard');
     }
 }

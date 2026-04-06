@@ -17,6 +17,7 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:fans'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'country_id' => ['required', 'exists:countries,id'],
+            'unique_id' => ['required', 'string', 'alpha_dash', 'min:4', 'max:15', 'unique:fans,unique_id'],
         ];
     }
 }

@@ -25,6 +25,7 @@ class Fan extends Authenticatable
         'currency_id',
         'timezone_id',
         'status',
+        'unique_id'
     ];
 
     protected $hidden = [

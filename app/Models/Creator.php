@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Creator extends Authenticatable
 {
@@ -22,4 +23,13 @@ class Creator extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    /**
+     * クリエイターに紐づく商品一覧を取得
+     */
+    public function products(): HasMany
+    {
+        // 第2引数には外部キー（例: creator_id）を指定します
+        return $this->hasMany(Product::class, 'creator_id');
+    }
 }
