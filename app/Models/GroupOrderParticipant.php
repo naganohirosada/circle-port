@@ -11,6 +11,16 @@ class GroupOrderParticipant extends Model
 
     protected $guarded = ['id'];
 
+    protected $fillable = [
+        'group_order_id',
+        'fan_id',
+        'primary_order_id',
+        'is_primary_paid',
+        'secondary_order_id',
+        'is_secondary_paid',
+        'secondary_amount_share',
+    ];
+
     // 数値として扱うキャスト設定
     protected $casts = [
         'is_primary_paid' => 'boolean',

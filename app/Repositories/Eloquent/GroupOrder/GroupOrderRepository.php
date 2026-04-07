@@ -6,8 +6,9 @@ use App\Models\GroupOrder;
 use App\Models\GroupOrderItem;
 use App\Repositories\Interfaces\GroupOrderRepositoryInterface;
 use App\Models\Fan;
+use App\Models\Order;
 use Illuminate\Pagination\LengthAwarePaginator;
-use App\Enums\GroupOrderStatus;
+use App\Models\GroupOrderParticipant;
 
 class GroupOrderRepository implements GroupOrderRepositoryInterface
 {
@@ -92,8 +93,6 @@ class GroupOrderRepository implements GroupOrderRepositoryInterface
         return GroupOrder::query()
             ->with(['creator', 'items'])
             ->withCount('participants')
-            // 基本条件：非公開ではない ＆ 募集中または終了したもの（＝全公開データ）
-            ->where('is_private', false)
             ->whereIn('status', [
                 \App\Enums\GroupOrderStatus::RECRUITING,
                 \App\Enums\GroupOrderStatus::CLOSED
@@ -121,5 +120,60 @@ class GroupOrderRepository implements GroupOrderRepositoryInterface
         return \App\Models\Category::with('subCategories')
             ->with('translations') // 多言語対応
             ->get();
+    }
+
+    /**
+     * 注文データ作成
+     */
+    public function createOrder(array $data): Order
+    {
+        // 1. まず「注文(Order)」レコードを作成する（一次決済分）
+        $order = Order::create([
+            'group_order_id'      => $data['group_order_id'],
+            'fan_id'              => $data['fan_id'],
+            'address_id' => $data['shipping_address_id'],
+            'total_amount'        => $data['total_amount'],
+            'status'              => Order::STATUS_PENDING, // 受付済
+        ]);
+
+        // 2. 注文明細(OrderItems)を作成
+        foreach ($data['items'] as $item) {
+            $order->orderItems()->create([
+                'product_id'         => $item['product_id'],
+                'product_variant_id' => $item['product_variant_id'] ?? null,
+                'quantity'           => $item['quantity'],
+                'unit_price'         => $item['price'], // 金額
+            ]);
+        }
+
+        // 3. 参加者(Participant)レコードを作成（ここで全てのカラムを埋める）
+        GroupOrderParticipant::create([
+            'group_order_id'         => $data['group_order_id'],
+            'fan_id'                 => $data['fan_id'],
+            // 一次決済（商品代）の紐付け
+            'primary_order_id'       => $order->id, 
+            'is_primary_paid'        => 0, // 初期値は未決済。決済完了フックで 1 に更新。
+            // 二次決済（送料等）の初期化
+            'secondary_order_id'     => null, // まだ発生していないので null
+            'is_secondary_paid'      => 0,    // 当然 0
+            'secondary_amount_share' => 0.00, // 倉庫到着後に計算されるため初期値は 0
+        ]);
+
+        return $order;
+    }
+
+
+    /**
+     * 公開中のGOを取得
+     * @param int $id
+     * @return GroupOrder
+     */
+    public function findPublicById(int $id): GroupOrder
+    {
+        return GroupOrder::where('id', $id)
+            ->where('is_private', false)
+            ->with(['creator', 'items'])
+            ->withCount('participants')
+            ->firstOrFail();
     }
 }

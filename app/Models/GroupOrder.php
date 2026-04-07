@@ -102,9 +102,6 @@ class GroupOrder extends Model
      */
     public function getParticipantsCountAttribute(): int
     {
-        // リレーション経由で件数を取得
-        // 既に Service 側で withCount('participants') を使っている場合は
-        // $this->attributes['participants_count'] ?? 0; と書くのがより高速です
         return $this->participants()->count();
     }
 }

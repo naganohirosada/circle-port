@@ -82,5 +82,9 @@ Route::prefix('fan')->name('fan.')->group(function () {
 
         Route::get('/go/published/', [GroupOrderController::class, 'index'])->name('go.published');
 
+        // GO参加
+        Route::get('/go/detail/{id}', [GroupOrderController::class, 'show'])->name('go.detail');
+        Route::post('/go/{id}/join', [GroupOrderController::class, 'join'])->name('go.join');
+        Route::get('/go/{id}/thanks/{order_id}', [GroupOrderController::class, 'thanks'])->name('go.thanks');
     });
 });

@@ -129,7 +129,7 @@ export default function Index({ groupOrders, categories = [], filters }) {
                         groupOrders.data.map((go) => (
                             <Link 
                                 key={go.id} 
-                                href={route('fan.go.show', go.id)} 
+                                href={route('fan.go.detail', go.id)} 
                                 className="group bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 hover:border-cyan-500 hover:shadow-2xl transition-all duration-500 flex flex-col xl:flex-row gap-8"
                             >
                                 <div className="w-full xl:w-40 aspect-square shrink-0 rounded-3xl overflow-hidden border border-slate-100">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Fan;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Fan\GroupOrder\GroupOrderStoreRequest;
+use App\Http\Requests\Fan\GroupOrder\JoinGroupOrderRequest;
 use App\Services\Fan\GroupOrderService;
 use Inertia\Response;
 use App\Models\Product;
@@ -11,6 +12,8 @@ use Inertia\Inertia;
 use App\Models\Creator;
 use Illuminate\Http\Request;
 use App\Models\Fan;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Order;
 
 class GroupOrderController extends Controller
 {
@@ -152,5 +155,62 @@ class GroupOrderController extends Controller
         );
 
         return response()->json($fan);
+    }
+
+    /**
+     * GO参加処理
+     */
+    public function join(JoinGroupOrderRequest $request, int $id)
+    {
+        try {
+            // Service層で注文を作成し、作成された注文データを取得
+            $order = $this->groupOrderService->joinGroupOrder($id, auth()->id(), $request->validated());
+
+            // 完了画面へリダイレクト（注文IDを渡す）
+            return redirect()->route('fan.go.thanks', ['id' => $id, 'order_id' => $order->id]);
+                
+        } catch (\Exception $e) {
+            dd($e->getMessage(), $e->getTraceAsString());
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 詳細画面
+     * @param int $id
+     */
+    public function show(int $id): Response
+    {
+        $go = $this->groupOrderService->getPublicDetail($id);
+
+        // 限定公開（is_private）のチェック
+        if ($go->is_private) {
+            $fan = auth()->user();
+            // 未ログイン、または許可リストにいない場合は403エラー
+            if (!$fan || !$go->allowedFans()->where('fan_id', $fan->id)->exists()) {
+                abort(403, __('You do not have permission to access this private project.'));
+            }
+        }
+
+        $addresses = auth()->check() ? auth()->user()->shippingAddresses()->latest()->get() : [];
+
+        return Inertia::render('Fan/GroupOrders/Show', [
+            'go' => $go,
+            'addresses' => $addresses,
+        ]);
+    }
+
+    /**
+     * 注文完了画面
+     */
+    public function thanks(int $id, int $order_id): Response
+    {
+        $go = $this->groupOrderService->getPublicDetail($id);
+        $order = Order::findOrFail($order_id);
+
+        return Inertia::render('Fan/GroupOrders/Thanks', [
+            'go' => $go,
+            'order' => $order,
+        ]);
     }
 }

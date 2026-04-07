@@ -80,4 +80,51 @@ class GroupOrderService
     {
         return $this->repository->getCategoriesWithSub();
     }
+
+    public function joinGroupOrder(int $goId, int $fanId, array $input)
+    {
+        $go = $this->repository->findPublicById($goId);
+
+        // 1. 募集期限チェック
+        if (!$go->recruitment_end_date) {
+            throw new \Exception(__('The recruitment period for this project is not set.'));
+        }
+
+        if (now()->isAfter($go->recruitment_end_date)) {
+            throw new \Exception(__('Recruitment has ended.'));
+        }
+
+        // 2. 定員チェック
+        if ($go->max_participants > 0 && $go->participants_count >= $go->max_participants) {
+            throw new \Exception(__('This project is full.'));
+        }
+
+        $mappedItems = array_map(function ($item) {
+            return [
+                'product_id'         => $item['product_id'],
+                'product_variant_id' => $item['variant_id'] ?? null,
+                'quantity'           => $item['quantity'],
+                'price'              => $item['price'],
+            ];
+        }, $input['items']);
+
+        // 4. 実行
+        return DB::transaction(function () use ($goId, $fanId, $input, $mappedItems) {
+            return $this->repository->createOrder([
+                'group_order_id'      => $goId,
+                'fan_id'              => $fanId,
+                'shipping_address_id' => $input['address_id'],
+                'total_amount'        => $input['total_amount'],
+                'items'               => $mappedItems,
+            ]);
+        });
+    }
+
+    /**
+     *
+     */
+    public function getPublicDetail(int $id): \App\Models\GroupOrder
+    {
+        return $this->repository->findPublicById($id);
+    }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Repositories\Interfaces;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Models\Order;
+use App\Models\GroupOrder;
 
 /**
  * 憲法：保守性とテストのしやすさを最大化するためのインターフェース
@@ -47,4 +49,11 @@ interface GroupOrderRepositoryInterface
      * 検索フィルター用のカテゴリ（サブカテゴリ含む）を取得
      */
     public function getCategoriesWithSub(): \Illuminate\Support\Collection;
+
+    /**
+     * GO参加＆一次決済
+     */
+    public function createOrder(array $data): Order;
+
+    public function findPublicById(int $id): GroupOrder;
 }
