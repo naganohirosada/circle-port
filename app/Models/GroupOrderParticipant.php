@@ -11,6 +11,10 @@ class GroupOrderParticipant extends Model
 
     protected $guarded = ['id'];
 
+    const STATUS_UNPAID = 1;
+    const STATUS_PAID = 2;
+    const STATUS_FAILED = 3;
+
     protected $fillable = [
         'group_order_id',
         'fan_id',
@@ -19,6 +23,7 @@ class GroupOrderParticipant extends Model
         'secondary_order_id',
         'is_secondary_paid',
         'secondary_amount_share',
+        'payment_status' => 'integer',
     ];
 
     // 数値として扱うキャスト設定
@@ -39,9 +44,9 @@ class GroupOrderParticipant extends Model
     /**
      * 参加者(ユーザー)
      */
-    public function user(): BelongsTo
+    public function fan(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Fan::class);
     }
 
     /**

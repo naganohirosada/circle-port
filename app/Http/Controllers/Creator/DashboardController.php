@@ -3,27 +3,18 @@
 namespace App\Http\Controllers\Creator;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Services\Creator\CreatorDashboardService;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    /**
-     * クリエイター専用ダッシュボード（Studio）の表示
-     * * @return \Inertia\Response
-     */
-    public function index(): Response
-    {
-        $creator = auth()->guard('creator')->user();
+    public function __construct(
+        protected CreatorDashboardService $service
+    ) {}
 
-        return Inertia::render('Creator/Dashboard', [
-            'stats' => [
-                'total_sales' => 0,
-                'active_projects' => 0,
-                'unread_messages' => 0,
-            ],
-            'shop_name' => $creator->shop_name,
-        ]);
+    public function index()
+    {
+        $data = $this->service->getDashboardData(auth()->id());
+        return Inertia::render('Creator/Dashboard', $data);
     }
 }

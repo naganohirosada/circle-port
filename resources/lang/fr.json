@@ -296,5 +296,18 @@
     "Global Shipping": "Expédition mondiale",
     "Your package will be carefully packed and shipped to your doorstep.": "Votre colis sera soigneusement emballé et expédié à votre domicile.",
     "View Order Details": "Voir les détails de la commande",
-    "Back to Projects": "Retour aux projets"
+    "Back to Projects": "Retour aux projets",
+    "Primary Payment": "Paiement Primaire (Articles + Port)",
+    "Primary Payment Execution": "Exécution du Paiement Primaire",
+    "Confirmed Domestic Shipping Fee": "Frais de port domestiques confirmés",
+    "Per Person": "Par personne",
+    "Execute Settlement": "Exécuter le règlement",
+    "Settle & Charge Participants": "Confirmer et facturer les participants",
+    "Waiting for Admin/Creator to set the shipping fee.": "En attente de la configuration des frais par l'administrateur ou le créateur.",
+    "The shipping cost will be split equally among all participants. Each person will be charged their item price + the shared shipping fee.": "Les frais de port seront répartis également entre tous les participants. Chaque personne sera facturée du prix de l'article + les frais de port partagés.",
+    "Confirmed Domestic Shipping Fee ¥:fee will be split. Each person will be charged ¥:perPerson. Proceed?": "Les frais de port domestiques confirmés de ¥:fee seront divisés. Chaque personne sera facturée de ¥:perPerson. Continuer ?",
+    "Payment Processing...": "Traitement du paiement...",
+    "Primary Paid": "Paiement primaire effectué",
+    "Waiting": "En attente",
+    "Error": "Erreur"
 }

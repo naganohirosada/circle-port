@@ -54,7 +54,7 @@ class MypageService
             ->with([
                 'creator',
                 'items',
-                'participants.fan.defaultAddress' 
+                'participants.fan.shippingAddresses' 
             ])
             ->withCount('participants')
             ->firstOrFail();

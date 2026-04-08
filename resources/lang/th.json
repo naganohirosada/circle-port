@@ -296,5 +296,18 @@
     "Global Shipping": "การจัดส่งทั่วโลก",
     "Your package will be carefully packed and shipped to your doorstep.": "พัสดุของคุณจะถูกบรรจุอย่างดีและจัดส่งถึงหน้าบ้านคุณ",
     "View Order Details": "ดูรายละเอียดการสั่งซื้อ",
-    "Back to Projects": "กลับไปยังหน้าโปรเจกต์"
+    "Back to Projects": "กลับไปยังหน้าโปรเจกต์",
+    "Primary Payment": "การชำระเงินรอบแรก (สินค้า + ค่าส่งในญี่ปุ่น)",
+    "Primary Payment Execution": "ดำเนินการชำระเงินรอบแรก",
+    "Confirmed Domestic Shipping Fee": "ยืนยันค่าจัดส่งภายในประเทศ",
+    "Per Person": "ต่อคน",
+    "Execute Settlement": "ดำเนินการชำระเงิน",
+    "Settle & Charge Participants": "ยืนยันและเรียกเก็บเงินผู้เข้าร่วม",
+    "Waiting for Admin/Creator to set the shipping fee.": "รอผู้ดูแลระบบหรือครีเอเตอร์ตั้งค่าค่าจัดส่ง",
+    "The shipping cost will be split equally among all participants. Each person will be charged their item price + the shared shipping fee.": "ค่าจัดส่งจะถูกแบ่งจ่ายเท่าๆ กันในบรรดาผู้เข้าร่วมทุกคน แต่ละคนจะถูกเรียกเก็บค่าสินค้า + ค่าจัดส่งที่หารแล้ว",
+    "Confirmed Domestic Shipping Fee ¥:fee will be split. Each person will be charged ¥:perPerson. Proceed?": "ค่าจัดส่งภายในประเทศที่ยืนยันแล้วคือ ¥:fee จะถูกแบ่งจ่าย แต่ละคนจะถูกเรียกเก็บเงิน ¥:perPerson ดำเนินการต่อหรือไม่?",
+    "Payment Processing...": "กำลังดำเนินการชำระเงิน...",
+    "Primary Paid": "ชำระรอบแรกเสร็จสิ้น",
+    "Waiting": "รอการดำเนินการ",
+    "Error": "เกิดข้อผิดพลาด"
 }

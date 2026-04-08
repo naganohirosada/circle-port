@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Fan\GroupOrder\GroupOrderStoreRequest;
 use App\Http\Requests\Fan\GroupOrder\JoinGroupOrderRequest;
 use App\Services\Fan\GroupOrderService;
+use App\Services\Gom\PrimaryPaymentService;
 use Inertia\Response;
 use App\Models\Product;
 use Inertia\Inertia;
@@ -18,11 +19,15 @@ use App\Models\Order;
 class GroupOrderController extends Controller
 {
     protected $groupOrderService;
+    protected $paymentService;
 
     // 憲法：Serviceをインジェクションして利用する
-    public function __construct(GroupOrderService $groupOrderService)
-    {
+    public function __construct(
+        GroupOrderService $groupOrderService,
+        PrimaryPaymentService $paymentService
+    ) {
         $this->groupOrderService = $groupOrderService;
+        $this->paymentService = $paymentService;
     }
 
     /**
@@ -212,5 +217,17 @@ class GroupOrderController extends Controller
             'go' => $go,
             'order' => $order,
         ]);
+    }
+
+    public function executePayment(int $id)
+    {
+        try {
+            // Serviceを呼び出すだけ
+            $this->paymentService->requestPayment($id);
+
+            return back()->with('success', 'Primary payment processing has started.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
     }
 }

@@ -266,5 +266,14 @@
     "Global Shipping": "Global Shipping",
     "Your package will be carefully packed and shipped to your doorstep.": "Your package will be carefully packed and shipped directly to your doorstep. We will notify you with a tracking number.",
     "View Order Details": "View Order Details",
-    "Back to Projects": "Back to Projects"
+    "Back to Projects": "Back to Projects",
+    "Primary Payment": "Primary Payment",
+    "Primary Payment Execution": "Execute Primary Payment",
+    "Confirmed Domestic Shipping Fee": "Confirmed Domestic Shipping Fee",
+    "Per Person": "Per Person",
+    "Execute Settlement": "Execute Settlement",
+    "Settle & Charge Participants": "Charge Participants",
+    "Waiting for Admin/Creator to set the shipping fee.": "Waiting for Admin/Creator to set the shipping fee.",
+    "The shipping cost will be split equally among all participants.": "The shipping cost will be split equally among all participants.",
+    "Confirmed Domestic Shipping Fee ¥:fee will be split. Each person will be charged ¥:perPerson. Proceed?": "Confirmed Domestic Shipping Fee ¥:fee will be split. Each person will be charged ¥:perPerson. Proceed?"
 }

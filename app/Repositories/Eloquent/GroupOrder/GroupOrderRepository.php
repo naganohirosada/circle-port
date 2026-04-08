@@ -176,4 +176,35 @@ class GroupOrderRepository implements GroupOrderRepositoryInterface
             ->withCount('participants')
             ->firstOrFail();
     }
+
+    public function findWithParticipantsForPayment(int $goId): GroupOrder
+    {
+        return GroupOrder::with(['participants.primaryOrder', 'participants.fan'])
+            ->findOrFail($goId);
+    }
+
+    public function updateStatus(int $goId, array $data): bool
+    {
+        return GroupOrder::where('id', $goId)->update($data);
+    }
+
+    public function updateParticipantStatus(int $participantId, array $data): bool
+    {
+        return GroupOrderParticipant::where('id', $participantId)->update($data);
+    }
+
+    public function updateOrderStatus(int $orderId, array $data): bool
+    {
+        return Order::where('id', $orderId)->update($data);
+    }
+
+    public function createPayment(array $data)
+    {
+        return \App\Models\Payment::create($data);
+    }
+
+    public function createPaymentBreakdown(array $data)
+    {
+        return \App\Models\PaymentBreakdown::create($data);
+    }
 }

@@ -278,5 +278,18 @@
     "Global Shipping": "国際配送",
     "Your package will be carefully packed and shipped to your doorstep.": "丁寧に梱包され、あなたの元へ発送されます。追跡番号をお知らせします。",
     "View Order Details": "注文詳細を確認する",
-    "Back to Projects": "他のプロジェクトを見る"
+    "Back to Projects": "他のプロジェクトを見る",
+    "Primary Payment": "一次決済（商品代・国内送料）",
+    "Primary Payment Execution": "一次決済の実行",
+    "Confirmed Domestic Shipping Fee": "確定済みの国内配送料",
+    "Per Person": "一人あたり",
+    "Execute Settlement": "決済を実行する",
+    "Settle & Charge Participants": "決済を確定し、参加者に請求する",
+    "Waiting for Admin/Creator to set the shipping fee.": "管理者またはクリエイターによる送料設定を待っています。",
+    "The shipping cost will be split equally among all participants. Each person will be charged their item price + the shared shipping fee.": "送料は参加者全員で均等に分割されます。各参加者には「商品代 + 按分された送料」が請求されます。",
+    "Confirmed Domestic Shipping Fee ¥:fee を人数で割り、一人あたり ¥:perPerson を請求します。よろしいですか？": "確定済みの国内配送料 ¥:fee を人数で割り、一人あたり ¥:perPerson を請求します。よろしいですか？",
+    "Payment Processing...": "決済処理中...",
+    "Primary Paid": "一次決済完了",
+    "Waiting": "待機中",
+    "Error": "エラー"
 }

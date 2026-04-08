@@ -296,5 +296,18 @@
     "Global Shipping": "全球配送",
     "Your package will be carefully packed and shipped to your doorstep.": "您的包裹将被精心包装并送达您的家中。",
     "View Order Details": "查看订单详情",
-    "Back to Projects": "返回项目列表"
+    "Back to Projects": "返回项目列表",
+    "Primary Payment": "初始付款（商品金额 + 国内运费）",
+    "Primary Payment Execution": "执行初始付款",
+    "Confirmed Domestic Shipping Fee": "已确认的国内运费",
+    "Per Person": "人均额度",
+    "Execute Settlement": "执行结算",
+    "Settle & Charge Participants": "确认并向参与者收款",
+    "Waiting for Admin/Creator to set the shipping fee.": "等待管理员或创作者设置运费。",
+    "The shipping cost will be split equally among all participants. Each person will be charged their item price + the shared shipping fee.": "运费将由所有参与者平摊。每人将支付商品单价 + 平摊后的运费。",
+    "Confirmed Domestic Shipping Fee ¥:fee will be split. Each person will be charged ¥:perPerson. Proceed?": "确认国内运费为 ¥:fee，平摊后每人需支付 ¥:perPerson。是否继续？",
+    "Payment Processing...": "支付处理中...",
+    "Primary Paid": "初始付款完成",
+    "Waiting": "待处理",
+    "Error": "错误"
 }

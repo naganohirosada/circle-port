@@ -132,33 +132,45 @@ class CheckoutService
     private function prepareOrderData($fan, $amounts, $cartData, $addressId, $pmId, $txId): array
     {
         $currencyId = $fan->currency_id ?? config('circleport.default_currency_id');
+
+        // 憲法第1条（堅牢性）に基づき、内訳を厳密に5分割する
         return [
             'order' => [
-                'fan_id' => $fan->id,
-                'address_id' => $addressId,
+                'fan_id'            => $fan->id,
+                'address_id'        => $addressId,
                 'payment_method_id' => $pmId,
-                'total_amount' => $amounts['total'],
-                'currency_id' => $currencyId,
-                'status' => Order::STATUS_PAID,
+                'total_amount'      => $amounts['total'], // 税込合計額
+                'currency_id'       => $currencyId,
+                'status'            => Order::STATUS_PAID,
             ],
             'items' => array_map(fn($item) => [
-                'product_id' => $item['id'],
-                'product_variation_id' => isset($item['variation_id']) && !empty($item['variation_id']) ? $item['variation_id'] :null,
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['price'],
+                'product_id'           => $item['id'],
+                'product_variation_id' => isset($item['variation_id']) && !empty($item['variation_id']) ? $item['variation_id'] : null,
+                'quantity'             => $item['quantity'],
+                'unit_price'           => $item['price'],
             ], $cartData),
             'payment' => [
                 'external_transaction_id' => $txId,
-                'total_amount' => $amounts['total'],
-                'currency_id' => $fan->currency_id,
-                'status' => Payment::STATUS_SUCCEEDED,
-                'method_type' => Payment::METHOD_CARD,
+                'total_amount'            => $amounts['total'],
+                'currency_id'             => $currencyId,
+                'status'                  => Payment::STATUS_SUCCEEDED,
+                'method_type'             => Payment::METHOD_CARD,
             ],
             'breakdowns' => [
-                ['type' => PaymentBreakdown::TYPE_ITEM_TOTAL, 'amount' => $amounts['item_total'], 'currency_id' => $fan->currency_id],
-                ['type' => PaymentBreakdown::TYPE_DOMESTIC_SHIPPING, 'amount' => $amounts['shipping'], 'currency_id' => $fan->currency_id],
-                ['type' => PaymentBreakdown::TYPE_HANDLING_FEE, 'amount' => $amounts['fee'], 'currency_id' => $fan->currency_id],
-                ['type' => PaymentBreakdown::TYPE_TAX, 'amount' => $amounts['tax'], 'currency_id' => $fan->currency_id],
+                // 1. 商品代金（税抜）
+                ['type' => PaymentBreakdown::TYPE_ITEM_TOTAL, 'amount' => $amounts['item_total'], 'currency_id' => $currencyId],
+                
+                // 5. 商品代金に対する税（10%）
+                ['type' => PaymentBreakdown::TYPE_ITEM_TAX, 'amount' => $amounts['item_tax'], 'currency_id' => $currencyId],
+                
+                // 4. システム利用料・手数料
+                ['type' => PaymentBreakdown::TYPE_HANDLING_FEE, 'amount' => $amounts['fee'], 'currency_id' => $currencyId],
+                
+                // 2. 国内配送料（税抜）
+                ['type' => PaymentBreakdown::TYPE_DOMESTIC_SHIPPING, 'amount' => $amounts['shipping'], 'currency_id' => $currencyId],
+                
+                // 7. 配送料に対する税（10%）
+                ['type' => PaymentBreakdown::TYPE_SHIPPING_TAX, 'amount' => $amounts['shipping_tax'], 'currency_id' => $currencyId],
             ],
         ];
     }
@@ -167,51 +179,52 @@ class CheckoutService
      * 
      * @param array $cartItems
      */
-    private function calculateFirstPhaseAmounts(array $cartItems)
+    private function calculateFirstPhaseAmounts(array $cartItems): array
     {
         $shipping = config('circleport.checkout.domestic_shipping_fee');
-        $taxRate  = config('circleport.checkout.tax_rate');
-        $feeRate  = config('circleport.checkout.gateway_fee_rate');
+        $taxRate  = config('circleport.checkout.tax_rate'); // 例: 0.10
+        $feeRate  = config('circleport.checkout.gateway_fee_rate'); // 例: 0.08
 
-        // 1. 商品代金合計
+        // 1. 商品代金合計（税抜）
         $itemTotal = 0;
         foreach ($cartItems as $item) {
-            // 論理削除されていない、最新の価格を取得
             $vId = $item['variation_id'] ?? null;
-
             if ($vId) {
                 $variation = ProductVariant::findOrFail($vId);
                 $itemTotal += $variation->price * $item['quantity'];
             } else {
-                // バリエーションがない商品の場合、Productモデル自体の価格を参照するなどのフォールバック
                 $product = Product::findOrFail($item['id']);
                 $itemTotal += $product->price * $item['quantity'];
             }
         }
 
-        // 2. 国内送料 (固定額: 1200円)
+        // 2. 国内送料（税抜 / 固定額）
         $domesticShipping = $shipping;
 
-        // 3. 国内消費税 (10%)
-        // (商品代 + 送料) に対して課税。1円未満は切り捨て(floor)
-        $taxableAmount = $itemTotal + $domesticShipping;
-        $tax = floor($taxableAmount * $taxRate);
+        // 3. 【重要】国内消費税の分離計算（10%）
+        // クリエイターの売上計算を正確にするため、商品と送料の税を分けます
+        // 憲法：ファンへの請求額に影響が出ないよう、個別に floor してから合算
+        $itemTax     = floor($itemTotal * $taxRate);
+        $shippingTax = floor($domesticShipping * $taxRate);
+        $totalTax    = $itemTax + $shippingTax;
 
         // 4. 決済手数料 (8%)
-        // (商品代 + 送料 + 消費税) の総額に対して 8%
+        // (商品代 + 送料 + 合計消費税) の総額に対して 8%
         // 憲法第3条：コスト回収のため、1円未満は「切り上げ(ceil)」
-        $totalBeforeFee = $taxableAmount + $tax;
-        $gatewayFee = ceil($totalBeforeFee * $feeRate);
+        $totalBeforeFee = $itemTotal + $domesticShipping + $totalTax;
+        $gatewayFee     = ceil($totalBeforeFee * $feeRate);
 
         // 5. 最終合計額 (ファンへの請求額)
         $grandTotal = $totalBeforeFee + $gatewayFee;
 
+        // 憲法第1条：prepareOrderData が期待する全てのキーを返却
         return [
-            'item_total' => $itemTotal,
-            'shipping'   => $domesticShipping,
-            'tax'        => $tax,
-            'fee'        => $gatewayFee,
-            'total'      => $grandTotal,
+            'item_total'   => $itemTotal,       // 商品代金合計（税抜）
+            'item_tax'     => $itemTax,         // 商品代金に対する税
+            'shipping'     => $domesticShipping,// 国内送料（税抜）
+            'shipping_tax' => $shippingTax,     // 送料に対する税
+            'fee'          => $gatewayFee,      // 決済手数料
+            'total'        => $grandTotal,      // 総合計（税込）
         ];
     }
 }

@@ -1,34 +1,59 @@
-import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import { 
     Package, Calendar, Users, MapPin, 
-    ArrowLeft, ExternalLink, Info, CheckCircle2 
+    ArrowLeft, ExternalLink, Info, CheckCircle2,
+    AlertCircle, CreditCard
 } from 'lucide-react';
 
 export default function GroupOrderDetail({ go, language }) {
-    const __ = (key) => (language && language[key]) ? language[key] : key;
+    // 一次決済用のフォームステート
+    const [domesticFee, setDomesticFee] = useState('');
+    const { post, processing } = useForm();
 
     const labelStyle = "text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 block";
 
     const formatDate = (dateString) => {
         if (!dateString) return '---';
         const date = new Date(dateString);
-        
-        // 正しくない日付データの場合はハイフンを返す
         if (isNaN(date.getTime())) return '---';
-
-        // language.locale (例: 'ja', 'en', 'th') があればそれを使用、なければブラウザ設定
         const locale = language?.locale || 'ja-JP';
-        
         return date.toLocaleDateString(locale, {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-            // 時刻も必要な場合は以下を追加
-            // hour: '2-digit',
-            // minute: '2-digit'
         });
+    };
+
+    const __ = (key, replace = {}) => {
+        let translation = (language && language[key]) ? language[key] : key;
+        
+        // :fee などを実際の数値に置き換えるロジック
+        Object.keys(replace).forEach(r => {
+            translation = translation.replace(`:${r}`, replace[r]);
+        });
+        
+        return translation;
+    };
+
+    /**
+     * 一次決済の実行処理
+     * 憲法第1条（堅牢性）に基づき、実行前に按分計算の結果をユーザーに提示して確認を求める
+     */
+    const handlePrimaryPaymentExecute = () => {
+        const totalFee = go.final_domestic_shipping_fee || 0;
+        const perPerson = Math.round(totalFee / go.participants_count);
+        
+        // 変数を埋め込んで呼び出し
+        const message = __('Confirmed Domestic Shipping Fee ¥:fee will be split. Each person will be charged ¥:perPerson. Proceed?', {
+            fee: totalFee.toLocaleString(),
+            perPerson: perPerson.toLocaleString()
+        });
+
+        if (confirm(message)) {
+            post(route('fan.go.execute-payment', go.id));
+        }
     };
 
     return (
@@ -52,6 +77,17 @@ export default function GroupOrderDetail({ go, language }) {
                                 <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white">
                                     {go.shipping_mode === 'bulk' ? __('Bulk Shipping') : __('Individual Shipping')}
                                 </span>
+                                {/* 決済ステータスバッジ (数値管理: 2=処理中, 3=完了) */}
+                                {go.primary_payment_status === 2 && (
+                                    <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-500 text-white animate-pulse">
+                                        {__('Payment Processing...')}
+                                    </span>
+                                )}
+                                {go.primary_payment_status === 3 && (
+                                    <span className="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white">
+                                        {__('Primary Paid')}
+                                    </span>
+                                )}
                             </div>
                             <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">{go.title}</h1>
                         </div>
@@ -64,7 +100,7 @@ export default function GroupOrderDetail({ go, language }) {
                     </div>
                 </div>
 
-                <div className="grid lg:col-span-12 grid-cols-1 lg:grid-cols-12 gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                     {/* 左カラム：メイン情報 */}
                     <div className="lg:col-span-8 space-y-10">
                         
@@ -91,7 +127,7 @@ export default function GroupOrderDetail({ go, language }) {
                             </div>
                         </section>
 
-                        {/* 参加者リスト（住所の出し分け） */}
+                        {/* 参加者リスト */}
                         <section className="bg-white border-2 border-slate-100 rounded-[2.5rem] overflow-hidden">
                             <div className="p-10 border-b border-slate-50">
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
@@ -107,6 +143,7 @@ export default function GroupOrderDetail({ go, language }) {
                                             {go.shipping_mode === 'bulk' && (
                                                 <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400">{__('Shipping Address')}</th>
                                             )}
+                                            <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400">{__('Payment')}</th>
                                             <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 text-right">{__('Joined Date')}</th>
                                         </tr>
                                     </thead>
@@ -134,6 +171,20 @@ export default function GroupOrderDetail({ go, language }) {
                                                         )}
                                                     </td>
                                                 )}
+                                                <td className="px-8 py-6">
+                                                    {/* 個別決済ステータス (1=未, 2=済, 3=失敗) */}
+                                                    {p.payment_status === 2 ? (
+                                                        <span className="text-[10px] font-black text-emerald-500 uppercase flex items-center gap-1">
+                                                            <CheckCircle2 size={12} /> {__('Paid')}
+                                                        </span>
+                                                    ) : p.payment_status === 3 ? (
+                                                        <span className="text-[10px] font-black text-red-500 uppercase flex items-center gap-1">
+                                                            <AlertCircle size={12} /> {__('Error')}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black text-slate-300 uppercase">{__('Waiting')}</span>
+                                                    )}
+                                                </td>
                                                 <td className="px-8 py-6 text-right text-xs font-bold text-slate-400">
                                                     {new Date(p.created_at).toLocaleDateString()}
                                                 </td>
@@ -156,15 +207,8 @@ export default function GroupOrderDetail({ go, language }) {
                                     <div className={labelStyle}>{__('Target Creator')}</div>
                                     <div className="flex items-center gap-3">
                                         {go.creator.image_url ? (
-                                            // クリエイター画像がある場合
-                                            <img 
-                                                src={go.creator.image_url} 
-                                                alt={go.creator.name} 
-                                                className="w-8 h-8 rounded-full object-cover" 
-                                            />
+                                            <img src={go.creator.image_url} alt={go.creator.name} className="w-8 h-8 rounded-full object-cover" />
                                         ) : (
-                                            // 画像がない場合のダミー：イニシャルを表示
-                                            // 背景をSlate 700、文字をSlate 400に設定（黒背景カード用）
                                             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 font-black text-base uppercase">
                                                 {go.creator.name ? go.creator.name.substring(0, 1) : 'C'}
                                             </div>
@@ -180,7 +224,7 @@ export default function GroupOrderDetail({ go, language }) {
                                 </div>
                                 <div>
                                     <div className={labelStyle}>{__('Description')}</div>
-                                    <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">
+                                    <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap line-clamp-4">
                                         {go.description}
                                     </p>
                                 </div>
@@ -198,10 +242,71 @@ export default function GroupOrderDetail({ go, language }) {
                             <div className="bg-white border-2 border-slate-100 rounded-3xl p-6">
                                 <div className={labelStyle}>{__('Total Value')}</div>
                                 <div className="text-2xl font-black text-slate-900">
-                                    <span className="text-sm">¥</span>{(go.participants_count * go.items[0]?.price).toLocaleString()}
+                                    <span className="text-sm">¥</span>{(go.participants_count * (go.items[0]?.price || 0)).toLocaleString()}
                                 </div>
                             </div>
                         </div>
+
+                        {/* 一次決済実行セクション (GOM専用) 
+                            数値ステータス 1 (Pending) かつ 参加者がいる場合のみ表示
+                        */}
+                        {go.primary_payment_status === 1 && go.participants_count > 0 && (
+                            <div className="bg-amber-50 border-2 border-amber-200 rounded-[2.5rem] p-8 shadow-sm">
+                                <div className="flex items-center gap-2 mb-6">
+                                    <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white">
+                                        <CreditCard size={16} />
+                                    </div>
+                                    <h3 className="font-black text-amber-900 uppercase tracking-tight text-sm">
+                                        {__('Primary Payment')}
+                                    </h3>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    {/* 入力不可の表示専用エリア */}
+                                    <div className="bg-white border-2 border-amber-100 rounded-2xl p-6 text-center">
+                                        <div className="text-[10px] font-black uppercase text-amber-600 mb-1">{__('Confirmed Domestic Shipping Fee')}</div>
+                                        <div className="text-3xl font-black text-slate-900">
+                                            <span className="text-sm mr-1">¥</span>
+                                            {go.final_domestic_shipping_fee ? go.final_domestic_shipping_fee.toLocaleString() : '---'}
+                                        </div>
+                                        {go.final_domestic_shipping_fee > 0 && (
+                                            <div className="text-[10px] font-bold text-slate-400 mt-2 uppercase">
+                                                {__('Per Person')}: ¥{Math.round(go.final_domestic_shipping_fee / go.participants_count).toLocaleString()}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 金額が未設定の場合はボタンを無効化 */}
+                                    {go.final_domestic_shipping_fee ? (
+                                        <button 
+                                            onClick={handlePrimaryPaymentExecute}
+                                            disabled={processing}
+                                            className="w-full bg-amber-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-amber-600 transition-all shadow-lg shadow-amber-200/50 disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle2 size={16} /> {__('Execute Settlement')}
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-start gap-2 p-4 bg-white/50 border border-dashed border-amber-200 rounded-xl">
+                                            <AlertCircle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                                            <p className="text-[9px] font-bold text-amber-700 leading-relaxed uppercase">
+                                                {__('Waiting for Admin/Creator to set the shipping fee.')}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 決済処理中の表示 */}
+                        {go.primary_payment_status === 2 && (
+                            <div className="bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] p-10 flex flex-col items-center text-center">
+                                <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <h4 className="font-black text-slate-900 uppercase text-sm mb-2">{__('Processing Payments')}</h4>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    {__('Please wait while we charge the participants.')}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

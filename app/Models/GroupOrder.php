@@ -21,6 +21,12 @@ class GroupOrder extends Model
     const COMPLETED = 6;       // 完了
     const CANCELLED = 9;       // キャンセル
 
+    // primary_payment_status
+    const PAYMENT_STATUS_PENDING = 1;
+    const PAYMENT_STATUS_PROCESSING = 2;
+    const PAYMENT_STATUS_COMPLETED = 3;
+    const PAYMENT_STATUS_FAILED = 4;
+
     protected $guarded = ['id'];
 
     protected $fillable = [
@@ -42,6 +48,8 @@ class GroupOrder extends Model
         'recruitment_end_date' => 'datetime',
         'is_private' => 'boolean',
         'is_secondary_payment_required' => 'boolean',
+        'primary_payment_status' => 'integer',
+        'final_domestic_shipping_fee' => 'float',
     ];
     protected $appends = [
         'status_label',

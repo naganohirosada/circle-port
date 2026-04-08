@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Repositories\Interfaces;
+
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Order;
 use App\Models\GroupOrder;
@@ -56,4 +57,11 @@ interface GroupOrderRepositoryInterface
     public function createOrder(array $data): Order;
 
     public function findPublicById(int $id): GroupOrder;
+
+    public function findWithParticipantsForPayment(int $goId): GroupOrder;
+    public function updateStatus(int $goId, array $data): bool;
+    public function updateParticipantStatus(int $participantId, array $data): bool;
+    public function updateOrderStatus(int $orderId, array $data): bool;
+    public function createPayment(array $data);
+    public function createPaymentBreakdown(array $data);
 }

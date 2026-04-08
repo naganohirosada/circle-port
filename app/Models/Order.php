@@ -59,4 +59,10 @@ class Order extends Model
     {
         return $this->hasOne(Payment::class);
     }
+
+    public function groupOrderParticipant()
+    {
+        // この注文がGO参加の「一次決済注文」として使われているか
+        return $this->hasOne(GroupOrderParticipant::class, 'primary_order_id');
+    }
 }

@@ -20,6 +20,8 @@ use App\Repositories\Interfaces\GroupOrderRepositoryInterface;
 use App\Repositories\Eloquent\GroupOrder\GroupOrderRepository;
 use App\Repositories\Interfaces\CountryRepositoryInterface;
 use App\Repositories\Eloquent\CountryRepository;
+use App\Repositories\Interfaces\CreatorRepositoryInterface;
+use App\Repositories\Eloquent\Creator\CreatorRepository;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(OrderRepositoryInterface::class, OrderRepository::class);
         $this->app->bind(GroupOrderRepositoryInterface::class, GroupOrderRepository::class);
         $this->app->bind(CountryRepositoryInterface::class, CountryRepository::class);
+        $this->app->bind(CreatorRepositoryInterface::class, CreatorRepository::class);
     }
 
     /**
