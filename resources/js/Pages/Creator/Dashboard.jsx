@@ -111,7 +111,7 @@ export default function Dashboard({ groupOrders, regularOrders, stats }) {
                                         </div>
                                         
                                         <Link 
-                                            href={route('creator.go.production', go.id)}
+                                            href={route('creator.production.index', go.id)}
                                             className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-cyan-500 transition-all shadow-md active:scale-95"
                                         >
                                             製作数を確認

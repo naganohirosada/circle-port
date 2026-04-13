@@ -26,8 +26,8 @@ export default function Edit({ product, categories, hs_codes }) {
         delete_image_ids: [],
         // サムネイル設定用のキー ('uploaded_{id}' または 'new_{index}')
         thumbnail_key: initialThumbnail ? `uploaded_${initialThumbnail.id}` : null,
-        variants: product.variants.length > 0 
-            ? product.variants.map(v => ({
+        variations: product.variations.length > 0 
+            ? product.variations.map(v => ({
                 id: v.id,
                 variant_name_ja: v.translations.find(t => t.locale === 'ja')?.variant_name || '',
                 price: v.price,
@@ -43,13 +43,13 @@ export default function Edit({ product, categories, hs_codes }) {
         transform((data) => {
             const baseData = { ...data };
             if (!data.has_variants) {
-                baseData.variants = [];
+                baseData.variations = [];
             } else {
-                baseData.variants = data.variants.filter(v => v.variant_name_ja.trim() !== '');
+                baseData.variations = data.variations.filter(v => v.variant_name_ja.trim() !== '');
             }
             return baseData;
         });
-    }, [data.has_variants, data.variants]);
+    }, [data.has_variants, data.variations]);
 
     const subCategories = categories.find(c => c.id == data.category_id)?.sub_categories || [];
 
@@ -153,17 +153,17 @@ export default function Edit({ product, categories, hs_codes }) {
     };
 
     const updateVariant = (index, field, value) => {
-        const newVariants = [...data.variants];
+        const newVariants = [...data.variations];
         newVariants[index][field] = value;
-        setData('variants', newVariants);
+        setData('variations', newVariants);
     };
 
     const addVariant = () => {
-        setData('variants', [...data.variants, { variant_name_ja: '', price: '', stock_quantity: '', weight_g: '', material_ja: '', hs_code_id: '' }]);
+        setData('variations', [...data.variations, { variant_name_ja: '', price: '', stock_quantity: '', weight_g: '', material_ja: '', hs_code_id: '' }]);
     };
 
     const removeVariant = (index) => {
-        setData('variants', data.variants.filter((_, i) => i !== index));
+        setData('variations', data.variations.filter((_, i) => i !== index));
     };
 
     return (
@@ -323,7 +323,7 @@ export default function Edit({ product, categories, hs_codes }) {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {data.variants.map((v, i) => (
+                            {data.variations.map((v, i) => (
                                 <div key={i} className={`p-8 rounded-[3rem] border-4 border-slate-900 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 bg-white relative shadow-[8px_8px_0px_#000] transition-all ${errors[`variants.${i}.variant_name_ja`] ? 'border-pink-500' : ''}`}>
                                     <div className="lg:col-span-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase italic">名称</label>

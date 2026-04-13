@@ -145,7 +145,7 @@ class CheckoutService
             ],
             'items' => array_map(fn($item) => [
                 'product_id'           => $item['id'],
-                'product_variation_id' => isset($item['variation_id']) && !empty($item['variation_id']) ? $item['variation_id'] : null,
+                'product_variant_id' => isset($item['variation_id']) && !empty($item['variation_id']) ? $item['variation_id'] : null,
                 'quantity'             => $item['quantity'],
                 'unit_price'           => $item['price'],
             ], $cartData),

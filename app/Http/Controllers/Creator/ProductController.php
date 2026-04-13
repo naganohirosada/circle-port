@@ -93,7 +93,7 @@ class ProductController extends Controller
      */
     public function edit($id)
     {
-        $product = Product::with(['translations', 'images', 'variants.translations'])->findOrFail($id);
+        $product = Product::with(['translations', 'images', 'variations.translations'])->findOrFail($id);
 
         return Inertia::render('Creator/Product/Edit', [
             'product'    => $product,

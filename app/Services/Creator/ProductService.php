@@ -259,4 +259,5 @@ class ProductService
         $product->translations()->delete();
         $this->saveTranslations($product, $content);
     }
+    
 }

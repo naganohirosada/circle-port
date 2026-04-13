@@ -5,6 +5,9 @@ use App\Http\Controllers\Creator\Auth\LoginController;
 use App\Http\Controllers\Creator\Auth\RegisterController;
 use App\Http\Controllers\Creator\DashboardController;
 use App\Http\Controllers\Creator\ProductController;
+use App\Http\Controllers\Creator\ProductionController;
+use App\Http\Controllers\Creator\SalesController;
+use App\Http\Controllers\Creator\DomesticShippingController;
 
 // 🎨 Creator (国内サークル向け)
 Route::prefix('creator')->name('creator.')->group(function () {
@@ -23,6 +26,13 @@ Route::prefix('creator')->name('creator.')->group(function () {
         Route::post('products', [ProductController::class, 'store'])->name('products.store');
         Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
         Route::put('products/{product}', [ProductController::class, 'update'])->name('products.update');
-        Route::get('/go/{id}/production', [App\Http\Controllers\Creator\GroupOrderController::class, 'production'])->name('go.production'); // これで フルネームが creator.go.production になる
+        // 製作管理（Production Ledger）
+        Route::get('/production', [ProductionController::class, 'index'])->name('production.index');
+        // 売上管理（新規追加）
+        Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
+
+        Route::get('/shipping', [DomesticShippingController::class, 'index'])->name('shipping.index');
+        Route::get('/shipping/{id}', [DomesticShippingController::class, 'show'])->name('shipping.show');
+        Route::post('/shipping/{id}/shipped', [DomesticShippingController::class, 'notifyShipped'])->name('shipping.shipped');
     });
 });

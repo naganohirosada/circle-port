@@ -7,6 +7,8 @@ use App\Models\GroupOrder;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentBreakdown;
+use App\Models\OrderItem;
+use Illuminate\Support\Facades\DB;
 
 class CreatorRepository implements CreatorRepositoryInterface
 {
@@ -65,5 +67,28 @@ class CreatorRepository implements CreatorRepositoryInterface
     {
         // 基本的には上記と同じロジックで「純粋な商品売上」を返す
         return $this->getTotalEarnings($creatorId);
+    }
+
+    /**
+     * プロジェクトごとのSKU別製作リストを取得
+     * @param int $goId
+     */
+    public function getProductionList(int $goId)
+    {
+        return OrderItem::whereHas('order', function($q) use ($goId) {
+                $q->where('group_order_id', $goId)
+                ->whereHas('payment', fn($pq) => $pq->where('status', \App\Models\Payment::STATUS_SUCCEEDED));
+            })
+            ->select(
+                'product_id',
+                'product_variant_id',
+                DB::raw('SUM(quantity) as total_quantity')
+            )
+            ->with([
+                'product:id,name,thumbnail',
+                'variation:id,name'
+            ])
+            ->groupBy('product_id', 'product_variant_id')
+            ->get();
     }
 }
