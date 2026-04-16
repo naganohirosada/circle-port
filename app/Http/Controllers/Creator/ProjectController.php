@@ -9,6 +9,8 @@ use App\Services\Creator\ProjectService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Http\Requests\Creator\StoreProjectRequest;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\Creator\UpdateProjectRequest;
 
 class ProjectController extends Controller
 {
@@ -50,8 +52,21 @@ class ProjectController extends Controller
 
     public function edit(Project $project)
     {
+        // 所有権チェック
+        if ($project->creator_id !== Auth::id()) {
+            abort(403);
+        }
+
         $project->load(['translations', 'products']);
-        return Inertia::render('Creator/Project/Edit', ['project' => $project]);
+
+        $products = Product::where('creator_id', Auth::id())
+            ->with(['translations' => fn($q) => $q->where('locale', 'ja')])
+            ->get();
+
+        return Inertia::render('Creator/Project/Edit', [
+            'project' => $project,
+            'products' => $products,
+        ]);
     }
 
     /**
@@ -71,5 +86,22 @@ class ProjectController extends Controller
         );
 
         return back()->with('success', 'お届け予定日を更新し、支援者へアナウンスを公開しました。');
+    }
+
+    /**
+     * プロジェクトの更新処理
+     */
+    public function update(UpdateProjectRequest $request, Project $project)
+    {
+        // 1. 所有権チェック
+        if ($project->creator_id !== Auth::id()) {
+            abort(403);
+        }
+        $this->projectService->saveProject($request->validated(), $project->id);
+
+        // 3. 一覧へリダイレクト
+        return redirect()
+            ->route('creator.project.index')
+            ->with('success', 'プロジェクト設定を更新しました！');
     }
 }

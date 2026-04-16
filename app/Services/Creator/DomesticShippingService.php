@@ -3,6 +3,9 @@ namespace App\Services\Creator;
 
 use App\Repositories\Interfaces\DomesticShippingRepositoryInterface;
 use App\Models\DomesticShipping;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Notifications\ShippingCompletedNotification;
 
 /**
  * 憲法：ビジネスロジックをServiceに集約
@@ -47,11 +50,12 @@ class DomesticShippingService
         return $this->shippingRepo->getDeliverableProducts($creatorId);
     }
 
-    public function createShipping(int $creatorId, array $items)
+    public function createShipping(int $creatorId, array $data)
     {
         return $this->shippingRepo->create([
             'creator_id' => $creatorId,
-            'items' => $items
+            'items' => $data['items'],
+            'warehouse_id' => $data['warehouse_id']
         ]);
     }
 
@@ -94,5 +98,74 @@ class DomesticShippingService
             'status' => DomesticShipping::STATUS_SHIPPED,
             'shipped_at' => now(),
         ]);
+    }
+
+    /**
+     * 出荷・集荷依頼の一括実行
+     */
+    public function ship(array $shippingIds)
+    {
+        return DB::transaction(function () use ($shippingIds) {
+            $shippings = $this->shippingRepo->getByIds($shippingIds);
+            $count = 0;
+
+            foreach ($shippings as $shipping) {
+                if ($shipping->status !== 10) continue;
+
+                $shipping->update(['status' => 20, 'shipped_at' => now()]);
+
+                if ($shipping->shipping_type === 'standard' && $shipping->order?->user) {
+                    // 通常注文：単一の注文者に通知
+                    $shipping->order->user->notify(new ShippingCompletedNotification($shipping));
+                } elseif ($shipping->shipping_type === 'go' && $shipping->groupOrder) {
+                    // GO注文：参加している参加者の全メイン注文に対して通知
+                    foreach ($shipping->groupOrder->participants as $participant) {
+                        if ($participant->order?->user) {
+                            $participant->order->user->notify(new ShippingCompletedNotification($shipping));
+                        }
+                    }
+                }
+                $count++;
+            }
+            return $count;
+        });
+    }
+    /**
+     * 通常注文の未発送アイテムリストを取得
+     */
+    public function getPendingRegularOrderItems(int $creatorId)
+    {
+        return $this->shippingRepo->getPendingRegularItems($creatorId);
+    }
+
+    /**
+     * GO注文の未発送リストを取得
+     */
+    public function getPendingGoOrders(int $creatorId)
+    {
+        return $this->shippingRepo->getPendingGoOrders($creatorId);
+    }
+
+    /**
+     * 配送情報を登録
+     */
+    public function createDomesticShipping(array $data, int $creatorId)
+    {
+        try {
+            $data['creator_id'] = $creatorId;
+            return $this->shippingRepo->create($data);
+        } catch (\Exception $e) {
+            Log::error('Domestic Shipping Creation Failed: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * ↓ このメソッドを追加
+     * コントローラーの index から呼ばれる履歴取得用
+     */
+    public function getCreatorShippings(int $creatorId)
+    {
+        return $this->shippingRepo->getByCreatorId($creatorId);
     }
 }

@@ -9,12 +9,12 @@ class ProjectAnnouncement extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['project_id', 'creator_id', 'title', 'content', 'type', 'published_at'];
+    protected $fillable = ['project_id', 'creator_id', 'type', 'published_at'];
 
-    // タイプ定数
-    const TYPE_NEWS = 10;
-    const TYPE_PROGRESS = 20;
-    const TYPE_EXTENSION = 30;
+    const TYPE_UPDATE = 10;    // 進捗状況
+    const TYPE_REPORT = 20;    // 完了報告
+    const TYPE_IMPORTANT = 30; // 重要
+    const TYPE_EXTENSION = 40; // 期間延長（自動生成用）
 
     public function project() {
         return $this->belongsTo(Project::class);
@@ -22,5 +22,15 @@ class ProjectAnnouncement extends Model
 
     public function creator() {
         return $this->belongsTo(Creator::class, 'creator_id');
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ProjectAnnouncementImage::class)->orderBy('sort_order');
+    }
+
+    public function translations()
+    {
+        return $this->hasMany(ProjectAnnouncementTranslation::class);
     }
 }

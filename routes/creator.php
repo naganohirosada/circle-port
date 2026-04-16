@@ -34,11 +34,16 @@ Route::prefix('creator')->name('creator.')->group(function () {
         Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
 
         Route::get('/shipping', [DomesticShippingController::class, 'index'])->name('shipping.index');
-        Route::get('/shipping/create', [DomesticShippingController::class, 'create'])->name('shipping.create');
-        Route::post('/shipping', [DomesticShippingController::class, 'store'])->name('shipping.store');
+        // 通常注文用の配送登録
+        Route::get('/shipping/create/regular', [DomesticShippingController::class, 'createRegular'])->name('shipping.regular');
+        // GO注文用の配送登録
+        Route::get('/shipping/create/go', [DomesticShippingController::class, 'createGo'])->name('shipping.go');
+        Route::post('/shipping/store', [DomesticShippingController::class, 'store'])->name('store');
+        Route::get('/shipping/{domesticShipping}', [DomesticShippingController::class, 'show'])->name('show');
         Route::get('/shipping/{id}', [DomesticShippingController::class, 'show'])->name('shipping.show');
         Route::post('/shipping/{id}/shipped', [DomesticShippingController::class, 'notifyShipped'])->name('shipping.shipped');
         Route::patch('/shipping/{id}/notify', [DomesticShippingController::class, 'notify'])->name('shipping.notify');
+        Route::post('shipping/bulk-ship', [DomesticShippingController::class, 'ship'])->name('shipping.ship');
 
         // プロジェクト管理 (CRUD)
         Route::resource('project', ProjectController::class);

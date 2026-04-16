@@ -5,7 +5,6 @@ namespace App\Services\Creator;
 use App\Models\Product;
 use App\Services\AI\TranslationService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Models\Country;
 use Illuminate\Support\Facades\Storage;

@@ -26,22 +26,21 @@ class ProjectService
     public function saveProject(array $data, ?int $projectId = null)
     {
         return DB::transaction(function () use ($data, $projectId) {
-            // 1. プロジェクト本体の基本情報を保存
-            $projectData = [
-                'creator_id'    => auth()->id(),
-                'target_amount' => $data['target_amount'],
-                'delivery_date' => $data['delivery_date'],
-                'end_date'      => $data['end_date'],
-                'status'        => $data['status'] ?? Project::STATUS_DRAFT,
-            ];
-            
+            $fields = ['target_amount', 'delivery_date', 'end_date', 'status'];
+            $projectData = array_intersect_key($data, array_flip($fields));
+
+            // 新規作成時のみクリエイターIDをセット
+            if (!$projectId) {
+                $projectData['creator_id'] = auth()->id();
+            }
             $project = $this->projectRepo->updateOrCreate($projectData, $projectId);
 
-            // 2. 翻訳情報の保存（DeepL自動翻訳を含む）
-            $this->saveTranslations($project, [
-                'title'       => $data['title'],
-                'description' => $data['description']
-            ]);
+            if (isset($data['title']) || isset($data['description'])) {
+                $this->saveTranslations($project, [
+                    'title'       => $data['title'] ?? null,
+                    'description' => $data['description'] ?? null
+                ]);
+            }
 
             // 3. 商品の紐付け更新
             if (isset($data['product_ids'])) {

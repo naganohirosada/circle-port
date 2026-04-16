@@ -65,4 +65,12 @@ class Order extends Model
         // この注文がGO参加の「一次決済注文」として使われているか
         return $this->hasOne(GroupOrderParticipant::class, 'primary_order_id');
     }
+
+    /**
+     * 配送情報
+     */
+    public function domesticShipping()
+    {
+        return $this->hasOne(DomesticShipping::class);
+    }
 }
