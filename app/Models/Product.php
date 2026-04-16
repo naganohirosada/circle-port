@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\{Model, SoftDeletes, Relations\HasMany};
 use Spatie\MediaLibrary\{HasMedia, InteractsWithMedia};
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Product extends Model implements HasMedia
 {
@@ -83,5 +84,12 @@ class Product extends Model implements HasMedia
     public function creator()
     {
         return $this->belongsTo(Creator::class, 'creator_id');
+    }
+
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_product')
+                    ->withPivot('sort_order')
+                    ->withTimestamps();
     }
 }

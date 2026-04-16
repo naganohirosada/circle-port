@@ -7,6 +7,7 @@ import {
     Truck, 
     Settings,
     LogOut,
+    Layers, // プロジェクト用
     Menu
 } from 'lucide-react';
 
@@ -21,7 +22,13 @@ export default function CreatorLayout({ children }) {
             active: url.startsWith('/creator/dashboard')
         },
         { 
-            name: '作品管理', // 商品管理から名称変更（Inventoryに合わせる）
+            name: 'プロジェクト管理', 
+            href: route('creator.project.index'), 
+            icon: Layers,
+            active: url.startsWith('/creator/project') || route().current('creator.project.*')
+        },
+        { 
+            name: '作品管理', 
             href: route('creator.products.index'), 
             active: route().current('creator.products.*'),
             icon: Package 
@@ -29,7 +36,7 @@ export default function CreatorLayout({ children }) {
         { 
             name: '製作管理', 
             href: route('creator.production.index'), 
-            icon: Package,
+            icon: Package, 
             active: url.startsWith('/creator/production')
         },
         { 
@@ -49,7 +56,7 @@ export default function CreatorLayout({ children }) {
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex">
             {/* サイドバー */}
-            <aside className="w-72 bg-slate-900 text-white flex flex-col border-r-8 border-slate-800">
+            <aside className="w-72 bg-slate-900 text-white flex flex-col border-r-8 border-slate-800 shrink-0">
                 <div className="p-8">
                     <div className="text-2xl font-black italic tracking-tighter text-cyan-400 mb-1">
                         CP <span className="text-white">STUDIO.</span>
@@ -65,9 +72,9 @@ export default function CreatorLayout({ children }) {
                             key={item.name}
                             href={item.href}
                             className={`
-                                flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-sm uppercase transition-all
+                                flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-xs uppercase transition-all
                                 ${item.active 
-                                    ? 'bg-cyan-400 text-slate-900 shadow-[4px_4px_0px_#fff]' 
+                                    ? 'bg-cyan-400 text-slate-900 shadow-[4px_4px_0px_#fff] translate-x-1' 
                                     : 'text-slate-400 hover:bg-white/5 hover:text-white'}
                             `}
                         >
@@ -85,7 +92,7 @@ export default function CreatorLayout({ children }) {
                         href={route('logout')} 
                         method="post" 
                         as="button" 
-                        className="flex items-center gap-3 text-pink-500 hover:text-pink-400 transition-colors text-xs font-black uppercase"
+                        className="flex items-center gap-3 text-pink-500 hover:text-pink-400 transition-colors text-xs font-black uppercase w-full text-left"
                     >
                         <LogOut size={16} /> ログアウト
                     </Link>

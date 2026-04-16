@@ -16,4 +16,14 @@ interface DomesticShippingRepositoryInterface
      * 特定の配送詳細を取得
      */
     public function findById(int $id);
+
+    /**
+     * 配送登録用に、クリエイターが所有する配送可能な商品一覧を取得
+     */
+    public function getDeliverableProducts(int $creatorId);
+
+    /**
+     * 配送プランを保存（親と子の同時作成）
+     */
+    public function create(array $data);
 }

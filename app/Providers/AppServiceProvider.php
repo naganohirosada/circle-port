@@ -28,6 +28,8 @@ use App\Repositories\Interfaces\SalesRepositoryInterface;
 use App\Repositories\Eloquent\Creator\SalesRepository;
 use App\Repositories\Interfaces\DomesticShippingRepositoryInterface;
 use App\Repositories\Eloquent\Creator\DomesticShippingRepository;
+use App\Repositories\Interfaces\ProjectRepositoryInterface;
+use App\Repositories\Eloquent\Creator\ProjectRepository;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -47,9 +49,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CountryRepositoryInterface::class, CountryRepository::class);
         $this->app->bind(CreatorRepositoryInterface::class, CreatorRepository::class);
         $this->app->bind(ProductionRepositoryInterface::class, ProductionRepository::class);
-        // 売上管理のバインド（今回のエラーの原因）
         $this->app->bind(SalesRepositoryInterface::class, SalesRepository::class);
         $this->app->bind(DomesticShippingRepositoryInterface::class, DomesticShippingRepository::class);
+        $this->app->bind(ProjectRepositoryInterface::class, ProjectRepository::class);
     }
 
     /**

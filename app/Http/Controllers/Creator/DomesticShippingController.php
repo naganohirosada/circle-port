@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Creator;
 use App\Http\Controllers\Controller;
 use App\Services\Creator\DomesticShippingService;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\Creator\StoreDomesticShippingRequest;
+use App\Models\Warehouse;
+use App\Models\Carrier;
+use App\Http\Requests\Creator\UpdateShippingNotificationRequest;
 
 class DomesticShippingController extends Controller
 {
@@ -19,23 +23,62 @@ class DomesticShippingController extends Controller
     public function index()
     {
         return Inertia::render('Creator/Shipping/Index', [
-            'shippings' => $this->shippingService->getShippingList(Auth::id())
+            'shippings' => $this->shippingService->getShippingList(Auth::id()),
         ]);
     }
 
     /**
      * 発送通知の送信
      */
-    public function notifyShipped(Request $request, $id)
+    public function notify(UpdateShippingNotificationRequest $request, $id)
     {
-        // 憲法：バリデーションは本来FormRequestで行うが、ここでは簡略化
-        $request->validate([
-            'tracking_number' => 'required|string',
-            'carrier' => 'required|string'
-        ]);
+        try {
+            $this->shippingService->notifyShipping(
+                (int)$id, 
+                Auth::id(), 
+                $request->validated()
+            );
 
-        $this->shippingService->updateStatus($id, 20); // 20 = SHIPPED
-        
-        return redirect()->back()->with('success', '発送通知を送信しました。');
+            return redirect()
+                ->route('creator.shipping.index')
+                ->with('success', '発送通知を送信しました。倉庫での受領をお待ちください。');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function create()
+    {
+        // 配送登録に必要な商品情報をリポジトリから取得
+        $products = $this->shippingService->getDeliverableProducts(Auth::id());
+        $warehouses = Warehouse::where('is_active', true)->get();
+        return Inertia::render('Creator/Shipping/Create', [
+            'products' => $products,
+            'warehouses' => $warehouses
+        ]);
+    }
+
+    public function store(StoreDomesticShippingRequest $request)
+    {
+        $validated = $request->validated();
+
+        $this->shippingService->createShipping(Auth::id(), $validated['items']);
+
+        return redirect()
+            ->route('creator.shipping.index')
+            ->with('success', '配送プランを登録しました。');
+    }
+
+    /**
+     * 配送詳細・パッキングリスト画面
+     */
+    public function show($id)
+    {
+        $shipping = $this->shippingService->getShippingDetail((int)$id, Auth::id());
+        $carriers = Carrier::where('is_active', true)->get(); // 追加
+        return Inertia::render('Creator/Shipping/Show', [
+            'shipping' => $shipping,
+            'carriers' => $carriers
+        ]);
     }
 }

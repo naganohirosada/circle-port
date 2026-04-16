@@ -18,6 +18,7 @@ class DomesticShipping extends Model
 
     protected $fillable = [
         'creator_id',
+        'warehouse_id',
         'status',
         'tracking_number',
         'carrier',
@@ -38,5 +39,15 @@ class DomesticShipping extends Model
     public function items(): HasMany
     {
         return $this->hasMany(DomesticShippingItem::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function carrier(): BelongsTo
+    {
+        return $this->belongsTo(Carrier::class);
     }
 }
