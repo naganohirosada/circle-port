@@ -13,7 +13,11 @@ use App\Http\Controllers\Fan\PaymentController;
 use App\Http\Controllers\Fan\CheckoutController;
 use App\Http\Controllers\Fan\OrderController;
 use App\Http\Controllers\Fan\GroupOrderController;
+use App\Http\Controllers\Fan\InternationalShippingController;
+use App\Http\Controllers\Webhook\StripeWebhookController;
 
+// Stripe Webhook (CSRF除外設定済み)
+Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle']);
 Route::prefix('fan')->name('fan.')->group(function () {
     // 未ログイン時のみアクセス可能
     Route::middleware('guest:fan')->group(function () {
@@ -86,5 +90,28 @@ Route::prefix('fan')->name('fan.')->group(function () {
         Route::get('/go/detail/{id}', [GroupOrderController::class, 'show'])->name('go.detail');
         Route::post('/go/{id}/join', [GroupOrderController::class, 'join'])->name('go.join');
         Route::get('/go/{id}/thanks/{order_id}', [GroupOrderController::class, 'thanks'])->name('go.thanks');
+
+        // ファン用：国際配送支払い関連
+        Route::middleware(['auth', 'verified'])->prefix('fan/international-shippings')->name('fan.international-shippings.')->group(function () {
+            Route::get('/', [InternationalShippingController::class, 'index'])->name('index');
+            Route::get('/{id}', [InternationalShippingController::class, 'show'])->name('show');
+            // 支払い成功後の戻り先
+            Route::get('/{id}/success', [InternationalShippingController::class, 'paymentSuccess'])->name('payment-success');
+        });
+
+        // 国際配送管理（倉庫状況・決済一覧）
+        Route::get('/shipping', [InternationalShippingController::class, 'index'])
+            ->name('international-shippings.index');
+
+        // 決済詳細・Stripeセッション作成
+        Route::get('/shipping/{id}', [InternationalShippingController::class, 'show'])
+            ->name('international-shippings.show');
+            
+        Route::post('/shipping/{id}/checkout', [InternationalShippingController::class, 'createShippingCheckoutSession'])
+            ->name('international-shippings.checkout');
+
+        // 支払い成功後の戻り先
+        Route::get('/shipping/{id}/success', [InternationalShippingController::class, 'paymentSuccess'])
+            ->name('international-shippings.payment-success');
     });
 });

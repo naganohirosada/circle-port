@@ -32,7 +32,10 @@ use App\Repositories\Interfaces\ProjectRepositoryInterface;
 use App\Repositories\Eloquent\Creator\ProjectRepository;
 use App\Repositories\Interfaces\InternationalShippingRepositoryInterface;
 use App\Repositories\Eloquent\Admin\InternationalShippingRepository;
-
+use App\Repositories\Interfaces\CarrierRepositoryInterface;
+use App\Repositories\Eloquent\Carrier\CarrierRepository;
+use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
+use App\Repositories\Eloquent\Payment\PaymentMethodRepository;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -55,6 +58,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DomesticShippingRepositoryInterface::class, DomesticShippingRepository::class);
         $this->app->bind(ProjectRepositoryInterface::class, ProjectRepository::class);
         $this->app->bind(InternationalShippingRepositoryInterface::class, InternationalShippingRepository::class);
+        $this->app->bind(CarrierRepositoryInterface::class, CarrierRepository::class);
+        $this->app->bind(PaymentMethodRepositoryInterface::class,PaymentMethodRepository::class);
     }
 
     /**

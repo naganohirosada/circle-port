@@ -57,12 +57,16 @@ class InternationalShippingController extends Controller
             'carrier_id'   => 'nullable|exists:carriers,id',
         ]);
 
-        // ステータスを「送料支払い待ち(30)」へ更新
-        $this->intlRepo->update((int)$id, array_merge($validated, [
-            'status' => InternationalShippingStatus::WAITING_PAYMENT->value
-        ]));
+        try {
+            // リポジトリの新しいメソッドを呼び出し、一括でレコード作成
+            $this->intlRepo->confirmPackingAndFee((int)$id, $validated);
 
-        return redirect()->route('admin.international-shippings.index')
-            ->with('success', "配送 #{$id} の梱包・計量が完了し、送料が確定しました。");
+            return redirect()->route('admin.international-shippings.index')
+                ->with('success', "配送 #{$id} の梱包完了と送料確定、および決済予約レコードの作成が完了しました。");
+
+        } catch (\Exception $e) {
+            Log::error("送料確定エラー: " . $e->getMessage());
+            return back()->withErrors(['error' => '送料確定処理に失敗しました。']);
+        }
     }
 }

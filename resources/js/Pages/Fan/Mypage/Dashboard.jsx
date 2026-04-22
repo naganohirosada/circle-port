@@ -74,7 +74,7 @@ export default function Dashboard({ stats }) {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <StatusCard icon={CreditCard} label="Ordered" count={stats.ordered_count} href={route('fan.orders.index')} />
-                        <StatusCard icon={Archive} label="In Warehouse" count={stats.warehouse_count} href="#" />
+                        <StatusCard icon={Archive} label="In Warehouse" count={stats.warehouse_count} href={route('fan.international-shippings.index')} />
                         <StatusCard icon={Truck} label="In Transit" count={stats.shipping_count} href="#" />
                         <StatusCard icon={Package} label="Consolidation" count={stats.consolidation_count} href="#" />
                     </div>

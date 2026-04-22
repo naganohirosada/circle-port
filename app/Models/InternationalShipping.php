@@ -50,4 +50,17 @@ class InternationalShipping extends Model
     {
         return $this->hasMany(InternationalShippingItem::class);
     }
+
+    /**
+     * この配送に関連する決済データ
+     */
+    public function payments()
+    {
+        return $this->belongsToMany(
+            Payment::class,
+            'international_shipping_payment',
+            'international_shipping_id',
+            'payment_id'
+        )->withPivot('amount')->withTimestamps();
+    }
 }

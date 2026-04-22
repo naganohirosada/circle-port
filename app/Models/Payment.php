@@ -49,4 +49,14 @@ class Payment extends Model
     {
         return $this->hasMany(PaymentBreakdown::class);
     }
+
+    public function internationalShippings()
+    {
+        return $this->belongsToMany(
+            InternationalShipping::class,
+            'international_shipping_payment', // 中間テーブル名
+            'payment_id',
+            'international_shipping_id'
+        )->withPivot('amount')->withTimestamps();
+    }
 }
