@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Carrier extends Model
 {
     // 憲法第1条：一括割り当てを許可するカラムを指定
-    protected $fillable = ['name', 'is_active'];
+    protected $fillable = ['name', 'is_active', 'tracking_url'];
 
     /**
      * この業者が担当する配送プラン一覧を取得

@@ -17,16 +17,21 @@ class DomesticShipping extends Model
     const STATUS_RECEIVED  = 30;
 
     protected $fillable = [
+        'domestic_shipping_number',
         'creator_id',
         'warehouse_id',
         'status',
         'tracking_number',
         'carrier',
         'shipped_at',
-        'received_at'
+        'received_at',
+        'order_id',
+        'group_order_id'
     ];
 
     protected $casts = [
+        'status' => \App\Enums\DomesticShippingStatus::class,
+        'shipping_type' => \App\Enums\DomesticShippingType::class, // カラム名に注意
         'shipped_at' => 'datetime',
         'received_at' => 'datetime',
     ];
@@ -49,5 +54,21 @@ class DomesticShipping extends Model
     public function carrier(): BelongsTo
     {
         return $this->belongsTo(Carrier::class);
+    }
+
+    /**
+     * 通常注文とのリレーション
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * GO（共同購入）とのリレーション
+     */
+    public function groupOrder(): BelongsTo
+    {
+        return $this->belongsTo(GroupOrder::class);
     }
 }

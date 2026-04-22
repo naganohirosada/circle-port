@@ -23,6 +23,12 @@ class Project extends Model
         'end_date',
     ];
 
+    protected $casts = [
+        'status' => \App\Enums\ProjectStatus::class,
+        'delivery_date' => 'date',
+        'end_date' => 'datetime',
+    ];
+
     // ステータス定数
     const STATUS_DRAFT = 10;
     const STATUS_ACTIVE = 20;

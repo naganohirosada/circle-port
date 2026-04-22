@@ -6,6 +6,8 @@ use App\Models\DomesticShipping;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Notifications\ShippingCompletedNotification;
+use Illuminate\Support\Str;
+use App\Enums\DomesticShippingStatus;
 
 /**
  * 憲法：ビジネスロジックをServiceに集約
@@ -107,12 +109,19 @@ class DomesticShippingService
     {
         return DB::transaction(function () use ($shippingIds) {
             $shippings = $this->shippingRepo->getByIds($shippingIds);
+            $number = 'DS' . now()->format('ymd') . strtoupper(Str::random(4));
             $count = 0;
 
             foreach ($shippings as $shipping) {
                 if ($shipping->status !== 10) continue;
 
-                $shipping->update(['status' => 20, 'shipped_at' => now()]);
+                $shipping->update(
+                    [
+                        'status' => DomesticShippingStatus::SHIPPED,
+                        'domestic_shipping_number' => $number,
+                        'shipped_at' => now()
+                    ]
+                );
 
                 if ($shipping->shipping_type === 'standard' && $shipping->order?->user) {
                     // 通常注文：単一の注文者に通知

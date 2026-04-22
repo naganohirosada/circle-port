@@ -30,6 +30,8 @@ use App\Repositories\Interfaces\DomesticShippingRepositoryInterface;
 use App\Repositories\Eloquent\Creator\DomesticShippingRepository;
 use App\Repositories\Interfaces\ProjectRepositoryInterface;
 use App\Repositories\Eloquent\Creator\ProjectRepository;
+use App\Repositories\Interfaces\InternationalShippingRepositoryInterface;
+use App\Repositories\Eloquent\Admin\InternationalShippingRepository;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -52,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SalesRepositoryInterface::class, SalesRepository::class);
         $this->app->bind(DomesticShippingRepositoryInterface::class, DomesticShippingRepository::class);
         $this->app->bind(ProjectRepositoryInterface::class, ProjectRepository::class);
+        $this->app->bind(InternationalShippingRepositoryInterface::class, InternationalShippingRepository::class);
     }
 
     /**

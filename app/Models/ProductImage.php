@@ -31,7 +31,12 @@ class ProductImage extends Model
      */
     public function getUrlAttribute(): string
     {
-        return $this->file_path ? Storage::url($this->file_path) : '';
+        // 既に http から始まる場合はそのまま、そうでなければ Storage URL を生成
+        if (!$this->file_path) return '';
+        
+        return str_starts_with($this->file_path, 'http') 
+            ? $this->file_path 
+            : Storage::url($this->file_path);
     }
 
     // JSON変換時に url を自動で含める設定

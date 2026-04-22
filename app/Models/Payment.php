@@ -30,6 +30,11 @@ class Payment extends Model
         'method_type',
     ];
 
+    protected $casts = [
+        'status' => \App\Enums\PaymentStatus::class,
+        'method_type' => \App\Enums\PaymentMethodType::class,
+    ];
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

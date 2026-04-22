@@ -44,7 +44,7 @@ class HandleInertiaRequests extends Middleware
                 return file_exists($path) ? json_decode(file_get_contents($path), true) : [];
             },
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user('admin') ?: $request->user('creator') ?: $request->user('fan') ?: $request->user(),
             ],
             'cartCount' => function () {
                 $cart = session()->get('fan_cart', []);

@@ -14,12 +14,21 @@ class DomesticShippingItem extends Model
         'domestic_shipping_id',
         'product_id',
         'product_variant_id',
+        'order_item_id',
         'quantity'
     ];
 
     public function domesticShipping(): BelongsTo
     {
         return $this->belongsTo(DomesticShipping::class);
+    }
+
+    /**
+     * 注文明細へのリレーション
+     */
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
     }
 
     public function product(): BelongsTo
