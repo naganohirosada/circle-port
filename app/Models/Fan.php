@@ -7,6 +7,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Fan extends Authenticatable
 {
@@ -81,5 +82,13 @@ class Fan extends Authenticatable
 
     public function paymentMethods() {
         return $this->hasMany(PaymentMethod::class);
+    }
+
+    /**
+     * ファンが持っている注文一覧
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 }

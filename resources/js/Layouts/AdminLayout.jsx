@@ -15,21 +15,43 @@ export default function AdminLayout({ user, children, header }) {
                         ダッシュボード
                     </Link>
 
-                    <div className="px-6 py-2 mt-4 text-xs text-slate-500 uppercase font-bold tracking-wider">物流・検品</div>
+                    <div className="px-6 py-2 mt-4 text-xs text-slate-500 uppercase font-bold tracking-wider">業務</div>
                     {/* ↓ 検品画面へのリンクを追加 */}
                     <Link href={route('admin.inspections.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.inspections.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
                         検品・受領管理
                     </Link>
+                    <Link href={route('admin.products.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.products.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        商品承認・管理
+                    </Link>
+                    <Link href={route('admin.payouts.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.payouts.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        振込管理
+                    </Link>
+
+                    <div className="px-6 py-2 mt-4 text-xs text-slate-500 uppercase font-bold tracking-wider">管理</div>
+                    <Link href={route('admin.payments.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.payments.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        決済管理
+                    </Link>
+                    <Link href={route('admin.orders.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.orders.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        注文管理
+                    </Link>
                     <Link href={route('admin.international-shippings.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.international-shippings.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
                         国際配送管理
                     </Link>
-
+                    <Link href={route('admin.shippings.domestic.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.shippings.domestic.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        国内配送管理
+                    </Link>
                     <div className="px-6 py-2 mt-4 text-xs text-slate-500 uppercase font-bold tracking-wider">マスタ管理</div>
                     <Link href={route('admin.warehouses.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.warehouses.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
                         倉庫管理
                     </Link>
                     <Link href={route('admin.carriers.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.carriers.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
                         配送業者管理
+                    </Link>
+                    <Link href={route('admin.creators.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.creators.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        クリエーター管理
+                    </Link>
+                    <Link href={route('admin.fans.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.fans.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        ファン管理
                     </Link>
                 </nav>
             </aside>

@@ -75,6 +75,10 @@ class OrderRepository implements OrderRepositoryInterface
                 $payment->breakdowns()->create($breakdown);
             }
 
+            if ((int)$payment->status === 20) {
+                app(\App\Services\PayoutService::class)->recordPaymentToPayout($payment);
+            }
+
             return $order;
         });
     }

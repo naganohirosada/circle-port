@@ -9,11 +9,13 @@ class Product extends Model implements HasMedia
 {
     use SoftDeletes, InteractsWithMedia;
 
-    // --- ステータス定数の定義 ---
+    // --- ステータス定数 ---
     const STATUS_DRAFT = 1;      // 下書き
-    const STATUS_PUBLISHED = 2;  // 公開中（ファンに見える状態）
-    const STATUS_PRIVATE = 3;    // 非公開（クリエイターのみ見れる）
-    const STATUS_SOLD_OUT = 9;   // 完売・取り扱い終了
+    const STATUS_PUBLISHED = 2;  // 公開中
+    const STATUS_PRIVATE = 3;    // 非公開
+    const STATUS_PENDING = 5;    // 承認待ち（★追加：クリエイターが申請した状態）
+    const STATUS_REJECTED = 6;   // 却下（★追加：運営が差し戻した状態）
+    const STATUS_SOLD_OUT = 9;   // 完売
 
     protected $fillable = [
         'creator_id',
@@ -26,6 +28,8 @@ class Product extends Model implements HasMedia
         'stock_quantity',
         'weight_g',
         'status',
+        'published_at',
+        'rejection_reason',
     ];
     // 翻訳データとのリレーション
     public function translations(): HasMany {

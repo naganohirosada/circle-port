@@ -7,6 +7,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Creator extends Authenticatable
 {
@@ -31,5 +32,19 @@ class Creator extends Authenticatable
     {
         // 第2引数には外部キー（例: creator_id）を指定します
         return $this->hasMany(Product::class, 'creator_id');
+    }
+
+    /**
+     * クリエイターの商品の「注文明細」を取得
+     * Creator -> Product -> OrderItem
+     */
+    public function orderItems(): HasManyThrough
+    {
+        return $this->hasManyThrough(OrderItem::class, Product::class);
+    }
+
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(Payout::class);
     }
 }

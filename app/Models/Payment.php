@@ -32,7 +32,6 @@ class Payment extends Model
 
     protected $casts = [
         'status' => \App\Enums\PaymentStatus::class,
-        'method_type' => \App\Enums\PaymentMethodType::class,
     ];
 
     public function order(): BelongsTo
