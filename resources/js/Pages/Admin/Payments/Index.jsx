@@ -83,7 +83,7 @@ export default function Index({ auth, payments }) {
                                                         </Link>
                                                     ) : isSecondary ? (
                                                         <Link 
-                                                            href={route('admin.shippings.show', payment.shipping_id)} 
+                                                            href={route('admin.international-shippings.show', payment.shipping_id)} 
                                                             className="group flex items-center gap-2 text-sm font-bold text-pink-600 hover:text-pink-900 transition-colors"
                                                         >
                                                             <div className="p-1.5 bg-pink-50 rounded-lg group-hover:bg-pink-100">

@@ -1,13 +1,20 @@
 import React from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function Show({ auth, payment, order, shipping }) {
+    // 返金処理用のフォーム
+    const { post, processing } = useForm();
+    
     const isPrimary = !!order;
     const isSecondary = !!shipping;
     const breakdowns = payment?.breakdowns || [];
 
-    // payment_breakdown のタイプ定義（ラベルと色の設定）
+    // ステータス定数
+    const STATUS_PAID = 20;
+    const STATUS_REFUNDED = 30;
+
+    // payment_breakdown のタイプ定義
     const TYPE_LABELS = {
         1: { label: '商品代金合計 (税抜)', color: 'text-gray-700' },
         2: { label: '国内送料 (税抜)', color: 'text-gray-700' },
@@ -18,49 +25,27 @@ export default function Show({ auth, payment, order, shipping }) {
         7: { label: '送料消費税', color: 'text-gray-400' },
     };
 
-    // 商品名取得ヘルパー（翻訳データを優先）
-    const getProductName = (product) => {
-        return product?.translations?.[0]?.name || product?.name || '名称未設定';
-    };
+    const getProductName = (product) => product?.translations?.[0]?.name || product?.name || '名称未設定';
+    const getProductImage = (product) => product?.images?.[0]?.url || product?.images?.[0]?.path || null;
 
-    // 画像取得ヘルパー
-    const getProductImage = (product) => {
-        const image = product?.images?.[0];
-        return image?.url || image?.path || null;
-    };
-
-    /**
-     * 単価取得ヘルパー
-     * variation がある場合はその価格を最優先し、
-     * なければ注文時に保存された価格、最終的に 0 を返す
-     */
     const getDisplayPrice = (item) => {
-        // 1. まず、このアイテムがどこの階層にいるか特定（1次決済なら直下、2次決済なら order_item の下）
         const orderItem = item?.order_item || item;
-        
-        // 2. バリエーション価格をチェック
         const variantPrice = orderItem?.product_variant?.price;
-        if (variantPrice && parseFloat(variantPrice) > 0) {
-            return parseFloat(variantPrice);
-        }
-
-        // 3. 注文時に保存された価格をチェック
+        if (variantPrice && parseFloat(variantPrice) > 0) return parseFloat(variantPrice);
         const savedPrice = orderItem?.price;
-        if (savedPrice && parseFloat(savedPrice) > 0) {
-            return parseFloat(savedPrice);
-        }
-
-        // 4. 【重要】商品の基本価格をチェック（今回の dd 出力で 2200 が確認できた場所）
+        if (savedPrice && parseFloat(savedPrice) > 0) return parseFloat(savedPrice);
         const productPrice = orderItem?.product?.price;
-        if (productPrice && parseFloat(productPrice) > 0) {
-            return parseFloat(productPrice);
-        }
-
+        if (productPrice && parseFloat(productPrice) > 0) return parseFloat(productPrice);
         return 0;
     };
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ja-JP').format(amount || 0);
+    const formatCurrency = (amount) => new Intl.NumberFormat('ja-JP').format(amount || 0);
+
+    // 返金実行ハンドラ
+    const handleRefund = () => {
+        if (confirm('【重要：返金処理の実行】\n\n本当にこの決済を全額返金しますか？\n・Stripeを通じて顧客に実際に返金されます。\n・クリエイターへの振込予定額からも自動的に差し引かれます。\n・この操作は取り消せません。')) {
+            post(route('admin.payments.refund', payment.id));
+        }
     };
 
     return (
@@ -77,6 +62,22 @@ export default function Show({ auth, payment, order, shipping }) {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                         決済一覧に戻る
                     </Link>
+
+                    {/* 返金ボタン：ステータスが支払い済み(20)の場合のみ表示 */}
+                    {payment?.status === STATUS_PAID && (
+                        <button 
+                            onClick={handleRefund}
+                            disabled={processing}
+                            className="bg-rose-50 text-rose-600 border border-rose-100 px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
+                        >
+                            {processing ? (
+                                <>
+                                    <svg className="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    返金処理中...
+                                </>
+                            ) : '全額返金を実行する'}
+                        </button>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -94,18 +95,34 @@ export default function Show({ auth, payment, order, shipping }) {
                                 </div>
                                 <div className="pt-4 border-t border-gray-50">
                                     <p className="text-[10px] text-gray-400 font-bold uppercase mb-2">決済ステータス</p>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black border ${payment?.status === 20 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                                        {payment?.status === 20 ? 'SUCCESS' : 'PENDING'}
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black border ${
+                                        payment?.status === STATUS_PAID ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                                        payment?.status === STATUS_REFUNDED ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    }`}>
+                                        {payment?.status === STATUS_PAID ? 'SUCCESS' : 
+                                         payment?.status === STATUS_REFUNDED ? 'REFUNDED' : 'PENDING'}
                                     </span>
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Stripe Transaction ID</p>
                                     <p className="text-[11px] font-mono text-gray-400 break-all bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                        {payment?.external_transaction_id || '---'}
+                                        {payment?.stripe_payment_intent_id || payment?.external_transaction_id || '---'}
                                     </p>
                                 </div>
                             </div>
                         </div>
+
+                        {/* 返金済みの場合の追加情報 */}
+                        {payment?.status === STATUS_REFUNDED && (
+                            <div className="bg-gray-900 rounded-3xl p-8 text-white">
+                                <h3 className="text-[11px] font-black text-rose-400 uppercase mb-4 tracking-widest">Refund Info</h3>
+                                <p className="text-xs text-gray-400 leading-relaxed mb-4">
+                                    この決済は返金処理が完了しています。売上計上およびクリエイターへの振込予定は全て無効化されています。
+                                </p>
+                                <div className="text-[10px] text-gray-500 font-bold">UPDATED AT</div>
+                                <div className="text-sm font-mono">{payment?.updated_at}</div>
+                            </div>
+                        )}
                     </div>
 
                     {/* 右側：支払い内訳 (Breakdown) */}
@@ -133,14 +150,16 @@ export default function Show({ auth, payment, order, shipping }) {
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-indigo-600 py-3 px-8 flex justify-between items-center">
-                            <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Official Transaction Record</span>
+                        <div className={`py-3 px-8 flex justify-between items-center ${payment?.status === STATUS_REFUNDED ? 'bg-rose-600' : 'bg-indigo-600'}`}>
+                            <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">
+                                {payment?.status === STATUS_REFUNDED ? 'Refunded Record' : 'Official Transaction Record'}
+                            </span>
                             <span className="text-[10px] text-white font-bold">{payment?.created_at}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* 下部：商品・荷物明細 */}
+                {/* 下部：商品・荷物明細 (Primary) */}
                 {isPrimary && (
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 px-2">
@@ -161,7 +180,6 @@ export default function Show({ auth, payment, order, shipping }) {
                                     {(order?.order_items || []).map((item) => {
                                         const unitPrice = getDisplayPrice(item);
                                         const subtotal = unitPrice * (item?.quantity || 0);
-
                                         return (
                                             <tr key={item?.id} className="hover:bg-gray-50/30 transition-colors">
                                                 <td className="p-6">
@@ -195,6 +213,7 @@ export default function Show({ auth, payment, order, shipping }) {
                     </div>
                 )}
 
+                {/* 下部：商品・荷物明細 (Secondary) */}
                 {isSecondary && (
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 px-2">
@@ -217,7 +236,6 @@ export default function Show({ auth, payment, order, shipping }) {
                                         const variant = item?.order_item?.variation;
                                         const unitPrice = getDisplayPrice(item);
                                         const subtotal = unitPrice * (item?.quantity || 0);
-
                                         return (
                                             <tr key={item?.id} className="hover:bg-gray-50/30 transition-colors">
                                                 <td className="p-6">

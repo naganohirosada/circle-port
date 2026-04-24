@@ -53,6 +53,9 @@ export default function AdminLayout({ user, children, header }) {
                     <Link href={route('admin.fans.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.fans.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
                         ファン管理
                     </Link>
+                    <Link href={route('admin.settings.index')} className={`block py-3 px-6 hover:bg-slate-700 ${route().current('admin.settings.*') ? 'bg-slate-700 border-l-4 border-indigo-500' : ''}`}>
+                        為替レート・手数料マスタ管理
+                    </Link>
                 </nav>
             </aside>
 

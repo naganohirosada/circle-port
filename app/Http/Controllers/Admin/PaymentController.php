@@ -9,9 +9,19 @@ use Inertia\Inertia;
 use App\Models\Payment;
 use App\Models\Order;
 use App\Models\InternationalShipping;
+use Illuminate\Http\RedirectResponse;
+use App\Services\Admin\PaymentRefundService;
 
 class PaymentController extends Controller
 {
+    /**
+     * コンストラクタ
+     * ここで PaymentRefundService を受け取る（依存性の注入）
+     */
+    public function __construct(
+        protected PaymentRefundService $refundService
+    ) {}
+
     public function index()
     {
         $payments = DB::table('payments')
@@ -70,5 +80,24 @@ class PaymentController extends Controller
             'order' => $order,
             'shipping' => $shipping,
         ]);
+    }
+
+    /**
+     * 返金アクション
+     */
+    public function refund(Payment $payment): RedirectResponse
+    {
+        // バリデーション：支払い済み(20)以外は不可
+        if ($payment->status->value !== 20) { 
+            return back()->with('error', 'この決済は返金可能なステータスではありません。');
+        }
+
+    try {
+            $this->refundService->executeFullRefund($payment);
+            return back()->with('success', '返金処理が完了しました。');
+        } catch (\Exception $e) {
+            \Log::error('Refund Error: ' . $e->getMessage());
+            return back()->with('error', '返金処理中にエラーが発生しました: ' . $e->getMessage());
+        }
     }
 }
