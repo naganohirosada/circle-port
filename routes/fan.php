@@ -18,99 +18,100 @@ use App\Http\Controllers\Webhook\StripeWebhookController;
 
 // Stripe Webhook (CSRF除外設定済み)
 Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle']);
+
 Route::prefix('fan')->name('fan.')->group(function () {
-    // 未ログイン時のみアクセス可能
+    
+    // --- 未ログイン時のみアクセス可能 ---
     Route::middleware('guest:fan')->group(function () {
         Route::get('login', [LoginController::class, 'create'])->name('login');
         Route::post('login', [LoginController::class, 'store'])->name('login.store');
         Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
         Route::post('register', [RegisterController::class, 'register'])->name('register.store');
-        // 商品一覧
-        Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-        // 作品詳細
-        Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
-
     });
-    // ログイン必須
+
+    // 商品一覧・詳細は未ログインでも閲覧可能
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+
+    // --- ログイン必須 (fanガードを指定) ---
     Route::middleware('auth:fan')->group(function () {
-        Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
+        Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // カート関連
-        Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-        Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
-        Route::patch('/cart/update/{cartKey}', [CartController::class, 'update'])->name('cart.update');
-        Route::delete('/cart/remove/{cartKey}', [CartController::class, 'remove'])->name('cart.remove');
+        Route::prefix('cart')->name('cart.')->group(function () {
+            Route::get('/', [CartController::class, 'index'])->name('index');
+            Route::post('/add', [CartController::class, 'add'])->name('add');
+            Route::patch('/update/{cartKey}', [CartController::class, 'update'])->name('update');
+            Route::delete('/remove/{cartKey}', [CartController::class, 'remove'])->name('remove');
+        });
 
         // マイページ関連
-        Route::get('/', [MypageController::class, 'dashboard'])->name('mypage.dashboard');
-        Route::get('/profile', [ProfileController::class, 'edit'])->name('mypage.profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->name('mypage.profile.update');
+        Route::get('/mypage', [MypageController::class, 'dashboard'])->name('mypage.dashboard');
+        Route::prefix('profile')->name('mypage.profile.')->group(function () {
+            Route::get('/', [ProfileController::class, 'edit'])->name('edit');
+            Route::patch('/', [ProfileController::class, 'update'])->name('update');
+        });
 
         // 配送先関連
-        Route::get('/addresses', [AddressController::class, 'index'])->name('mypage.addresses.index');
-        Route::get('/addresses/create', [AddressController::class, 'create'])->name('mypage.addresses.create');
-        Route::post('/addresses', [AddressController::class, 'store'])->name('mypage.addresses.store');
-        Route::get('/addresses/{id}/edit', [AddressController::class, 'edit'])->name('mypage.addresses.edit');
-        Route::patch('/addresses/{id}', [AddressController::class, 'update'])->name('mypage.addresses.update');
-        Route::delete('/addresses/{id}', [AddressController::class, 'destroy'])->name('mypage.addresses.destroy');
-        // 決済方法登録関連
-        Route::get('/payments', [PaymentController::class, 'index'])->name('mypage.payments.index');
-        Route::get('/payments/create', [PaymentController::class, 'create'])->name('mypage.payments.create');
-        Route::post('/payments', [PaymentController::class, 'store'])->name('mypage.payments.store');
+        Route::prefix('addresses')->name('mypage.addresses.')->group(function () {
+            Route::get('/', [AddressController::class, 'index'])->name('index');
+            Route::get('/create', [AddressController::class, 'create'])->name('create');
+            Route::post('/', [AddressController::class, 'store'])->name('store');
+            Route::get('/{id}/edit', [AddressController::class, 'edit'])->name('edit');
+            Route::patch('/{id}', [AddressController::class, 'update'])->name('update');
+            Route::delete('/{id}', [AddressController::class, 'destroy'])->name('destroy');
+        });
 
-        // デフォルト設定切り替え (Custom Action)
-        Route::patch('/payments/{id}/make-default', [PaymentController::class, 'makeDefault'])->name('mypage.payments.make-default');
+        // 決済方法関連
+        Route::prefix('payments')->name('mypage.payments.')->group(function () {
+            Route::get('/', [PaymentController::class, 'index'])->name('index');
+            Route::get('/create', [PaymentController::class, 'create'])->name('create');
+            Route::post('/', [PaymentController::class, 'store'])->name('store');
+            Route::patch('/{id}/make-default', [PaymentController::class, 'makeDefault'])->name('make-default');
+            Route::delete('/{id}', [PaymentController::class, 'destroy'])->name('destroy');
+        });
 
-        // 削除（論理削除）
-        Route::delete('/payments/{id}', [PaymentController::class, 'destroy'])->name('mypage.payments.destroy');
+        // 注文・チェックアウト
+        Route::prefix('checkout')->name('checkout.')->group(function () {
+            Route::post('/', [CheckoutController::class, 'store'])->name('store');
+            Route::get('/success/{order}', [CheckoutController::class, 'success'])->name('success');
+        });
 
-        // 注文実行
-        Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-        // 注文完了画面 (Success)
-        Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
+        Route::prefix('orders')->name('orders.')->group(function () {
+            Route::get('/', [OrderController::class, 'index'])->name('index');
+            Route::get('/{order}', [OrderController::class, 'show'])->name('show');
+        });
 
-        // 注文履歴
-        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+        // Group Order (GO) 関連
+        Route::prefix('go')->name('go.')->group(function () {
+            Route::get('/index', [GroupOrderController::class, 'index'])->name('index');
+            Route::get('/published', [GroupOrderController::class, 'index'])->name('published');
+            Route::get('/create/{product_id?}', [GroupOrderController::class, 'create'])->name('create');
+            Route::post('/', [GroupOrderController::class, 'store'])->name('store');
+            Route::get('/managed', [MypageController::class, 'groupOrders'])->name('managed');
+            Route::get('/detail/{id}', [GroupOrderController::class, 'show'])->name('detail');
+            Route::post('/{id}/join', [GroupOrderController::class, 'join'])->name('join');
+            Route::get('/{id}/thanks/{order_id}', [GroupOrderController::class, 'thanks'])->name('thanks');
+            // MypageController側でGO詳細を表示する場合
+            Route::get('/show/{id}', [MypageController::class, 'show'])->name('show');
+        });
 
-        Route::get('/go/create/{product_id?}', [GroupOrderController::class, 'create'])->name('go.create');
-        Route::post('/go', [GroupOrderController::class, 'store'])->name('go.store');
-        Route::get('/go/index', [GroupOrderController::class, 'index'])->name('go.index');
-        Route::get('/go/show/{id}', [MypageController::class, 'show'])->name('go.show');
-        Route::get('/go/managed', [MypageController::class, 'groupOrders'])->name('go.managed');
-        Route::get('/api/creators/{creator}/products', [GroupOrderController::class, 'getProducts'])->name('api.creators.products');
-
-        Route::get('/api/fans/search', [GroupOrderController::class, 'searchFan'])->name('api.fans.search');
-
-        Route::get('/go/published/', [GroupOrderController::class, 'index'])->name('go.published');
-
-        // GO参加
-        Route::get('/go/detail/{id}', [GroupOrderController::class, 'show'])->name('go.detail');
-        Route::post('/go/{id}/join', [GroupOrderController::class, 'join'])->name('go.join');
-        Route::get('/go/{id}/thanks/{order_id}', [GroupOrderController::class, 'thanks'])->name('go.thanks');
-
-        // ファン用：国際配送支払い関連
-        Route::middleware(['auth', 'verified'])->prefix('fan/international-shippings')->name('fan.international-shippings.')->group(function () {
+        // 国際配送関連 (プレフィックスの重複を修正)
+        Route::prefix('international-shippings')->name('international-shippings.')->group(function () {
             Route::get('/', [InternationalShippingController::class, 'index'])->name('index');
             Route::get('/{id}', [InternationalShippingController::class, 'show'])->name('show');
-            // 支払い成功後の戻り先
+            Route::post('/{id}/checkout', [InternationalShippingController::class, 'createShippingCheckoutSession'])->name('checkout');
             Route::get('/{id}/success', [InternationalShippingController::class, 'paymentSuccess'])->name('payment-success');
         });
 
-        // 国際配送管理（倉庫状況・決済一覧）
-        Route::get('/shipping', [InternationalShippingController::class, 'index'])
-            ->name('international-shippings.index');
+        // API 関連
+        Route::prefix('api')->name('api.')->group(function () {
+            Route::get('/creators/{creator}/products', [GroupOrderController::class, 'getProducts'])->name('creators.products');
+            Route::get('/fans/search', [GroupOrderController::class, 'searchFan'])->name('fans.search');
+        });
 
-        // 決済詳細・Stripeセッション作成
-        Route::get('/shipping/{id}', [InternationalShippingController::class, 'show'])
-            ->name('international-shippings.show');
-            
-        Route::post('/shipping/{id}/checkout', [InternationalShippingController::class, 'createShippingCheckoutSession'])
-            ->name('international-shippings.checkout');
-
-        // 支払い成功後の戻り先
-        Route::get('/shipping/{id}/success', [InternationalShippingController::class, 'paymentSuccess'])
-            ->name('international-shippings.payment-success');
+        // 最後に汎用的なルートを配置（競合防止）
+        Route::get('/creator/{id}', [InternationalShippingController::class, 'show'])->name('creator.show');
     });
 });

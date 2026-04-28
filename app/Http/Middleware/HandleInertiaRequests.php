@@ -45,6 +45,9 @@ class HandleInertiaRequests extends Middleware
             },
             'auth' => [
                 'user' => $request->user('admin') ?: $request->user('creator') ?: $request->user('fan') ?: $request->user(),
+                'admin' => $request->user('admin'),
+                'creator' => $request->user('creator'),
+                'fan' => $request->user('fan'),
             ],
             'cartCount' => function () {
                 $cart = session()->get('fan_cart', []);

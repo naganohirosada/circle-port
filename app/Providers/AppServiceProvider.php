@@ -38,6 +38,8 @@ use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
 use App\Repositories\Eloquent\Payment\PaymentMethodRepository;
 use App\Repositories\Interfaces\PayoutRepositoryInterface;
 use App\Repositories\Eloquent\Payout\PayoutRepository;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Support\Facades\Auth;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -70,7 +72,15 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      */
     public function boot(): void
-    {
-        Vite::prefetch(concurrency: 3);
-    }
+{
+    Vite::prefetch(concurrency: 3);
+
+    RedirectIfAuthenticated::redirectUsing(function ($request) {
+        if (Auth::guard('fan')->check() && str_starts_with($request->path(), 'fan')) {
+            return route('fan.mypage.dashboard');
+        }
+
+        return '/';
+    });
+}
 }
