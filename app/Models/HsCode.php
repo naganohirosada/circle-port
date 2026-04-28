@@ -24,4 +24,12 @@ class HsCode extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    /**
+     * このHSコードに紐付いている商品バリエーション一覧
+     */
+    public function productVariants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
 }

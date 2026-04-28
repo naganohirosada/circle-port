@@ -63,6 +63,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarrierRepositoryInterface::class, CarrierRepository::class);
         $this->app->bind(PaymentMethodRepositoryInterface::class,PaymentMethodRepository::class);
         $this->app->bind(PayoutRepositoryInterface::class, PayoutRepository::class);
+        $this->app->bind(\App\Repositories\Interfaces\Fan\ProductRepositoryInterface::class, \App\Repositories\Eloquent\Fan\ProductRepository::class);
     }
 
     /**

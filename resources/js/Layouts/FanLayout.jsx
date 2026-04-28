@@ -7,6 +7,9 @@ export default function FanLayout({ children }) {
     const { cartCount, language, auth } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
+    // 「ファンとしてログインしているか」を判定
+    const isFan = !!auth.fan;
+
     return (
         <div className="min-h-screen bg-white">
             {/* Navigation */}
@@ -49,23 +52,25 @@ export default function FanLayout({ children }) {
                             </span>
                         </Link>
 
-                        {/* --- ログアウトボタン (認証済みの場合のみ表示) --- */}
-                        {auth.user && (
+                        {/* --- ログアウトボタン (Fanとして認証済みの場合のみ表示) --- */}
+                        {isFan && (
                             <Link
                                 href={route('fan.logout')}
                                 method="post"
                                 as="button"
-                                className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-full hover:bg-cyan-600 transition-all active:scale-95 shadow-lg shadow-slate-200 group relative"
+                                className="flex items-center gap-2 ..."
                             >
-                                <LogOut size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                                <LogOut size={16} />
                                 <span className="hidden md:block text-[10px] font-black uppercase tracking-[0.15em]">
                                     {__('Logout')}
                                 </span>
-                                
-                                {/* モバイル用のツールチップ */}
-                                <span className="md:hidden absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap font-bold">
-                                    {__('Logout')}
-                                </span>
+                            </Link>
+                        )}
+
+                        {/* --- 逆にログインしていない場合に「Login」ボタンを出すなら --- */}
+                        {!isFan && (
+                            <Link href={route('fan.login')} className="text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-cyan-600">
+                                {__('Login')}
                             </Link>
                         )}
                     </div>

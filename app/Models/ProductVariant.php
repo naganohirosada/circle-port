@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\{Model, SoftDeletes, Relations\HasMany, Relatio
 class ProductVariant extends Model
 {
     use SoftDeletes;
-    protected $fillable = ['product_id', 'price', 'stock_quantity', 'weight_g', 'sku'];
+    protected $fillable = ['product_id', 'price', 'stock_quantity', 'weight_g', 'sku', 'hs_code_id', 'digital_file_path'];
 
     public function product(): BelongsTo {
         return $this->belongsTo(Product::class);
@@ -14,5 +14,13 @@ class ProductVariant extends Model
 
     public function translations(): HasMany {
         return $this->hasMany(VariantTranslation::class);
+    }
+
+    /**
+     * HSコードとのリレーション
+     */
+    public function hsCode(): BelongsTo
+    {
+        return $this->belongsTo(HsCode::class);
     }
 }

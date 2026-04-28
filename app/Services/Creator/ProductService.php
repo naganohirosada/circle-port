@@ -2,246 +2,206 @@
 
 namespace App\Services\Creator;
 
-use App\Models\Product;
-use App\Services\AI\TranslationService;
-use Illuminate\Support\Facades\DB;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
-use App\Models\Country;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Exception;
+use App\Models\Category;
+use App\Models\Tag;
 
 class ProductService
 {
-    protected $translator;
+    protected array $locales = ['ja', 'en', 'zh', 'th', 'fr'];
 
     public function __construct(
-        TranslationService $translator,
         protected ProductRepositoryInterface $repository
-    ) {
-        $this->translator = $translator;
-        $this->repository = $repository;
-    }
+    ) {}
 
     /**
-     * 商品とその関連データを保存するトランザクション処理
-     * @param array $data
-     * @return Product
+     * SKUを自動生成する (形式: CP-YYYYMMDD-連番)
      */
+    private function generateSku()
+    {
+        $date = now()->format('Ymd');
+        $prefix = "CP-{$date}-";
+        
+        // 今日の日付で発行されたSKUの数をカウントして連番を振る
+        $todayCount = \App\Models\Product::where('sku', 'like', "{$prefix}%")->count();
+        $serial = str_pad($todayCount + 1, 3, '0', STR_PAD_LEFT);
+        
+        return $prefix . $serial;
+    }
+
     public function createProduct(array $data)
     {
         return DB::transaction(function () use ($data) {
-            // 1. 商品本体の保存
-            $product = Product::create([
-                'creator_id'      => auth()->id(),
-                'category_id'     => $data['category_id'],
-                'sub_category_id' => $data['sub_category_id'] ?? null, // 追加
-                'hs_code_id'      => $data['has_variants'] ? null : ($data['hs_code_id'] ?? null), // 追加
-                'sku'             => 'P-' . strtoupper(bin2hex(random_bytes(4))),
-                'has_variants'    => $data['has_variants'],
-                'price'           => $data['has_variants'] ? null : $data['price'],
-                'stock_quantity'  => $data['has_variants'] ? null : $data['stock_quantity'],
-                'weight_g'        => $data['has_variants'] ? null : $data['weight_g'],
-                'status'          => $data['status'] ?? 1,
+            $hasVariants = !empty($data['variations']);
+            $isDigital = (int)$data['product_type'] === 2;
+
+            // 1. ファイル保存ロジック
+            $digitalFilePath = null;
+            if ($isDigital && !$hasVariants && isset($data['digital_file'])) {
+                $digitalFilePath = $data['digital_file']->store('digital_products', 'private');
+            }
+
+            // 2. 本体保存
+            $product = $this->repository->store([
+                'creator_id'        => auth()->id(),
+                'category_id'       => $data['category_id'],
+                'sub_category_id'   => $data['sub_category_id'] ?? null,
+                'product_type'      => $data['product_type'],
+                'sku'               => $this->generateSku(), // 自動生成を適用
+                'price'             => $hasVariants ? null : $data['price'],
+                'stock_quantity'    => $isDigital ? 9999 : ($hasVariants ? null : $data['stock']),
+                'weight_g'          => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
+                'hs_code_id'        => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
+                'digital_file_path' => $digitalFilePath, // 前述のロジック
+                'status'            => 5,
             ]);
 
-            // 2. 翻訳の保存（material を含める）
-            $this->saveTranslations($product, [
-                'name'        => $data['name_ja'],
-                'description' => $data['description_ja'],
-                'material'    => $data['material_ja'] ?? null,
-            ]);
+            // 3. 翻訳保存
+            foreach ($this->locales as $locale) {
+                if (!empty($data['name'][$locale])) {
+                    $this->repository->createTranslation($product, [
+                        'locale'      => $locale,
+                        'name'        => $data['name'][$locale],
+                        'description' => $data['description'][$locale] ?? '',
+                        'material'    => $data['material'][$locale] ?? null,
+                    ]);
+                }
+            }
 
-            // 3. 画像の保存 (Spatie MediaLibrary)
+            // 4. 画像保存
             if (!empty($data['images'])) {
-                foreach ($data['images'] as $index => $imageFile) {
-                    $path = $imageFile->store('products/' . $product->id, 'public');
-
-                    $thumbKey = $data['thumbnail_key'] ?? null;
-                    $isThumbnail = ($thumbKey === "new_{$index}");
-
-                    $product->images()->create([
-                        'file_path' => $path,
-                        'is_primary' => $isThumbnail,
+                foreach ($data['images'] as $index => $image) {
+                    $path = $image->store('products', 'public');
+                    $this->repository->createImage($product, [
+                        'file_path'  => $path,
+                        'is_primary' => $index === 0,
+                        'sort_order' => $index,
                     ]);
                 }
             }
 
-            // 4. バリエーションの保存
-            if ($data['has_variants']) {
-                foreach ($data['variants'] as $vData) {
-                    if (empty(array_filter($vData))) { continue; }
-                    $variant = $product->variants()->create([
-                        'price'          => $vData['price'],
-                        'stock_quantity' => $vData['stock_quantity'],
-                        'weight_g'       => $vData['weight_g'],
-                        'hs_code_id'     => $vData['hs_code_id'],
-                        'sku'            => 'V-' . strtoupper(bin2hex(random_bytes(4))),
-                    ]);
-
-                    $this->saveVariantTranslations($variant, [
-                        'variant_name' => $vData['variant_name_ja'],
-                        'material'     => $vData['material_ja'],
-                    ]);
-                }
+            // 5. タグ同期
+            if (!empty($data['tag_ids'])) {
+                $this->repository->syncTags($product, $data['tag_ids']);
             }
 
-            return $product;
-        });
-    }
+            // 6. バリエーション保存
+            if ($hasVariants) {
+                foreach ($data['variations'] as $vData) {
+                    $vDigitalPath = null;
+                    if ($isDigital && isset($vData['digital_file'])) {
+                        $vDigitalPath = $vData['digital_file']->store('digital_products/variants', 'private');
+                    }
 
-    /**
-     * 商品翻訳の保存（全ターゲット言語をループ処理）
-     * @param $product
-     * @param array $content
-     * @return void
-     */
-    private function saveTranslations($product, $content)
-    {
-        // 1. まずは日本語（マスター）を保存
-        $product->translations()->create(array_merge($content, ['locale' => 'ja']));
+                    $variant = $this->repository->createVariant($product, [
+                        'price'             => $vData['price'],
+                        'stock_quantity'    => $isDigital ? 9999 : ($vData['stock'] ?? 0),
+                        'sku'               => $product->sku . '-' . ($index + 1), // 親SKU-連番
+                        'weight_g'          => !$isDigital ? ($vData['weight'] ?? null) : 0,
+                        'hs_code_id'        => !$isDigital ? ($vData['hs_code_id'] ?? null) : null,
+                        'digital_file_path' => $vDigitalPath,
+                    ]);
 
-        // 2. 有効な国から「日本語以外」の言語リストを取得
-        $targetLocales = Country::where('status', 1)
-            ->where('lang_code', '!=', 'ja')
-            ->pluck('lang_code')
-            ->unique();
-
-        // 3. 各言語ごとにDeepLで翻訳して保存
-        foreach ($targetLocales as $locale) {
-            // DeepL API用に大文字変換 (例: en-us -> EN-US)
-            $deeplTargetLang = strtoupper($locale);
-
-            $product->translations()->create([
-                'locale'      => $locale,
-                'name'        => $this->translator->translate($content['name'], $deeplTargetLang),
-                'description' => $this->translator->translate($content['description'], $deeplTargetLang),
-                'material'    => $content['material'] ? $this->translator->translate($content['material'], $deeplTargetLang) : null,
-            ]);
-        }
-    }
-
-    /**
-     * バリエーション翻訳の保存（こちらもループ化）
-     * @param $variant
-     * @param array $content
-     * @return void
-     */
-    private function saveVariantTranslations($variant, $content)
-    {
-        $variant->translations()->create(array_merge($content, ['locale' => 'ja']));
-
-        $targetLocales = Country::where('status', 1)
-            ->where('lang_code', '!=', 'ja')
-            ->pluck('lang_code')
-            ->unique();
-
-        foreach ($targetLocales as $locale) {
-            $deeplTargetLang = strtoupper($locale);
-            
-            $variant->translations()->create([
-                'locale'       => $locale,
-                'variant_name' => $this->translator->translate($content['variant_name'], $deeplTargetLang),
-                'material'     => $content['material'] ? $this->translator->translate($content['material'], $deeplTargetLang) : null,
-            ]);
-        }
-    }
-
-    /**
-     * クリエイターの商品一覧データを取得するメソッド
-     * @param int $creatorId
-     * @param array $filters
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
-     */
-    public function getIndexData(int $creatorId, array $filters)
-    {
-        // レポジトリからページネーションデータを取得
-        return $this->repository->getPaginatedForCreator($creatorId, $filters);
-    }
-
-    /**
-     * 商品を更新するトランザクション処理
-     * @param int $id
-     * @param array $data
-     * @return Product
-     * 
-     */
-    public function updateProduct(int $id, array $data)
-    {
-        return DB::transaction(function () use ($id, $data) {
-            $product = Product::findOrFail($id);
-
-            // 1. 本体更新
-            $product->update([
-                'category_id'      => $data['category_id'],
-                'sub_category_id'  => $data['sub_category_id'] ?? null,
-                'hs_code_id'      => $data['has_variants'] ? null : ($data['hs_code_id'] ?? null),
-                'has_variants'    => $data['has_variants'],
-                'price'           => $data['has_variants'] ? null : $data['price'],
-                'stock_quantity'  => $data['has_variants'] ? null : $data['stock_quantity'],
-                'weight_g'        => $data['has_variants'] ? null : $data['weight_g'],
-                'status'          => $data['status'],
-            ]);
-
-            // 2. 翻訳更新（既存を消して再翻訳）
-            $product->translations()->delete();
-            $this->saveTranslations($product, [
-                'name'        => $data['name_ja'],
-                'description' => $data['description_ja'],
-                'material'    => $data['has_variants'] ? null : ($data['material_ja'] ?? null),
-            ]);
-
-            $product->images()->update(['is_primary' => false]);
-
-            if (str_starts_with($data['thumbnail_key'], 'uploaded_')) {
-                $imageId = str_replace('uploaded_', '', $data['thumbnail_key']);
-                $product->images()->where('id', $imageId)->update(['is_primary' => true]);
-            }
-
-            // 3. 画像の処理
-            // 3-1. 指定された画像を削除
-            if (!empty($data['delete_image_ids'])) {
-                foreach ($data['delete_image_ids'] as $imageId) {
-                    $img = $product->images()->find($imageId);
-                    if ($img) {
-                        Storage::disk('public')->delete($img->file_path);
-                        $img->delete();
+                    foreach ($this->locales as $locale) {
+                        if (!empty($vData['variant_name'][$locale])) {
+                            $this->repository->createVariantTranslation($variant, [
+                                'locale' => $locale,
+                                'variant_name'   => $vData['variant_name'][$locale],
+                            ]);
+                        }
                     }
                 }
             }
-            // 3-2. 新しい画像を追加
-            if (!empty($data['new_images'])) {
-                foreach ($data['new_images'] as $index => $imageFile) {
-                    $path = $imageFile->store('products/' . $product->id, 'public');
 
-                    $isThumbnail = ($data['thumbnail_key'] === "new_{$index}");
+            return $product;
+        });
+    }
 
-                    $product->images()->create([
-                        'file_path' => $path,
-                        'is_primary' => $isThumbnail,
+    public function updateProduct(int $id, array $data)
+    {
+        return DB::transaction(function () use ($id, $data) {
+            $product = $this->repository->findOrFail($id);
+            $hasVariants = !empty($data['variations']);
+            $isDigital = (int)$data['product_type'] === 2;
+
+            // 1. デジタルファイル更新
+            if ($isDigital && !$hasVariants && isset($data['digital_file'])) {
+                if ($product->digital_file_path) {
+                    Storage::disk('private')->delete($product->digital_file_path);
+                }
+                $data['digital_file_path'] = $data['digital_file']->store('digital_products', 'private');
+            }
+
+            // 2. 本体更新
+            $product = $this->repository->update($id, [
+                'category_id'     => $data['category_id'],
+                'sub_category_id' => $data['sub_category_id'] ?? null,
+                'product_type'    => $data['product_type'],
+                'price'           => $hasVariants ? null : $data['price'],
+                'stock'           => $isDigital ? 9999 : ($hasVariants ? null : $data['stock']),
+                'weight_g'          => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
+                'hs_code_id'      => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
+                'digital_file_path' => $data['digital_file_path'] ?? $product->digital_file_path,
+            ]);
+
+            // 3. 翻訳更新
+            $this->repository->deleteTranslations($product);
+            foreach ($this->locales as $locale) {
+                if (!empty($data['name'][$locale])) {
+                    $this->repository->createTranslation($product, [
+                        'locale'      => $locale,
+                        'name'        => $data['name'][$locale],
+                        'description' => $data['description'][$locale] ?? '',
+                        'material'    => $data['material'][$locale] ?? null,
                     ]);
                 }
             }
 
-            // 4. バリエーションの更新
-            if ($data['has_variants']) {
-                // 一旦既存を削除して作り直す「デリート＆インサート」方式が確実
-                $product->variants()->each(function($v) {
-                    $v->translations()->delete();
-                    $v->delete();
-                });
+            // 4. 新規画像追加
+            if (!empty($data['images'])) {
+                foreach ($data['images'] as $image) {
+                    $path = $image->store('products', 'public');
+                    $this->repository->createImage($product, [
+                        'file_path'    => $path,
+                        'is_primary'   => false,
+                        'sort_order'   => $product->images()->count(),
+                    ]);
+                }
+            }
 
-                foreach ($data['variants'] as $vData) {
-                    $variant = $product->variants()->create([
-                        'price'          => $vData['price'],
-                        'stock_quantity' => $vData['stock_quantity'],
-                        'weight_g'       => $vData['weight_g'],
-                        'hs_code_id'     => $vData['hs_code_id'],
-                        'sku'            => $vData['id'] ? null : 'V-' . strtoupper(bin2hex(random_bytes(4))), // 新規なら生成
+            // 5. タグ同期
+            $this->repository->syncTags($product, $data['tag_ids'] ?? []);
+
+            // 6. バリエーション更新
+            $this->repository->deleteVariants($product);
+            if ($hasVariants) {
+                foreach ($data['variations'] as $vData) {
+                    $vDigitalPath = $vData['digital_file_path'] ?? null;
+                    if ($isDigital && isset($vData['digital_file'])) {
+                        $vDigitalPath = $vData['digital_file']->store('digital_products/variants', 'private');
+                    }
+
+                    $variant = $this->repository->createVariant($product, [
+                        'price'             => $vData['price'],
+                        'stock_quantity'             => $isDigital ? 9999 : ($vData['stock'] ?? 0),
+                        'sku'               => $vData['sku'] ?? 'V-' . strtoupper(Str::random(8)),
+                        'weight_g'            => !$isDigital ? ($vData['weight'] ?? null) : null,
+                        'hs_code_id'        => !$isDigital ? ($vData['hs_code_id'] ?? null) : null,
+                        'digital_file_path' => $vDigitalPath,
                     ]);
 
-                    $this->saveVariantTranslations($variant, [
-                        'variant_name' => $vData['variant_name_ja'],
-                        'material'     => $vData['material_ja'],
-                    ]);
+                    foreach ($this->locales as $locale) {
+                        if (!empty($vData['variant_name'][$locale])) {
+                            $this->repository->createVariantTranslation($variant, [
+                                'locale' => $locale,
+                                'variant_name'   => $vData['variant_name'][$locale],
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -250,13 +210,60 @@ class ProductService
     }
 
     /**
-     * 翻訳の更新用（既存を消して再生成、または上書き）
+     * 商品を完全に削除する
+     *
+     * @param \App\Models\Product $product
+     * @return void
      */
-    private function updateTranslations($product, $content)
+    public function deleteProduct($product)
     {
-        // シンプルに既存の翻訳を一度リセットして再生成（DeepLに最新の日本語を食わせる）
-        $product->translations()->delete();
-        $this->saveTranslations($product, $content);
+        // 1. 支払い待ち(例:1)や支払い済み(例:2)の注文があるか確認
+        // ※ステータス値はプロジェクトの定義に合わせて調整してください
+        $hasActiveOrders = $product->variants()->whereHas('orderItems.order', function ($query) {
+            $query->whereIn('status', [1, 2]); // 1: 支払い待ち, 2: 支払い済み
+        })->exists();
+
+        // 本体に紐づく注文がある場合も考慮（バリエーションがない場合など）
+        if (!$hasActiveOrders) {
+            $hasActiveOrders = $product->orderItems()->whereHas('order', function ($query) {
+                $query->whereIn('status', [1, 2]);
+            })->exists();
+        }
+
+        if ($hasActiveOrders) {
+            // 例外を投げてコントローラーに伝える
+            throw new Exception('支払い待ち、または支払い済みの注文があるため、この作品は削除できません。');
+        }
+
+        DB::transaction(function () use ($product) {
+            // --- ファイル削除ロジック（前回と同じ） ---
+            foreach ($product->variants as $variant) {
+                if ($variant->digital_file_path) {
+                    Storage::disk('public')->delete($variant->digital_file_path);
+                }
+            }
+            foreach ($product->images as $image) {
+                Storage::disk('public')->delete($image->file_path);
+            }
+            if ($product->digital_file_path) {
+                Storage::disk('public')->delete($product->digital_file_path);
+            }
+
+            // データベースから削除
+            $product->delete();
+        });
     }
-    
+
+    /**
+     * 商品一覧表示に必要なデータ一式を取得
+     */
+    public function getIndexData(int $creatorId, array $filters)
+    {
+        return [
+            'products'   => $this->repository->getFilteredProductsForCreator($creatorId, $filters),
+            'filters'    => $filters,
+            'categories' => Category::with('subCategories')->get(),
+            'tags'       => Tag::all(),
+        ];
+    }
 }

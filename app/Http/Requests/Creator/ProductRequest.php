@@ -10,65 +10,102 @@ class ProductRequest extends FormRequest
 
     public function rules(): array
     {
-        // has_variants の値を真偽値として取得
-        $hasVariants = filter_var($this->input('has_variants'), FILTER_VALIDATE_BOOLEAN);
+        $isPhysical = $this->input('product_type') == 1;
+        $isDigital  = $this->input('product_type') == 2;
+        // フロントエンドのキー名 'variations' に合わせる
+        $hasVariants = $this->has('variations') && count($this->input('variations', [])) > 0;
 
         return [
-            // 共通項目
-            'name_ja'          => 'required|string|max:255',
-            'description_ja'   => 'required|string',
+            // --- 共通基本項目 ---
+            'product_type'     => 'required|in:1,2',
             'category_id'      => 'required|exists:categories,id',
             'sub_category_id'  => 'nullable|exists:sub_categories,id',
-            'status'           => 'required|integer|in:1,2,3',
-            'has_variants'     => 'required|boolean',
+            'tag_ids'          => 'nullable|array',
+            'tag_ids.*'        => 'exists:tags,id',
 
+            'price' => $hasVariants 
+                ? 'nullable|integer|min:0' 
+                : 'required|integer|min:0',
+
+            // 現物かつバリエーションがない場合のみ必須
+            'stock' => ($isPhysical && !$hasVariants) 
+                ? 'required|integer|min:0' 
+                : 'nullable|integer',
+
+            'weight' => ($isPhysical && !$hasVariants) 
+                ? 'required|integer|min:0' 
+                : 'nullable|integer',
+
+            'hs_code_id' => ($isPhysical && !$hasVariants) 
+                ? 'required|exists:hs_codes,id' 
+                : 'nullable',
+
+            // --- 多言語項目 (ネストされたオブジェクト) ---
+            'name.ja'          => 'required|string|max:255',
+            'name.en'          => 'nullable|string|max:255',
+            'name.zh'          => 'nullable|string|max:255',
+            'name.th'          => 'nullable|string|max:255',
+            'name.fr'          => 'nullable|string|max:255',
+
+            'description.ja'   => 'required|string',
+            'description.en'   => 'nullable|string',
+            'description.zh'   => 'nullable|string',
+            'description.th'   => 'nullable|string',
+            'description.fr'   => 'nullable|string',
+
+            'material.ja'      => $isPhysical ? 'nullable|string|max:255' : 'nullable',
+            'material.en'      => 'nullable|string|max:255',
+            'material.zh'      => 'nullable|string|max:255',
+            'material.th'      => 'nullable|string|max:255',
+            'material.fr'      => 'nullable|string|max:255',
+
+            // --- メディア ---
             'images'           => 'nullable|array',
-            'new_images'       => 'nullable|array',
-            'delete_image_ids' => 'nullable|array',
             'images.*'         => 'image|mimes:jpeg,png,jpg,webp|max:10240',
-            'thumbnail_key'    => 'nullable|string',
 
-            // --- 単品販売（has_variants が false）の時のみ必須 ---
-            'price'            => 'required_if:has_variants,0,false|nullable|integer|min:0',
-            'stock_quantity'   => 'required_if:has_variants,0,false|nullable|integer|min:0',
-            'weight_g'         => 'required_if:has_variants,0,false|nullable|integer|min:0',
-            'material_ja'      => 'required_if:has_variants,0,false|nullable|string|max:255',
-            'hs_code_id'       => 'required_if:has_variants,0,false|nullable|exists:hs_codes,id',
+            // --- デジタル作品(2)固有のバリデーション ---
+            // バリエーションがない場合のみ、本体メインファイルのアップロードを必須とする
+            'digital_file'     => ($isDigital && !$hasVariants) ? 'required|file|max:512000' : 'nullable',
 
-            // --- バリエーションあり（has_variants が true）の時のみ必須 ---
-            // exclude_if を使うことで、has_variants が false の時はこの項目自体をバリデーション対象から除外します
-            'variants'         => 'exclude_if:has_variants,0,false|required|array|min:1',
-            'variants.*.variant_name_ja' => 'exclude_if:has_variants,0,false|required|string|max:255',
-            'variants.*.price'           => 'exclude_if:has_variants,0,false|required|integer|min:0',
-            'variants.*.stock_quantity'  => 'exclude_if:has_variants,0,false|required|integer|min:0',
-            'variants.*.weight_g'        => 'exclude_if:has_variants,0,false|nullable|integer|min:0',
-            'variants.*.material_ja'     => 'exclude_if:has_variants,0,false|nullable|string|max:255',
-            'variants.*.hs_code_id'      => 'exclude_if:has_variants,0,false|nullable|exists:hs_codes,id',
+            // --- バリエーション (配列名: variations) ---
+            'variations'       => 'nullable|array',
+            // バリエーション内の翻訳名は variant_name
+            'variations.*.variant_name.ja' => 'required_with:variations|string|max:255',
+            'variations.*.price'           => 'required_with:variations|integer|min:0',
+            // バリエーション内の現物固有項目
+            'variations.*.stock'           => $isPhysical ? 'required_with:variations|integer|min:0' : 'nullable',
+            'variations.*.weight'          => $isPhysical ? 'required_with:variations|integer|min:0' : 'nullable',
+            'variations.*.hs_code_id'      => $isPhysical ? 'required_with:variations|exists:hs_codes,id' : 'nullable',
+
+            // バリエーション内のデジタル固有項目
+            'variations.*.digital_file'    => ($isDigital && $hasVariants) ? 'required_with:variations|file|max:512000' : 'nullable',
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'name.ja'                 => '作品名(日本語)',
+            'description.ja'          => '作品説明(日本語)',
+            'price'                   => '価格',
+            'stock'                   => '在庫数',
+            'weight'                  => '重量',
+            'hs_code_id'              => 'HSコード',
+            'digital_file'            => '配信ファイル',
+            'variations.*.variant_name.ja' => 'バリエーション名(日本語)',
+            'variations.*.price'           => 'バリエーション価格',
+            'variations.*.stock'           => 'バリエーション在庫数',
+            'variations.*.digital_file'    => 'バリエーション用ファイル',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name_ja.required'        => '作品名は必須です。',
-            'description_ja.required' => '作品説明は必須です。',
-            'category_id.required'    => 'カテゴリーを選択してください。',
-            
-            // 単品エラー
-            'price.required_if'          => '販売価格を入力してください。',
-            'stock_quantity.required_if' => '在庫数を入力してください。',
-            'weight_g.required_if'       => '重量を入力してください。',
-            'material_ja.required_if'    => '素材を入力してください。',
-            'hs_code_id.required_if'     => 'HSコードを選択してください。',
-
-            // バリエーション全体エラー (exclude_ifで外れるため required メッセージでOK)
-            'variants.required' => 'バリエーション情報を入力してください。',
-            'variants.min'      => 'バリエーションを最低1つは登録する必要があります。',
-            
-            // バリエーション個別エラー
-            'variants.*.variant_name_ja.required' => 'バリエーション名（サイズや色など）を入力してください。',
-            'variants.*.price.required'           => 'このバリエーションの価格を入力してください。',
-            'variants.*.stock_quantity.required'  => 'このバリエーションの在庫数を入力してください。',
+            'required'         => ':attribute は必須項目です。',
+            'digital_file.required' => 'デジタル作品の場合、配信ファイルをアップロードしてください。',
+            'variations.*.variant_name.ja.required_with' => 'バリエーション名を入力してください。',
+            'variations.*.digital_file.required_with'    => '各バリエーションのファイルをアップロードしてください。',
         ];
     }
 }

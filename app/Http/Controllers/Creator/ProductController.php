@@ -7,8 +7,9 @@ use App\Services\Creator\ProductService;
 use App\Repositories\Eloquent\Creator\ProductRepository;
 use Inertia\Inertia;
 use App\Http\Requests\Creator\ProductSearchRequest;
-use App\Models\{Product, Category, HsCode};
+use App\Models\{Product, Category, HsCode, Tag};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -24,65 +25,54 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::where('creator_id', auth()->id())
-            ->with(['translations', 'images', 'category', 'hs_code']);
-
-        // --- 検索ロジック ---
-        // 商品タイトル（日本語名で検索）
-        if ($request->name) {
-            $query->whereHas('translations', function($q) use ($request) {
-                $q->where('locale', 'ja')->where('name', 'like', "%{$request->name}%");
-            });
-        }
-
-        // カテゴリ
-        if ($request->category_id) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        // HSコード
-        if ($request->hs_code_id) {
-            $query->where('hs_code_id', $request->hs_code_id);
-        }
-
-        // ステータス
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        // SKU
-        if ($request->sku) {
-            $query->where('sku', 'like', "%{$request->sku}%");
-        }
-
-        return Inertia::render('Creator/Product/Index', [
-            'products' => $query->latest()->paginate(20)->withQueryString(),
-            'categories' => Category::all(),
-            'hs_codes' => HsCode::all(),
-            'filters' => $request->only(['name', 'category_id', 'hs_code_id', 'status', 'sku'])
+        // フィルター項目の抽出
+        $filters = $request->only([
+            'status', 'tag_id', 'category_id', 'sub_category_id', 
+            'product_type', 'price_min', 'price_max', 'keyword'
         ]);
+
+        // Serviceから一覧表示に必要なデータを取得
+        $data = $this->service->getIndexData(
+            auth()->guard('creator')->id(),
+            $filters
+        );
+
+        return Inertia::render('Creator/Product/Index', $data);
     }
 
     // 登録画面
     public function create()
     {
+        // 運営指定のタグを翻訳付きで取得
+        $tags = Tag::with(['translations' => function($query) {
+            // クリエイター画面が日本語なら日本語のみ取得、
+            // または全言語取得してフロントで処理
+            $query->where('locale', 'ja'); 
+        }])->where('is_active', true)->get()->map(function($tag) {
+            return [
+                'id' => $tag->id,
+                // 翻訳テーブルのjaがあればそれを、なければslugを表示
+                'name' => $tag->translations->first()?->name ?? $tag->slug,
+            ];
+        });
+
         return Inertia::render('Creator/Product/Create', [
-            'categories' => \App\Models\Category::with('subCategories')->get(),
-            'hs_codes'   => \App\Models\HsCode::all(),
+            'categories' => Category::with('subCategories')->get(),
+            'hs_codes'   => HsCode::all(),
+            'tags'       => $tags,
         ]);
     }
 
-    // 保存処理
     public function store(ProductRequest $request)
     {
         try {
-            $product = $this->service->createProduct($request->validated());
+            $this->service->createProduct($request->validated());
+
             return redirect()->route('creator.products.index')
-                ->with('message', '作品が世界に向けて公開されました！🚀');
-                
+                ->with('message', '作品を登録し、審査へ提出しました！✨');
         } catch (\Exception $e) {
-            \Log::error('Product Store Error: ' . $e->getMessage());
-            return back()->withErrors(['error' => '保存に失敗しました。時間をおいて再度お試しください。']);
+            Log::error('Product Store Error: ' . $e->getMessage());
+            return back()->withErrors(['error' => '保存中にエラーが発生しました。']);
         }
     }
 
@@ -93,12 +83,23 @@ class ProductController extends Controller
      */
     public function edit($id)
     {
-        $product = Product::with(['translations', 'images', 'variations.translations'])->findOrFail($id);
+        // タグのリレーションを含めて取得
+        $product = Product::with([
+            'translations', 
+            'images', 
+            'tags', 
+            'variations.translations'
+        ])->where('creator_id', auth()->id())->findOrFail($id);
 
         return Inertia::render('Creator/Product/Edit', [
             'product'    => $product,
             'categories' => Category::with('subCategories')->get(),
             'hs_codes'   => HsCode::all(),
+            'tags'       => Tag::with(['translations' => fn($q) => $q->where('locale', 'ja')])
+                            ->where('is_active', true)->get()->map(fn($t) => [
+                                'id' => $t->id,
+                                'name' => $t->translations->first()?->name ?? $t->slug
+                            ]),
         ]);
     }
 
@@ -114,10 +115,10 @@ class ProductController extends Controller
             $this->service->updateProduct($id, $request->validated());
             
             return redirect()->route('creator.products.index')
-                ->with('message', '作品情報を更新しました！✨');
+                ->with('message', '作品情報を更新しました！');
                 
         } catch (\Exception $e) {
-            \Log::error('Product Update Error: ' . $e->getMessage());
+            Log::error('Product Update Error: ' . $e->getMessage());
             return back()->withErrors(['error' => '更新に失敗しました。']);
         }
     }
@@ -125,9 +126,13 @@ class ProductController extends Controller
     // 削除処理
     public function destroy($id)
     {
-        $product = $this->repository->findById($id, auth()->guard('creator')->id());
-        $this->service->deleteProduct($product);
+        try {
+            $product = $this->repository->findById($id, auth()->guard('creator')->id());
+            $this->service->deleteProduct($product);
+            return back()->with('message', '作品を削除しました。');
 
-        return back()->with('message', 'Deleted successfully (T_T)');
+        } catch (\Exception $e) {
+            return back()->withErrors(['delete_error' => $e->getMessage()]);
+        }
     }
 }

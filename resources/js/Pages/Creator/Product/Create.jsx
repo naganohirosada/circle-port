@@ -1,290 +1,378 @@
 import React, { useState, useEffect } from 'react';
 import CreatorLayout from '@/Layouts/CreatorLayout';
-import { Head, useForm } from '@inertiajs/react';
-import { Star } from 'lucide-react'; // アイコン追加
+import { Head, useForm, Link } from '@inertiajs/react';
+import InputError from '@/Components/InputError';
+import axios from 'axios';
 
-export default function Create({ categories, hs_codes }) {
-    const [previews, setPreviews] = useState([]);
+export default function Create({ auth, categories, hs_codes, tags }) {
+    // 1. ステート管理
+    const [activeTab, setActiveTab] = useState('ja');
+    const [subCategories, setSubCategories] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState([]);
+    const [isTranslating, setIsTranslating] = useState(false);
 
-    const { data, setData, post, processing, errors, transform } = useForm({
-        name_ja: '',
-        description_ja: '',
+    const languages = [
+        { code: 'ja', label: '日本語', flag: '🇯🇵' },
+        { code: 'en', label: '英語', flag: '🇺🇸' },
+        { code: 'zh', label: '中国語', flag: '🇨🇳' },
+        { code: 'th', label: 'タイ語', flag: '🇹🇭' },
+        { code: 'fr', label: 'フランス語', flag: '🇫🇷' },
+    ];
+
+    // 2. フォーム初期値 (product参照を完全に排除)
+    const { data, setData, post, processing, errors } = useForm({
+        product_type: 1, // 1:現物, 2:デジタル
+        name: { ja: '', en: '', zh: '', th: '', fr: '' },
+        material: { ja: '', en: '', zh: '', th: '', fr: '' },
+        description: { ja: '', en: '', zh: '', th: '', fr: '' },
         category_id: '',
         sub_category_id: '',
-        status: 2, 
-        has_variants: false,
         price: '',
-        stock_quantity: '',
-        weight_g: '',
-        material_ja: '',
+        stock: '', 
+        weight: '', 
         hs_code_id: '',
+        tag_ids: [],
         images: [],
-        variants: [{ variant_name_ja: '', price: '', stock_quantity: '', weight_g: '', material_ja: '', hs_code_id: '' }],
-        // サムネイル設定用のキー ('new_0' のような形式)
-        thumbnail_key: null 
+        digital_file: null,
+        variations: [],
+        has_variants: false,
     });
 
+    // 3. カテゴリ連動
     useEffect(() => {
-        transform((data) => {
-            const baseData = { ...data };
-            if (!data.has_variants) {
-                delete baseData.variants;
-            } else {
-                baseData.variants = data.variants.filter(v => v.variant_name_ja.trim() !== '');
-            }
-            return baseData;
-        });
-    }, [data.has_variants, data.variants]);
+        if (data.category_id) {
+            const selected = categories.find(c => c.id == data.category_id);
+            setSubCategories(selected?.sub_categories || []);
+        }
+    }, [data.category_id]);
 
-    const subCategories = categories.find(c => c.id == data.category_id)?.sub_categories || [];
+    useEffect(() => {
+        setData('has_variants', data.variations.length > 0);
+    }, [data.variations.length]);
+
+    const hasErrorInTab = (lang) => {
+        return Object.keys(errors).some(key => key.includes(`.${lang}`));
+    };
+
+    const handleAutoTranslate = async () => {
+        if (!data.name.ja || !data.description.ja) {
+            alert('日本語の内容を入力してください');
+            return;
+        }
+        setIsTranslating(true);
+        try {
+            const response = await axios.post(route('creator.ai.translate'), {
+                name: data.name.ja,
+                description: data.description.ja,
+                material: data.material.ja,
+                variants: data.variations.map(v => v.variant_name.ja)
+            });
+            const t = response.data;
+            setData(prev => ({
+                ...prev,
+                name: { ...prev.name, ...t.name },
+                description: { ...prev.description, ...t.description },
+                material: { ...prev.material, ...t.material },
+                variations: prev.variations.map((v, i) => ({
+                    ...v, variant_name: { ...v.variant_name, ...t.variants[i] }
+                }))
+            }));
+        } catch (e) { alert('翻訳エラーが発生しました'); }
+        finally { setIsTranslating(false); }
+    };
 
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
-        const currentImages = [...data.images];
-        const newImages = [...currentImages, ...files];
-        
-        setData('images', newImages);
-        
-        // プレビュー生成
-        const filePreviews = files.map(file => URL.createObjectURL(file));
-        const newPreviews = [...previews, ...filePreviews];
-        setPreviews(newPreviews);
-
-        // 画像が初めて追加された、またはサムネイルが未設定の場合、1枚目をサムネイルにする
-        if (!data.thumbnail_key && newImages.length > 0) {
-            setData('thumbnail_key', 'new_0');
-        }
-    };
-
-    // サムネイルを設定する関数
-    const setThumbnail = (key) => {
-        setData('thumbnail_key', key);
-    };
-
-    // 画像を削除する関数（サムネイルだったら設定を解除）
-    const removeImage = (index) => {
-        const newImages = data.images.filter((_, i) => i !== index);
-        const newPreviews = previews.filter((_, i) => i !== index);
-        
-        // プレビューBlob URLのメモリ解放
-        URL.revokeObjectURL(previews[index]);
-
-        let nextThumbnailKey = data.thumbnail_key;
-        
-        const currentThumbIndex = data.thumbnail_key ? parseInt(data.thumbnail_key.split('_')[1]) : -1;
-
-        if (index === currentThumbIndex) {
-            // サムネイル画像を削除した場合
-            nextThumbnailKey = newImages.length > 0 ? 'new_0' : null;
-        } else if (index < currentThumbIndex) {
-            // サムネイルより前の画像を削除した場合、インデックスをずらす
-            nextThumbnailKey = `new_${currentThumbIndex - 1}`;
-        }
-
-        setData(prev => ({
-            ...prev,
-            images: newImages,
-            thumbnail_key: nextThumbnailKey
-        }));
-        setPreviews(newPreviews);
-    };
-
-    const handleParentCategoryChange = (id) => {
-        setData(prev => ({ ...prev, category_id: id, sub_category_id: '' }));
+        setData('images', [...data.images, ...files]);
+        setImagePreviews([...imagePreviews, ...files.map(f => URL.createObjectURL(f))]);
     };
 
     const addVariant = () => {
-        setData('variants', [...data.variants, { variant_name_ja: '', price: '', stock_quantity: '', weight_g: '', material_ja: '', hs_code_id: '' }]);
+        setData('variations', [...data.variations, {
+            variant_name: { ja: '', en: '', zh: '', th: '', fr: '' },
+            price: data.price,
+            stock: data.product_type === 1 ? '' : 9999,
+            weight: data.weight,
+            hs_code_id: data.hs_code_id,
+            digital_file: null
+        }]);
     };
 
-    const removeVariant = (index) => {
-        setData('variants', data.variants.filter((_, i) => i !== index));
+    const updateVariant = (idx, field, val, isNested = false) => {
+        const newVars = [...data.variations];
+        isNested ? newVars[idx].variant_name[field] = val : newVars[idx][field] = val;
+        setData('variations', newVars);
     };
 
-    const updateVariant = (index, field, value) => {
-        const newVariants = [...data.variants];
-        newVariants[index][field] = value;
-        setData('variants', newVariants);
+    const removeVariant = (idx) => {
+        const newVars = [...data.variations];
+        newVars.splice(idx, 1);
+        setData('variations', newVars);
     };
 
-    const submit = (e) => {
+    const toggleTag = (id) => {
+        const current = [...data.tag_ids];
+        const idx = current.indexOf(id);
+        idx > -1 ? current.splice(idx, 1) : current.push(id);
+        setData('tag_ids', current);
+    };
+
+    const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('creator.products.store'));
+        post(route('creator.products.store'), { forceFormData: true });
     };
 
     return (
-        <CreatorLayout>
-            <Head title="作品登録 - CirclePort" />
-            
-            <form onSubmit={submit} className="p-8 max-w-6xl mx-auto space-y-10 pb-24 text-slate-900">
-                <header className="flex justify-between items-end border-b-8 border-slate-900 pb-8">
-                    <div>
-                        <h1 className="text-7xl font-black italic tracking-tighter uppercase leading-none">世界へ <span className="text-cyan-400">公開</span></h1>
-                        <p className="text-xl font-bold mt-4 bg-slate-900 text-white inline-block px-4 py-1 skew-x-[-10deg]">世界中のファンへ届けましょう。</p>
-                    </div>
-                    <button disabled={processing} className="bg-slate-900 text-white px-16 py-6 rounded-[2.5rem] font-black text-3xl hover:bg-pink-500 hover:-translate-y-2 shadow-[12px_12px_0px_#A5F3FC] transition-all disabled:opacity-50">
-                        {processing ? '保存中...' : '世界へ公開 🌎'}
-                    </button>
-                </header>
+        <CreatorLayout user={auth.user} header="作品登録">
+            <Head title="作品登録" />
+            <div className="max-w-6xl mx-auto py-8 px-4 pb-32">
+                <form onSubmit={handleSubmit} className="space-y-10">
+                    
+                    {/* 00. 作品形式選択 */}
+                    <section className="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-2xl">
+                        <h3 className="text-xl font-black italic mb-6 text-white text-center tracking-widest uppercase">00. 作品形式を選択</h3>
+                        <div className="grid grid-cols-2 gap-6">
+                            <button type="button" onClick={() => setData('product_type', 1)}
+                                className={`p-8 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-4 ${data.product_type === 1 ? 'border-indigo-500 bg-indigo-500/20' : 'border-gray-800'}`}>
+                                <span className="text-4xl">📦</span>
+                                <span className="font-black text-lg text-white">現物作品</span>
+                            </button>
+                            <button type="button" onClick={() => setData('product_type', 2)}
+                                className={`p-8 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-4 ${data.product_type === 2 ? 'border-indigo-500 bg-indigo-500/20' : 'border-gray-800'}`}>
+                                <span className="text-4xl">💾</span>
+                                <span className="font-black text-lg text-white">デジタル作品</span>
+                            </button>
+                        </div>
+                    </section>
 
-                {Object.keys(errors).length > 0 && (
-                    <div className="bg-pink-100 border-4 border-pink-500 p-8 rounded-[3rem] shadow-[8px_8px_0px_#000]">
-                        <h2 className="text-pink-600 font-black text-2xl mb-4 italic text-center">入力内容に不備があります ⚠️</h2>
-                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 list-inside list-disc">
-                            {Object.keys(errors).map((key) => <li key={key} className="text-pink-500 font-bold text-sm">{errors[key]}</li>)}
-                        </ul>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    <div className="lg:col-span-7 space-y-8">
-                        <section className="bg-white p-8 rounded-[3rem] border-4 border-slate-900 shadow-[12px_12px_0px_#000]">
-                            <h3 className="text-2xl font-black mb-8 italic underline decoration-cyan-400 decoration-8 uppercase font-sans">1. 基本情報</h3>
-                            <div className="space-y-6">
+                    {/* 01. 基本情報 */}
+                    <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="px-8 py-6 border-b border-gray-50 flex flex-wrap justify-between items-center bg-gray-50/30 gap-4">
+                            <h3 className="text-lg font-black text-gray-800 italic uppercase">01. 基本情報</h3>
+                            <div className="flex items-center gap-4">
+                                <div className="flex gap-1 bg-gray-200 p-1 rounded-xl">
+                                    {languages.map(l => (
+                                        <button key={l.code} type="button" onClick={() => setActiveTab(l.code)}
+                                            className={`relative px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeTab === l.code ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400'}`}>
+                                            {l.label}
+                                            {hasErrorInTab(l.code) && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-white animate-pulse"></span>}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button type="button" onClick={handleAutoTranslate} className="text-[10px] font-black bg-indigo-600 text-white px-5 py-2.5 rounded-2xl shadow-lg">✨ AI翻訳</button>
+                            </div>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1 tracking-widest">作品名</label>
+                                <input type="text" value={data.name[activeTab]} onChange={e => setData('name', { ...data.name, [activeTab]: e.target.value })}
+                                    className={`w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4 focus:ring-2 ${errors[`name.${activeTab}`] ? 'ring-2 ring-rose-500' : 'focus:ring-indigo-500'}`} />
+                                <InputError message={errors[`name.${activeTab}`]} className="mt-1" />
+                            </div>
+                            {data.product_type === 1 && (
                                 <div>
-                                    <label className="block font-black text-slate-400 text-xs mb-2 uppercase italic tracking-widest">作品名 (日本語)</label>
-                                    <input type="text" value={data.name_ja} onChange={e => setData('name_ja', e.target.value)} className={`w-full border-4 rounded-2xl p-4 font-bold text-xl outline-none transition-all ${errors.name_ja ? 'border-pink-500 bg-pink-50' : 'border-slate-100 focus:border-cyan-400'}`} placeholder="例：幻想世界の銀河アクリルスタンド" />
+                                    <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1 tracking-widest">素材</label>
+                                    <input type="text" value={data.material[activeTab]} onChange={e => setData('material', { ...data.material, [activeTab]: e.target.value })}
+                                        className={`w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4 focus:ring-2 ${errors[`material.${activeTab}`] ? 'ring-2 ring-rose-500' : ''}`} placeholder="アクリル、キャンバスなど" />
+                                    <InputError message={errors[`material.${activeTab}`]} className="mt-1" />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block font-black text-slate-400 text-xs mb-2 uppercase italic">カテゴリー</label>
-                                        <select value={data.category_id} onChange={e => handleParentCategoryChange(e.target.value)} className="w-full border-4 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-cyan-400">
-                                            <option value="">選択してください</option>
-                                            {categories.map(c => <option key={c.id} value={c.id}>{c.name_ja}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block font-black text-slate-400 text-xs mb-2 uppercase italic">詳細カテゴリー</label>
-                                        <select value={data.sub_category_id} onChange={e => setData('sub_category_id', e.target.value)} disabled={!data.category_id} className="w-full border-4 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-cyan-400 disabled:bg-slate-50">
-                                            <option value="">詳細を選択</option>
-                                            {subCategories.map(sc => <option key={sc.id} value={sc.id}>{sc.name_ja}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block font-black text-slate-400 text-xs mb-2 uppercase italic">作品の説明 (日本語)</label>
-                                    <textarea value={data.description_ja} onChange={e => setData('description_ja', e.target.value)} className={`w-full border-4 rounded-2xl p-4 font-bold min-h-[200px] outline-none transition-all ${errors.description_ja ? 'border-pink-500 bg-pink-50' : 'border-slate-100 focus:border-cyan-400'}`} placeholder="作品のストーリーや、こだわりを教えてください。" />
-                                </div>
+                            )}
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1 tracking-widest">作品説明</label>
+                                <textarea rows="6" value={data.description[activeTab]} onChange={e => setData('description', { ...data.description, [activeTab]: e.target.value })}
+                                    className={`w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4 focus:ring-2 ${errors[`description.${activeTab}`] ? 'ring-2 ring-rose-500' : 'focus:ring-indigo-500'}`} />
+                                <InputError message={errors[`description.${activeTab}`]} className="mt-1" />
                             </div>
+                        </div>
+                    </section>
+
+                    {/* 02. デジタル作品：配信ファイル */}
+                    {data.product_type === 2 && (
+                        <section className="bg-indigo-50 rounded-[2.5rem] border-2 border-indigo-100 p-8 space-y-4">
+                            <h3 className="text-lg font-black text-indigo-900 italic tracking-widest uppercase">02. 配信ファイル</h3>
+                            <div className={`bg-white p-10 rounded-[2rem] border-2 border-dashed ${errors.digital_file ? 'border-rose-500' : 'border-indigo-200'} text-center`}>
+                                <input type="file" onChange={e => setData('digital_file', e.target.files[0])} className="hidden" id="file-upload" />
+                                <label htmlFor="file-upload" className="cursor-pointer block">
+                                    <div className="text-5xl mb-4">📂</div>
+                                    <p className="font-black text-indigo-600 uppercase tracking-widest">ファイルをアップロード</p>
+                                    {data.digital_file && <p className="mt-2 text-[10px] font-bold text-indigo-600">{data.digital_file.name}</p>}
+                                </label>
+                            </div>
+                            <InputError message={errors.digital_file} />
                         </section>
-                    </div>
+                    )}
 
-                    <div className="lg:col-span-5 space-y-8">
-                        <section className="bg-white p-8 rounded-[3rem] border-4 border-slate-900 shadow-[12px_12px_0px_#F9A8D4]">
-                            <h3 className="text-2xl font-black mb-8 italic underline decoration-pink-400 decoration-8 uppercase">2. メディア（サムネイル設定）</h3>
-                            <div className="space-y-6">
-                                <div className={`border-4 border-dashed rounded-[2rem] p-10 text-center relative hover:bg-slate-50 transition-all group ${errors.images ? 'border-pink-500 bg-pink-50' : 'border-slate-100'}`}>
-                                    <input type="file" multiple onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                    <p className="font-black text-slate-400 italic group-hover:text-cyan-400 uppercase tracking-widest">画像をアップロード</p>
-                                </div>
-                                {errors.images && <p className="text-pink-500 font-black text-xs italic">{errors.images}</p>}
-                                <div className="grid grid-cols-3 gap-3">
-                                    {previews.map((url, i) => {
-                                        const imgKey = `new_${i}`;
-                                        const isThumbnail = data.thumbnail_key === imgKey;
-                                        return (
-                                            <div key={i} className={`relative aspect-square rounded-xl border-4 overflow-hidden shadow-sm group ${isThumbnail ? 'border-cyan-400' : 'border-slate-100'}`}>
-                                                <img src={url} className="w-full h-full object-cover" />
-                                                {/* サムネイル設定アイコン */}
-                                                <button type="button" onClick={() => setThumbnail(imgKey)} className={`absolute top-1 left-1 p-1 rounded-full transition-all ${isThumbnail ? 'bg-cyan-400 text-white' : 'bg-white/80 text-slate-400 hover:bg-white hover:text-cyan-400'}`}>
-                                                    <Star size={16} fill={isThumbnail ? 'currentColor' : 'none'} />
-                                                </button>
-                                                {/* 削除アイコン */}
-                                                <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-white/80 text-pink-500 rounded-full w-6 h-6 text-xs font-black hover:bg-white hover:text-pink-600 transition-colors">✕</button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </section>
-
-                        {!data.has_variants && (
-                            <section className="bg-white p-8 rounded-[3rem] border-4 border-slate-900 shadow-[12px_12px_0px_#E2E8F0] space-y-6">
-                                <h3 className="text-2xl font-black italic underline decoration-slate-200 decoration-8 text-slate-400 uppercase tracking-tighter">3. 配送・通関情報</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block font-black text-slate-400 text-[10px] uppercase italic">素材・材質</label>
-                                        <input type="text" value={data.material_ja} onChange={e => setData('material_ja', e.target.value)} className="w-full border-b-4 border-slate-50 p-2 font-bold focus:border-cyan-400 outline-none" placeholder="例：アクリル" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-black text-slate-400 text-[10px] uppercase italic">HSコード (必須)</label>
-                                        <select value={data.hs_code_id} onChange={e => setData('hs_code_id', e.target.value)} className={`w-full border-b-4 p-2 font-bold bg-transparent outline-none ${errors.hs_code_id ? 'border-pink-500' : 'border-slate-50'}`}>
-                                            <option value="">HSコードを選択</option>
-                                            {hs_codes.map(hs => <option key={hs.id} value={hs.id}>{hs.name_ja}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            </section>
-                        )}
-                    </div>
-                </div>
-
-                <section className="bg-yellow-50 p-10 rounded-[4rem] border-4 border-slate-900 shadow-[15px_15px_0px_#000]">
-                    <div className="flex justify-between items-center mb-10">
-                        <div className="flex items-center gap-6">
-                            <input type="checkbox" id="has_variants" checked={data.has_variants} onChange={e => setData('has_variants', e.target.checked)} className="w-12 h-12 rounded-xl border-4 border-slate-900 text-cyan-400 cursor-pointer" />
-                            <label htmlFor="has_variants" className="text-4xl font-black italic cursor-pointer tracking-tighter uppercase">バリエーションを設定</label>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <label className="font-black text-slate-400 italic text-xs uppercase tracking-widest text-slate-400">公開設定:</label>
-                            <select value={data.status} onChange={e => setData('status', e.target.value)} className="border-4 border-slate-900 rounded-xl p-2 font-black text-sm outline-none">
-                                <option value="2">公開中</option>
-                                <option value="3">非公開</option>
-                                <option value="1">下書き</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {!data.has_variants ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className={`p-8 rounded-[2.5rem] border-4 border-slate-900 flex flex-col justify-center ${errors.price ? 'border-pink-500 bg-pink-50' : 'bg-white'}`}>
-                                <label className="font-black text-slate-400 text-xs mb-2 uppercase italic tracking-widest text-slate-400">価格 (¥ JPY)</label>
-                                <div className="flex items-center"><span className="text-4xl font-black mr-2">¥</span><input type="number" value={data.price} onChange={e => setData('price', e.target.value)} className="w-full text-5xl font-black outline-none bg-transparent" placeholder="0" /></div>
-                            </div>
-                            <div className={`p-8 rounded-[2.5rem] border-4 border-slate-900 ${errors.stock_quantity ? 'border-pink-500 bg-pink-50' : 'bg-white'}`}>
-                                <label className="font-black text-slate-400 text-xs mb-2 uppercase italic tracking-widest text-slate-400">在庫数</label>
-                                <input type="number" value={data.stock_quantity} onChange={e => setData('stock_quantity', e.target.value)} className="w-full text-5xl font-black outline-none bg-transparent" placeholder="0" />
-                            </div>
-                            <div className={`p-8 rounded-[2.5rem] border-4 border-slate-900 ${errors.weight_g ? 'border-pink-500 bg-pink-50' : 'bg-white'}`}>
-                                <label className="font-black text-slate-400 text-xs mb-2 uppercase italic tracking-widest text-slate-400">重量 (g)</label>
-                                <input type="number" value={data.weight_g} onChange={e => setData('weight_g', e.target.value)} className="w-full text-5xl font-black outline-none bg-transparent" placeholder="0" />
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {data.variants.map((v, i) => (
-                                <div key={i} className={`p-8 rounded-[3rem] border-4 border-slate-900 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 bg-white relative shadow-[8px_8px_0px_#000] transition-all ${errors[`variants.${i}.variant_name_ja`] ? 'border-pink-500' : ''}`}>
-                                    <div className="lg:col-span-1">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase italic">名称</label>
-                                        <input value={v.variant_name_ja} onChange={e => updateVariant(i, 'variant_name_ja', e.target.value)} className="w-full font-black text-lg outline-none border-b-4 border-slate-50 focus:border-cyan-400" placeholder="例: Mサイズ" />
-                                    </div>
-                                    <div className="lg:col-span-1">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase italic text-pink-500">価格 (¥)</label>
-                                        <input type="number" value={v.price} onChange={e => updateVariant(i, 'price', e.target.value)} className="w-full font-black text-lg outline-none border-b-4 border-slate-50" />
-                                    </div>
-                                    <div className="lg:col-span-1">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase italic">在庫</label>
-                                        <input type="number" value={v.stock_quantity} onChange={e => updateVariant(i, 'stock_quantity', e.target.value)} className="w-full font-black text-lg outline-none border-b-4 border-slate-50" />
-                                    </div>
-                                    <div className="lg:col-span-1">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase italic tracking-tighter">重量(g)</label>
-                                        <input type="number" value={v.weight_g} onChange={e => updateVariant(i, 'weight_g', e.target.value)} className="w-full font-black text-lg outline-none border-b-4 border-slate-50" />
-                                    </div>
-                                    <div className="lg:col-span-1">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase italic tracking-tighter">HSコード</label>
-                                        <select value={v.hs_code_id} onChange={e => updateVariant(i, 'hs_code_id', e.target.value)} className="w-full font-black text-xs outline-none border-b-4 border-slate-50 bg-transparent">
-                                            <option value="">選択</option>
-                                            {hs_codes.map(hs => <option key={hs.id} value={hs.id}>{hs.name_ja}</option>)}
-                                        </select>
-                                    </div>
-                                    <button type="button" onClick={() => removeVariant(i)} className="bg-pink-100 text-pink-500 w-full h-10 rounded-full font-black hover:bg-pink-500 hover:text-white transition-all uppercase text-[10px] self-end italic">削除</button>
+                    {/* 03. プレビュー画像 */}
+                    <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-8">
+                        <h3 className="text-lg font-black text-gray-800 italic uppercase">03. プレビュー画像</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            {imagePreviews.map((url, idx) => (
+                                <div key={idx} className="relative aspect-square rounded-3xl overflow-hidden border-2 border-indigo-200 shadow-lg">
+                                    <img src={url} className="w-full h-full object-cover" />
+                                    <div className="absolute top-1 right-1 bg-indigo-600 text-white p-1 rounded-full text-[8px] font-black uppercase shadow-lg">NEW</div>
                                 </div>
                             ))}
-                            <button type="button" onClick={addVariant} className="bg-slate-900 text-white px-10 py-4 rounded-full font-black hover:bg-cyan-500 shadow-[6px_6px_0px_#DDD] transition-all">+ バリエーションを追加</button>
+                            <label className="aspect-square border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-gray-400 hover:border-indigo-400 hover:bg-indigo-50 transition-all cursor-pointer">
+                                <input type="file" multiple onChange={handleImageChange} className="hidden" accept="image/*" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">+ 追加</span>
+                            </label>
                         </div>
-                    )}
-                </section>
-            </form>
+                        <InputError message={errors.images} />
+                    </section>
+
+                    {/* 04. 検索タグ */}
+                    <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-6">
+                        <h3 className="text-lg font-black text-gray-800 italic uppercase">04. 検索タグ</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {tags.map(t => (
+                                <button key={t.id} type="button" onClick={() => toggleTag(t.id)}
+                                    className={`px-5 py-2.5 rounded-[1.2rem] text-xs font-black transition-all border-2 ${data.tag_ids.includes(t.id) ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-gray-50 text-gray-400 border-gray-50 hover:border-gray-300'}`}>
+                                    # {t.name}
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* 05. 基本スペック */}
+                    <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-8">
+                        <h3 className="text-lg font-black text-gray-800 italic uppercase tracking-widest">05. 基本スペック</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1 tracking-widest">カテゴリー</label>
+                                <select className="w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4" value={data.category_id} onChange={e => setData('category_id', e.target.value)}>
+                                    <option value="">カテゴリを選択</option>
+                                    {categories.map(c => <option key={c.id} value={c.id}>{c.name_ja}</option>)}
+                                </select>
+                                <InputError message={errors.category_id} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1 tracking-widest">サブカテゴリー</label>
+                                <select className="w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4" value={data.sub_category_id} onChange={e => setData('sub_category_id', e.target.value)} disabled={!data.category_id}>
+                                    <option value="">サブカテゴリーを選択</option>
+                                    {subCategories.map(sc => <option key={sc.id} value={sc.id}>{sc.name_ja}</option>)}
+                                </select>
+                                <InputError message={errors.sub_category_id} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-gray-50">
+                            <div>
+                                <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">販売価格 (JPY)</label>
+                                <input type="number" value={data.price} onChange={e => setData('price', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-2xl font-black p-4" />
+                                <InputError message={errors.price} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">在庫数</label>
+                                <input type="number" value={data.stock} onChange={e => setData('stock', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-2xl font-black p-4" />
+                                <InputError message={errors.stock} />
+                            </div>
+                        </div>
+
+                        {data.product_type === 1 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-gray-50">
+                                <div>
+                                    <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">重量(g)</label>
+                                    <input type="number" value={data.weight} onChange={e => setData('weight', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-2xl font-black p-4" />
+                                    <InputError message={errors.weight} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">HSコード</label>
+                                    <select className="w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4" value={data.hs_code_id} onChange={e => setData('hs_code_id', e.target.value)}>
+                                        <option value="">選択してください</option>
+                                        {hs_codes.map(h => <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>)}
+                                    </select>
+                                    <InputError message={errors.hs_code_id} />
+                                </div>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* 06. バリエーション設定 */}
+                    <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+                            <h3 className="text-lg font-black text-gray-800 italic uppercase">06. バリエーション設定</h3>
+                            <button type="button" onClick={addVariant} className="bg-gray-900 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase hover:bg-gray-800 transition-all">+ 追加</button>
+                        </div>
+                        <div className="p-8 space-y-4">
+                            <InputError message={errors.variations} className="mb-4" />
+                            {data.variations.map((v, i) => (
+                                <div key={i} className={`bg-gray-50/50 rounded-[2rem] p-6 border transition-all relative group ${Object.keys(errors).some(k => k.startsWith(`variations.${i}`)) ? 'border-rose-300 bg-rose-50/20' : 'border-gray-100'}`}>
+                                    <button type="button" onClick={() => removeVariant(i)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                        <div className="md:col-span-2">
+                                            <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">名称 ({activeTab.toUpperCase()})</label>
+                                            <input type="text" value={v.variant_name[activeTab]} onChange={e => updateVariant(i, activeTab, e.target.value, true)} className="w-full bg-white border-gray-100 rounded-xl font-bold text-sm" />
+                                            <InputError message={errors[`variations.${i}.variant_name.${activeTab}`]} />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">価格 (JPY)</label>
+                                            <input type="number" value={v.price} onChange={e => updateVariant(i, 'price', e.target.value)} className="w-full bg-white border-gray-100 rounded-xl font-black text-sm" />
+                                            <InputError message={errors[`variations.${i}.price`]} />
+                                        </div>
+                                        {data.product_type === 1 && (
+                                            <div className="md:col-span-1">
+                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest uppercase">在庫</label>
+                                                <input type="number" value={v.stock} onChange={e => updateVariant(i, 'stock', e.target.value)} className="w-full bg-white border-gray-100 rounded-xl font-black text-sm" />
+                                                <InputError message={errors[`variations.${i}.stock`]} />
+                                            </div>
+                                        )}
+                                        {data.product_type === 1 && (
+                                            <div className="md:col-span-2">
+                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest text-[8px]">重量(g)</label>
+                                                <input type="number" value={v.weight} onChange={e => updateVariant(i, 'weight', e.target.value)} className="w-full bg-white border-gray-100 rounded-xl font-black text-sm" />
+                                                <InputError message={errors[`variations.${i}.weight`]} />
+                                            </div>
+                                        )}
+                                        {data.product_type === 1 && (
+                                            <div className={data.product_type === 1 ? "md:col-span-5" : "md:col-span-3"}>
+                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">HSコード</label>
+                                                <select className="w-full bg-white border-gray-100 rounded-xl font-bold text-[10px] p-2 h-[38px]" value={v.hs_code_id} onChange={e => updateVariant(i, 'hs_code_id', e.target.value)}>
+                                                    <option value="">選択</option>
+                                                    {hs_codes.map(h => <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>)}
+                                                </select>
+                                                <InputError message={errors[`variations.${i}.hs_code_id`]} />
+                                            </div>
+                                        )}
+                                        {data.product_type === 2 && (
+                                            <div className="md:col-span-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">配信ファイル</label>
+                                                    <input type="file" onChange={e => updateVariant(i, 'digital_file', e.target.files[0])} className="text-[10px] w-full" />
+                                                    <InputError message={errors[`variations.${i}.digital_file`]} />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* 固定フッター */}
+                    <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex justify-between items-center z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+                        <Link href={route('creator.products.index')} className="text-xs font-black text-gray-400 hover:text-gray-600 uppercase tracking-widest px-4 py-2 text-center">キャンセル / 戻る</Link>
+                        <div className="flex items-center gap-4">
+                            {Object.keys(errors).length > 0 && <span className="text-[10px] font-black text-rose-500 uppercase">{Object.keys(errors).length}件のエラーを修正してください</span>}
+                            <button type="submit" disabled={processing} className="bg-indigo-600 text-white px-16 py-4 rounded-[1.5rem] font-black text-sm hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50">
+                                {processing ? '保存中...' : '審査に出す'}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                {/* AI翻訳用オーバーレイ (ロード画面) */}
+                {isTranslating && (
+                    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-900/60 backdrop-blur-md">
+                        <div className="relative text-center">
+                            <div className="w-24 h-24 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin mx-auto"></div>
+                            <div className="absolute inset-0 flex items-center justify-center text-white text-2xl">✨</div>
+                            <h4 className="text-white text-xl font-black italic mt-8 uppercase tracking-widest text-center">AI Updating Translations...</h4>
+                        </div>
+                    </div>
+                )}
+            </div>
         </CreatorLayout>
     );
 }

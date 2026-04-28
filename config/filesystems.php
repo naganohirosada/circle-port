@@ -47,6 +47,13 @@ return [
             'report' => false,
         ],
 
+        // --- ここを追加 ---
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'), // storage/app/private に保存される
+            'throw' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

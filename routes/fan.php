@@ -25,13 +25,12 @@ Route::prefix('fan')->name('fan.')->group(function () {
         Route::post('login', [LoginController::class, 'store'])->name('login.store');
         Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
         Route::post('register', [RegisterController::class, 'register'])->name('register.store');
+        // 商品一覧
+        Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+        // 作品詳細
+        Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+
     });
-
-    // 商品一覧
-    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-    // 作品詳細
-    Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
-
     // ログイン必須
     Route::middleware('auth:fan')->group(function () {
         Route::post('logout', [LoginController::class, 'destroy'])->name('logout');

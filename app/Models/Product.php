@@ -17,10 +17,15 @@ class Product extends Model implements HasMedia
     const STATUS_REJECTED = 6;   // 却下（★追加：運営が差し戻した状態）
     const STATUS_SOLD_OUT = 9;   // 完売
 
+    // 作品タイプの定数
+    const TYPE_PHYSICAL = 1; // 現物作品
+    const TYPE_DIGITAL = 2;  // デジタル作品
+
     protected $fillable = [
         'creator_id',
         'category_id',
         'sub_category_id',
+        'product_type',
         'hs_code_id', 
         'sku',
         'has_variants',
@@ -29,6 +34,7 @@ class Product extends Model implements HasMedia
         'weight_g',
         'status',
         'published_at',
+        'digital_file_path',
         'rejection_reason',
     ];
     // 翻訳データとのリレーション
@@ -95,5 +101,23 @@ class Product extends Model implements HasMedia
         return $this->belongsToMany(Project::class, 'project_product')
                     ->withPivot('sort_order')
                     ->withTimestamps();
+    }
+
+    /**
+     * 商品に紐付くタグ一覧（多対多）
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class)
+                    ->using(ProductTag::class) // カスタムモデルを使用
+                    ->withTimestamps();        // タイムスタンプを自動更新
+    }
+
+    /**
+     * デジタル作品かどうかを判定するアクセサ
+     */
+    public function isDigital(): bool
+    {
+        return (int)$this->product_type === self::TYPE_DIGITAL;
     }
 }

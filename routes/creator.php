@@ -10,6 +10,7 @@ use App\Http\Controllers\Creator\SalesController;
 use App\Http\Controllers\Creator\DomesticShippingController;
 use App\Http\Controllers\Creator\ProjectAnnouncementController;
 use App\Http\Controllers\Creator\ProjectController;
+use App\Http\Controllers\Creator\AIController;
 
 // 🎨 Creator (国内サークル向け)
 Route::prefix('creator')->name('creator.')->group(function () {
@@ -28,6 +29,7 @@ Route::prefix('creator')->name('creator.')->group(function () {
         Route::post('products', [ProductController::class, 'store'])->name('products.store');
         Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
         Route::put('products/{product}', [ProductController::class, 'update'])->name('products.update');
+        Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         // 製作管理（Production Ledger）
         Route::get('/production', [ProductionController::class, 'index'])->name('production.index');
         // 売上管理（新規追加）
@@ -58,5 +60,8 @@ Route::prefix('creator')->name('creator.')->group(function () {
             Route::post('announcements', [ProjectAnnouncementController::class, 'store'])->name('store');
             // 必要に応じて show, edit, delete を追加
         });
+
+        // AI翻訳用のルートを追加
+        Route::post('/ai/translate', [AIController::class, 'translate'])->name('ai.translate');
     });
 });
