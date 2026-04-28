@@ -35,6 +35,8 @@ Route::prefix('fan')->name('fan.')->group(function () {
 
     // --- ログイン必須 (fanガードを指定) ---
     Route::middleware('auth:fan')->group(function () {
+        Route::post('/orders/{order}/retry', [OrderController::class, 'retryPayment'])->name('orders.retry');
+
         Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

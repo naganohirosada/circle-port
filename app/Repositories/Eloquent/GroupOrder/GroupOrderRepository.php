@@ -9,6 +9,7 @@ use App\Models\Fan;
 use App\Models\Order;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\GroupOrderParticipant;
+use Carbon\Carbon;
 
 class GroupOrderRepository implements GroupOrderRepositoryInterface
 {
@@ -85,6 +86,7 @@ class GroupOrderRepository implements GroupOrderRepositoryInterface
                 ->select('id', 'name', 'unique_id')
                 ->first();
     }
+
     /**
      * 公開かつ募集中のGOを検索
      */
@@ -97,19 +99,25 @@ class GroupOrderRepository implements GroupOrderRepositoryInterface
                 \App\Enums\GroupOrderStatus::RECRUITING,
                 \App\Enums\GroupOrderStatus::CLOSED
             ])
-            // 検索条件がある場合のみ絞り込み
+            // 1. タイトル（グループ名）検索
             ->when($filters['name'] ?? null, function ($q, $name) {
                 $q->where('title', 'like', "%{$name}%");
             })
-            ->when($filters['creator'] ?? null, function ($q, $creator) {
-                $q->whereHas('creator', function ($inner) use ($creator) {
-                    $inner->where('name', 'like', "%{$creator}%");
+            // 2. クリエイター名検索 (追加)
+            ->when($filters['creator_name'] ?? null, function ($q, $creatorName) {
+                $q->whereHas('creator', function($sub) use ($creatorName) {
+                    $sub->where('name', 'like', "%{$creatorName}%");
                 });
             })
-            ->when($filters['category_id'] ?? null, function ($q, $catId) {
-                $q->where('category_id', $catId);
+            // 3. 2次決済の有無
+            ->when($filters['is_secondary_payment_required'] ?? null, function ($q, $isSecondaryPaymentRequired) {
+                $q->where('is_secondary_payment_required', $isSecondaryPaymentRequired);
             })
-            ->latest() // 新しい順＝全表示の基本
+            // 4. 配送モード
+            ->when($filters['shipping_mode'] ?? null, function ($q, $shippingMode) {
+                $q->where('shipping_mode', $shippingMode);
+            })
+            ->latest()
             ->paginate(16)
             ->withQueryString();
     }

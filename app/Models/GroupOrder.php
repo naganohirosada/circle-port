@@ -13,13 +13,12 @@ class GroupOrder extends Model
 
     // ステータス定数（憲法：数字で管理）
     const DRAFT = 0;           // 下書き
-    const RECRUITING = 1;      // 募集中
-    const CLOSED = 2;          // 募集終了
-    const ORDERED = 3;         // 発注済み
-    const ARRIVED = 4;         // 拠点到着
-    const SHIPPING = 5;        // 配送中
-    const COMPLETED = 6;       // 完了
-    const CANCELLED = 9;       // キャンセル
+    const STATUS_RECRUITING = 1;      // 募集中
+    const STATUS_GOAL_MET   = 2; // 目標達成（注文確定）
+    const STATUS_SHIPPING   = 3; // 国内倉庫へ配送中
+    const STATUS_INTERNATIONAL_SHIPPING = 4; // 国際配送中
+    const STATUS_COMPLETED  = 5; // 完了
+    const STATUS_FAILED     = 9; // 期限切れ・失敗（自動返金対象）
 
     // primary_payment_status
     const PAYMENT_STATUS_PENDING = 1;

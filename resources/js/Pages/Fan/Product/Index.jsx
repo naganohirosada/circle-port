@@ -52,6 +52,8 @@ export default function Index({
         setData('mode', newMode);
         router.get(route('fan.products.index'), { ...filters, mode: newMode }, { preserveState: true });
     };
+    const activeTab = "flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-white text-cyan-600 shadow-sm";
+    const inactiveTab = "flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all text-slate-400 hover:text-slate-600";
 
     return (
         <FanLayout>
@@ -67,21 +69,15 @@ export default function Index({
                     {/* Mode Switcher & Quick Search (常時表示) */}
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         {/* Artwork / Group Order 切替 */}
-                        <div className="flex bg-slate-100 p-1 rounded-2xl w-full md:w-auto">
-                            <button 
-                                onClick={() => switchMode('artwork')}
-                                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${data.mode === 'artwork' ? 'bg-white text-cyan-600 shadow-sm' : 'text-slate-400'}`}
-                            >
-                                <LayoutGrid size={14} />
-                                {__('Artwork')}
-                            </button>
-                            <button 
-                                onClick={() => switchMode('go')}
-                                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${data.mode === 'go' ? 'bg-white text-cyan-600 shadow-sm' : 'text-slate-400'}`}
-                            >
-                                <Users size={14} />
-                                {__('Group Order')}
-                            </button>
+                        <div className="flex justify-center mb-12">
+                            <div className="flex bg-slate-100 p-1 rounded-2xl w-full md:w-auto">
+                                <Link href={route('fan.products.index')} className={activeTab}>
+                                    <LayoutGrid size={14} /> {__('Artwork')}
+                                </Link>
+                                <Link href={route('fan.go.index')} className={inactiveTab}>
+                                    <Users size={14} /> {__('Group Order')}
+                                </Link>
+                            </div>
                         </div>
 
                         {/* クイック検索 & フィルターボタン */}

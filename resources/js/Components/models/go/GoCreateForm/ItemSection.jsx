@@ -1,221 +1,152 @@
-import React from 'react';
-import { Plus, X, Package, Lock, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { usePage } from '@inertiajs/react';
+import { Search, Plus, Trash2, User, Package, CheckCircle2 } from 'lucide-react';
+import InputLabel from '@/Components/InputLabel';
+import InputError from '@/Components/InputError';
 
-export default function ItemSection({ data, setData, errors, __, availableProducts, isLoadingProducts }) {
-    const inputStyle = "w-full p-4 rounded-xl bg-slate-50 border border-slate-100 focus:border-cyan-500 outline-none font-bold text-sm transition-all";
+export default function ItemSection({ data, setData, errors, products = [], creators = [] }) {
+    const { language } = usePage().props;
+    const __ = (key) => (language && language[key]) ? language[key] : key;
 
-    // アイテムの追加
-    const addItem = () => {
-        setData('items', [...data.items, { item_id: '', item_name: '', price: 0, stock_limit: 100, is_locked: false }]);
-    };
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCreatorId, setSelectedCreatorId] = useState(data.creator_id || '');
 
-    // アイテムの削除（ロックされているものは不可）
-    const removeItem = (index) => {
-        if (data.items[index].is_locked) return;
-        setData('items', data.items.filter((_, i) => i !== index));
-    };
+    useEffect(() => {
+        setData('creator_id', selectedCreatorId);
+    }, [selectedCreatorId]);
 
-    // 各フィールドの更新
-    const updateItem = (index, field, value) => {
-        const newItems = [...data.items];
-        // ロックされているアイテムの名前とIDは変更不可
-        if (newItems[index].is_locked && (field === 'item_id' || field === 'item_name')) return;
+    const addItem = (product) => {
+        if (data.items.find(i => i.product_id === product.id)) return;
         
-        newItems[index][field] = value;
-        setData('items', newItems);
+        // メイン画像を取得
+        const primaryImage = product.images?.find(img => img.is_primary === 1) || product.images?.[0];
+        
+        const newItem = {
+            product_id: product.id,
+            name: product.name || product.translations?.[0]?.name || 'Unknown Product',
+            price: product.price || 0,
+            image: primaryImage ? `/storage/${primaryImage.file_path}` : null,
+            quantity: 1
+        };
+        setData('items', [...data.items, newItem]);
     };
 
-    const getPriceDisplay = (item) => {
-        // 1. 選択中の商品オブジェクトを特定
-        const product = availableProducts?.find(p => p.id === item.item_id);
-        
-        if (product && product.variations && product.variations.length > 0) {
-            const prices = product.variations.map(v => v.price ?? product.price ?? 0);
-            const minPrice = Math.min(...prices);
-            const maxPrice = Math.max(...prices);
-
-            // 最小と最大が異なる場合は範囲表示
-            if (minPrice !== maxPrice) {
-                return `${minPrice.toLocaleString()} ~ ${maxPrice.toLocaleString()}`;
-            }
-            return minPrice.toLocaleString();
-        }
-        
-        // 3. バリアントがない場合は、商品の単一価格を表示
-        const singlePrice = item.price ?? product?.price ?? 0;
-        return singlePrice.toLocaleString();
-    };
-
-    // 商品選択時の連動処理
-    const handleProductSelect = (index, productId) => {
-        const product = availableProducts?.find(p => p.id == productId);
-        if (!product) return;
-
-        const newItems = [...data.items];
-
-        // product.variants (リポジトリの戻り値に合わせて修正)
-        // ※ もしDBリレーション名が variants ならここを variants に統一
-        const targetVariants = product.variants || product.variations;
-
-        if (targetVariants && targetVariants.length > 0) {
-            const variationItems = targetVariants.map(variant => {
-                // 翻訳からバリエーション名を取得
-                const vName = variant.translations?.find(t => t.locale === 'en')?.variant_name 
-                        || variant.variant_name 
-                        || variant.name // 汎用的な fallback
-                        || '';
-
-                return {
-                    item_id: product.id,
-                    variation_id: variant.id,
-                    // ★ item_name が抜けていたため追加（これが無いとフォームに表示されず、保存もできない）
-                    item_name: `${product.name} - ${vName}`, 
-                    price: variant.price ?? product.price ?? 0,
-                    stock_limit: 100,
-                    is_locked: false
-                };
-            });
-            // 現在の行をバリエーションリストで置き換え
-            newItems.splice(index, 1, ...variationItems);
-        } else {
-            // 通常商品の処理
-            newItems[index] = { 
-                ...newItems[index], 
-                item_id: product.id,
-                variation_id: null,
-                item_name: product.name || '', 
-                price: product.price ?? 0,
-                is_locked: false
-            };
-        }
-        setData('items', newItems);
+    const removeItem = (productId) => {
+        setData('items', data.items.filter(i => i.product_id !== productId));
     };
 
     return (
-        <div className="space-y-8">
-            <div className="flex justify-between items-center">
-                <label className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">
-                    {__('Target Items')}
-                </label>
-                <button 
-                    type="button" 
-                    onClick={addItem} 
-                    disabled={!data.creator_id || isLoadingProducts} 
-                    className="text-[10px] font-black text-cyan-600 bg-cyan-50 px-4 py-2 rounded-lg border border-cyan-100 uppercase tracking-widest flex items-center gap-2 disabled:opacity-50 transition-all"
-                >
-                    {isLoadingProducts ? (
-                        <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                        <Plus size={12} />
-                    )}
-                    {__('Add Item')}
-                </button>
-            </div>
-
-            <div className="space-y-6">
-                {data.items.map((item, index) => (
-                    <div key={index} className={`p-6 rounded-3xl border-2 relative group transition-all ${item.is_locked ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Package size={14} className={item.is_locked ? 'text-slate-300' : 'text-cyan-500'} />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        {__('Item Configuration')}
-                                    </span>
-                                </div>
-                                {item.is_locked && (
-                                    <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase">
-                                        <Lock size={10} />
-                                        {__('Fixed')}
-                                    </div>
-                                )}
+        <div className="space-y-10">
+            {/* クリエイター選択 */}
+            <div className="space-y-4">
+                <InputLabel value={__('1. Select Creator')} className="text-xs font-black uppercase tracking-widest text-slate-400" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {(creators || []).map((creator) => (
+                        <button
+                            key={creator.id}
+                            type="button"
+                            onClick={() => setSelectedCreatorId(creator.id)}
+                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 group
+                                ${selectedCreatorId === creator.id 
+                                    ? 'border-cyan-500 bg-cyan-50 shadow-lg shadow-cyan-100' 
+                                    : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                        >
+                            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-cyan-100 group-hover:text-cyan-600 transition-colors">
+                                <User size={24} />
                             </div>
-
-                            {item.is_locked ? (
-                                <div className="p-4 rounded-xl bg-white border border-slate-200 font-bold text-slate-900">
-                                    {item.item_name}
-                                </div>
-                            ) : (
-                                <div className="relative">
-                                    <select 
-                                        value={item.item_id} 
-                                        onChange={(e) => handleProductSelect(index, e.target.value)} 
-                                        className={`${inputStyle} appearance-none`}
-                                        disabled={isLoadingProducts}
-                                    >
-                                        <option value="">
-                                            {isLoadingProducts ? __('Loading products...') : __('SELECT AN ITEM')}
-                                        </option>
-                                        {availableProducts?.map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))}
-                                    </select>
-                                    {isLoadingProducts && (
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                            <Loader2 size={14} className="animate-spin text-slate-300" />
-                                        </div>
-                                    )}
-                                </div>
+                            <span className="text-xs font-black uppercase tracking-tight text-slate-700">{creator.name}</span>
+                            {selectedCreatorId === creator.id && (
+                                <CheckCircle2 size={16} className="text-cyan-500 mt-auto" />
                             )}
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                                        {__('Price')}
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">¥</span>
-                                        <input 
-                                            // 文字列（~）を表示するため type="text" に変更
-                                            type="text" 
-                                            // ヘルパー関数を使用して表示値を決定
-                                            value={getPriceDisplay(item)}
-                                            // バリエーション価格幅を表示している間は直接編集不可にする（誤入力防止）
-                                            // 個別のバリエーション行として展開されている場合は、その特定の価格のみ編集可能にするロジックも可
-                                            readOnly={getPriceDisplay(item).includes('~')}
-                                            onChange={e => {
-                                                // 数字のみを抽出して更新（範囲表示中でない場合）
-                                                const val = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0;
-                                                updateItem(index, 'price', val);
-                                            }} 
-                                            className={`${inputStyle} pl-8 ${getPriceDisplay(item).includes('~') ? 'bg-slate-100/50 text-slate-500' : ''}`}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
-                                        {__('Max Capacity')}
-                                    </span>
-                                    <input 
-                                        type="number" 
-                                        value={item.stock_limit} 
-                                        onChange={e => updateItem(index, 'stock_limit', parseInt(e.target.value))} 
-                                        className={inputStyle} 
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 削除ボタン（固定されていないアイテムのみ） */}
-                        {!item.is_locked && (
-                            <button 
-                                type="button" 
-                                onClick={() => removeItem(index)} 
-                                className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-100 shadow-sm opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
-                ))}
+                        </button>
+                    ))}
+                </div>
+                <InputError message={errors.creator_id} />
             </div>
 
-            {/* データが空でローディングもしていない時のメッセージ（オプション） */}
-            {!isLoadingProducts && data.creator_id && availableProducts?.length === 0 && (
-                <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-[11px] font-bold text-amber-600 uppercase tracking-widest text-center">
-                    {__('No items found for this creator')}
+            {/* 商品選択エリア */}
+            {selectedCreatorId && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center justify-between">
+                        <InputLabel value={__('2. Pick Products')} className="text-xs font-black uppercase tracking-widest text-slate-400" />
+                        <div className="relative w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            <input 
+                                type="text"
+                                placeholder={__('Search products...')}
+                                className="w-full bg-slate-50 border-none rounded-xl py-2 pl-9 text-xs font-bold focus:ring-2 focus:ring-cyan-500 transition-all"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {(products || [])
+                            .filter(p => p.creator_id === selectedCreatorId && (!searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())))
+                            .map((product) => {
+                                const isAdded = data.items.find(i => i.product_id === product.id);
+                                // メイン画像を検索
+                                const primaryImage = product.images?.find(img => img.is_primary === 1) || product.images?.[0];
+
+                                return (
+                                    <div key={product.id} className={`p-4 rounded-2xl border-2 flex items-center justify-between transition-all 
+                                        ${isAdded ? 'border-cyan-200 bg-cyan-50/30' : 'border-slate-100 bg-white'}`}>
+                                        <div className="flex items-center gap-4">
+                                            {/* 画像表示部分の修正 */}
+                                            <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center border border-slate-50 shrink-0">
+                                                {primaryImage ? (
+                                                    <img 
+                                                        src={`/storage/${primaryImage.file_path}`} 
+                                                        alt={product.name} 
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <Package size={20} className="text-slate-300" />
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-black text-slate-900 uppercase truncate max-w-[150px]">{product.name}</h4>
+                                                <p className="text-[10px] font-bold text-cyan-600 mt-1">¥{Number(product.price).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => isAdded ? removeItem(product.id) : addItem(product)}
+                                            className={`p-2 rounded-xl transition-all ${isAdded ? 'bg-rose-100 text-rose-500 hover:bg-rose-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-white'}`}
+                                        >
+                                            {isAdded ? <Trash2 size={16} /> : <Plus size={16} />}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                    </div>
                 </div>
             )}
+
+            {/* 選択済みリスト */}
+            {data.items.length > 0 && (
+                <div className="p-6 bg-slate-900 rounded-3xl space-y-4">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                        <Package size={14} /> {__('Selected Items for this Box')}
+                    </h4>
+                    <div className="space-y-2">
+                        {data.items.map((item) => (
+                            <div key={item.product_id} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
+                                <div className="flex items-center gap-3">
+                                    {item.image && <img src={item.image} className="w-6 h-6 rounded-md object-cover" alt="" />}
+                                    <span className="text-xs font-bold text-white uppercase">{item.name}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[10px] font-black text-cyan-400 tracking-tighter">¥{Number(item.price).toLocaleString()}</span>
+                                    <button type="button" onClick={() => removeItem(item.product_id)} className="text-rose-400 hover:text-rose-300"><Trash2 size={14} /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            <InputError message={errors.items} />
         </div>
     );
 }

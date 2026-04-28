@@ -59,4 +59,29 @@ class OrderController extends Controller
             'order' => $formattedOrder
         ]);
     }
+
+    public function retryPayment(Order $order)
+    {
+        // 自分の注文かチェック
+        if ($order->fan_id !== auth()->id()) abort(403);
+
+        try {
+            $primaryCard = auth()->user()->paymentMethods()->where('is_primary', 1)->first();
+
+            if (!$primaryCard) {
+                return back()->withErrors(['error' => __('Please register a primary payment method first.')]);
+            }
+
+            // Stripe決済実行（バッチと同じサービスメソッドを利用）
+            $intent = app(\App\Services\Common\StripeService::class)->captureSavedCardPayment($order, $primaryCard);
+
+            if ($intent->status === 'succeeded') {
+                $order->update(['payment_status' => 'paid']);
+                return back()->with('success', __('Payment completed successfully!'));
+            }
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => __('Payment failed again. Please try another card.')]);
+        }
+    }
 }
