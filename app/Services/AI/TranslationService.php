@@ -18,6 +18,7 @@ class TranslationService
         if (empty($text)) return null;
 
         $apiKey = config('services.deepl.auth_key'); 
+        $deepLTargetLang = $this->getDeepLTargetCode($targetLang);
 
         try {
             $response = Http::withHeaders([
@@ -25,7 +26,7 @@ class TranslationService
             ])->asForm()
             ->post('https://api-free.deepl.com/v2/translate', [
                 'text'        => [$text],
-                'target_lang' => strtoupper($targetLang),
+                'target_lang' => $deepLTargetLang,
             ]);
 
             if ($response->successful()) {
@@ -39,5 +40,20 @@ class TranslationService
             Log::error('Translation Exception: ' . $e->getMessage());
             return $text;
         }
+    }
+
+    /**
+     * システムの言語コードをDeepLのTarget Languageコードに変換する
+     */
+    private function getDeepLTargetCode(string $locale): string
+    {
+        $map = [
+            'en' => 'EN-US',   // 英語（アメリカ）にマッピング
+            'zh' => 'ZH-HANS', // 中国語（簡体字）にマッピング
+            // ja, fr, th はそのまま大文字にすればDeepLで通る
+        ];
+
+        // マップにあればそれを返し、なければ大文字にして返す
+        return $map[strtolower($locale)] ?? strtoupper($locale);
     }
 }

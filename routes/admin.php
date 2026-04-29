@@ -14,10 +14,8 @@ use App\Http\Controllers\Admin\SettingController;
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
-    Route::middleware('guest:admin')->group(function () {
-        Route::get('/login', [LoginController::class, 'create'])->name('login');
-        Route::post('/login', [LoginController::class, 'store'])->name('login.store');
-    });
+    Route::get('/login', [LoginController::class, 'create'])->name('login');
+    Route::post('/login', [LoginController::class, 'store'])->name('login.store');
 
     Route::middleware('auth:admin')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

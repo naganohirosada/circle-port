@@ -11,7 +11,8 @@ import {
     Menu,
     ChevronDown,    // 追加
     UserCircle,     // 追加
-    CreditCard      // 追加
+    CreditCard,
+    Star
 } from 'lucide-react';
 
 export default function CreatorLayout({ children }) {
@@ -55,6 +56,12 @@ export default function CreatorLayout({ children }) {
             href: route('creator.shipping.index'), 
             icon: Truck,
             active: url.startsWith('/creator/shipping')
+        },
+        { 
+            name: 'レビュー管理', 
+            href: route('creator.reviews.index'), 
+            icon: Star, 
+            active: url.startsWith('/creator/reviews') || route().current('creator.reviews.*')
         },
     ];
 

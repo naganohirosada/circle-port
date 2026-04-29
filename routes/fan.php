@@ -16,6 +16,7 @@ use App\Http\Controllers\Fan\GroupOrderController;
 use App\Http\Controllers\Fan\InternationalShippingController;
 use App\Http\Controllers\Fan\CreatorController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
+use App\Http\Controllers\Fan\ReviewController;
 
 // Stripe Webhook (CSRF除外設定済み)
 Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle']);
@@ -116,5 +117,9 @@ Route::prefix('fan')->name('fan.')->group(function () {
 
         Route::get('/creator/{creator}', [CreatorController::class, 'show'])->name('creator.show');
         Route::post('/creators/{creator}/follow', [CreatorController::class, 'toggleFollow'])->name('creator.follow');
+
+        Route::post('products/{product}/reviews', [ReviewController::class, 'store'])->name('products.reviews.store');
+        // (オプション) レビュー削除も必要なら
+        Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('products.reviews.destroy');
     });
 });

@@ -40,6 +40,8 @@ use App\Repositories\Interfaces\PayoutRepositoryInterface;
 use App\Repositories\Eloquent\Payout\PayoutRepository;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Support\Facades\Auth;
+use App\Repositories\Interfaces\ReviewRepositoryInterface;
+use App\Repositories\Eloquent\Fan\ReviewRepository;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -66,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PaymentMethodRepositoryInterface::class,PaymentMethodRepository::class);
         $this->app->bind(PayoutRepositoryInterface::class, PayoutRepository::class);
         $this->app->bind(\App\Repositories\Interfaces\Fan\ProductRepositoryInterface::class, \App\Repositories\Eloquent\Fan\ProductRepository::class);
+        $this->app->bind(ReviewRepositoryInterface::class, ReviewRepository::class);
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Http\Controllers\Creator\ProjectAnnouncementController;
 use App\Http\Controllers\Creator\ProjectController;
 use App\Http\Controllers\Creator\AIController;
 use App\Http\Controllers\Creator\CreatorSettingsController;
+use App\Http\Controllers\Creator\ReviewController;
 
 // 🎨 Creator (国内サークル向け)
 Route::prefix('creator')->name('creator.')->group(function () {
@@ -72,5 +73,7 @@ Route::prefix('creator')->name('creator.')->group(function () {
             Route::get('/bank', [CreatorSettingsController::class, 'editBank'])->name('bank');
             Route::post('/bank', [CreatorSettingsController::class, 'updateBank'])->name('bank.update');
         });
+
+        Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
     });
 });

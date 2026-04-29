@@ -10,11 +10,11 @@ class Review extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
         'product_id',
+        'fan_id',
         'rating',
         'comment',
-        'images',
+        'is_published'
     ];
 
     protected $casts = [
@@ -24,9 +24,9 @@ class Review extends Model
     /**
      * このレビューを投稿したユーザー
      */
-    public function user()
+    public function fan()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Fan::class);
     }
 
     /**
@@ -35,5 +35,22 @@ class Review extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * レビュー画像とのリレーション
+     */
+    public function images()
+    {
+        // ReviewImageモデルとの1対多のリレーション
+        return $this->hasMany(ReviewImage::class);
+    }
+
+    /**
+     * 翻訳データとのリレーション
+     */
+    public function translations()
+    {
+        return $this->hasMany(ReviewTranslation::class);
     }
 }

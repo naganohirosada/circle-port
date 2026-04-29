@@ -49,8 +49,12 @@ class ProductController extends Controller
             'creator', 
             'category.translations', 
             'subCategory.translations',
-            'variations.translations'
+            'variations.translations',
+            'reviews.fan',
+            'reviews.translations',
+            'reviews.images'
         ]);
+
 
         return Inertia::render('Fan/Product/Show', [
             'product' => $product,
