@@ -1,5 +1,8 @@
+// resources/js/Pages/Creator/Auth/Login.jsx
+
 import React from 'react';
 import { useForm, Head, Link } from '@inertiajs/react';
+import { Mail, Lock, LogIn, ArrowRight } from 'lucide-react';
 
 export default function Login() {
     const { data, setData, post, processing, errors } = useForm({
@@ -14,47 +17,76 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
-            <Head title="Creator Login" />
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+            <Head title="クリエイターログイン" />
             
-            <div className="w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row overflow-hidden border-4 border-slate-900">
-                {/* 左側：ビジュアルエリア */}
-                <div className="md:w-1/2 bg-slate-900 p-12 text-white flex flex-col justify-between relative">
-                    <div className="z-10">
-                        <h2 className="text-4xl font-black leading-tight mb-6 text-cyan-400">CONNECT TO<br />WORLDWIDE FANS.</h2>
-                        <p className="text-slate-400 font-bold">CirclePort Studioへようこそ！あなたの作品を世界へ届ける準備はできましたか？</p>
+            <div className="w-full max-w-md">
+                {/* ヘッダー */}
+                <div className="mb-10 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-3xl shadow-xl mb-6 transform -rotate-6">
+                        <LogIn className="text-cyan-400" size={32} />
                     </div>
-                    <div className="text-8xl absolute bottom-4 right-4 opacity-20 select-none">🎨</div>
+                    <h2 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900">
+                        Studio Login
+                    </h2>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
+                        クリエイター専用管理パネル
+                    </p>
                 </div>
 
-                {/* 右側：フォームエリア */}
-                <div className="md:w-1/2 p-12">
-                    <h1 className="text-3xl font-black text-slate-800 mb-8 underline decoration-cyan-400 decoration-8 underline-offset-4">LOGIN</h1>
+                {/* ログインフォーム */}
+                <form onSubmit={submit} className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 space-y-8">
                     
-                    <form onSubmit={submit} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-black text-slate-500 mb-2 uppercase italic">Studio ID (Email)</label>
-                            <input type="email" value={data.email}
-                                className="w-full border-4 border-slate-100 rounded-2xl py-4 px-6 focus:border-cyan-500 ring-0 transition-all font-bold"
-                                onChange={e => setData('email', e.target.value)} />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-black text-slate-500 mb-2 uppercase italic">Password</label>
-                            <input type="password" value={data.password}
-                                className="w-full border-4 border-slate-100 rounded-2xl py-4 px-6 focus:border-cyan-500 ring-0 transition-all font-bold"
-                                onChange={e => setData('password', e.target.value)} />
-                        </div>
-
-                        <button disabled={processing} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xl hover:bg-cyan-500 hover:shadow-[8px_8px_0px_#A5F3FC] transition-all transform active:scale-95">
-                            ENTER STUDIO →
-                        </button>
-                    </form>
-
-                    <div className="mt-10 pt-6 border-t-2 border-slate-50">
-                        <Link href={route('creator.register')} className="text-cyan-600 font-black hover:underline">新規サークル登録はこちら &raquo;</Link>
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest ml-1">
+                            <Mail size={14} className="text-cyan-400" /> メールアドレス
+                        </label>
+                        <input 
+                            type="email" 
+                            value={data.email}
+                            onChange={e => setData('email', e.target.value)}
+                            className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all"
+                            placeholder="mail@example.com"
+                        />
+                        {errors.email && <p className="text-rose-500 text-[10px] font-black italic ml-1">{errors.email}</p>}
                     </div>
-                </div>
+
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest ml-1">
+                            <Lock size={14} className="text-cyan-400" /> パスワード
+                        </label>
+                        <input 
+                            type="password" 
+                            value={data.password}
+                            onChange={e => setData('password', e.target.value)}
+                            className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all"
+                            placeholder="••••••••"
+                        />
+                        {errors.password && <p className="text-rose-500 text-[10px] font-black italic ml-1">{errors.password}</p>}
+                    </div>
+
+                    <div className="pt-2">
+                        <button 
+                            type="submit"
+                            disabled={processing}
+                            className={`w-full py-5 rounded-[1.5rem] font-black uppercase tracking-[0.3em] text-sm transition-all flex items-center justify-center gap-3 shadow-xl ${processing ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 text-white hover:bg-cyan-500 active:scale-[0.98]'}`}
+                        >
+                            {processing ? '接続中...' : 'スタジオに入る'}
+                            <ArrowRight size={18} />
+                        </button>
+                    </div>
+
+                    {/* 新規登録へのリンク */}
+                    <div className="text-center pt-2">
+                        <Link 
+                            href={route('creator.register')} 
+                            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-cyan-500 transition-colors flex flex-col items-center gap-2"
+                        >
+                            アカウントをお持ちでないですか？
+                            <span className="text-slate-900 underline decoration-cyan-400 decoration-2 underline-offset-4">サークル新規登録はこちら</span>
+                        </Link>
+                    </div>
+                </form>
             </div>
         </div>
     );

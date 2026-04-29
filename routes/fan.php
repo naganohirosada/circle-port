@@ -14,6 +14,7 @@ use App\Http\Controllers\Fan\CheckoutController;
 use App\Http\Controllers\Fan\OrderController;
 use App\Http\Controllers\Fan\GroupOrderController;
 use App\Http\Controllers\Fan\InternationalShippingController;
+use App\Http\Controllers\Fan\CreatorController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 
 // Stripe Webhook (CSRF除外設定済み)
@@ -113,7 +114,7 @@ Route::prefix('fan')->name('fan.')->group(function () {
             Route::get('/fans/search', [GroupOrderController::class, 'searchFan'])->name('fans.search');
         });
 
-        // 最後に汎用的なルートを配置（競合防止）
-        Route::get('/creator/{id}', [InternationalShippingController::class, 'show'])->name('creator.show');
+        Route::get('/creator/{creator}', [CreatorController::class, 'show'])->name('creator.show');
+        Route::post('/creators/{creator}/follow', [CreatorController::class, 'toggleFollow'])->name('creator.follow');
     });
 });

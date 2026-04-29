@@ -6,6 +6,7 @@ use App\Repositories\Interfaces\CreatorRepositoryInterface;
 use App\Models\GroupOrder;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Creator;
 use App\Models\PaymentBreakdown;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
@@ -90,5 +91,21 @@ class CreatorRepository implements CreatorRepositoryInterface
             ])
             ->groupBy('product_id', 'product_variant_id')
             ->get();
+    }
+
+    /**
+     * クリエイター本体の更新
+     */
+    public function update(Creator $creator, array $data): bool
+    {
+        return $creator->update($data);
+    }
+
+    public function updateTranslation(Creator $creator, string $locale, array $data): void
+    {
+        $creator->translations()->updateOrCreate(
+            ['locale' => $locale],
+            $data
+        );
     }
 }

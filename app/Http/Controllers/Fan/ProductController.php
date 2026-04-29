@@ -20,11 +20,14 @@ class ProductController extends Controller
     }
 
     /**
-     * 商品一覧表示
-     */
+ * 商品一覧表示
+ */
     public function index(Request $request)
     {
         $data = $this->service->getProductIndexData($request->all());
+
+        // tagsを翻訳データ(translations)付きで取得
+        $data['tags'] = Tag::with('translations')->get(); 
 
         return Inertia::render('Fan/Product/Index', $data);
     }

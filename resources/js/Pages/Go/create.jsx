@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 // パスをコンポーネントフォルダへ正しく修正
@@ -12,11 +12,19 @@ import {
 } from 'lucide-react';
 
 export default function Create() {
-    const { language, products, creators } = usePage().props;
+    const { language, products, creators, selected_item_id } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isAgreed, setIsAgreed] = useState(false);
+
+    const initialItems = React.useMemo(() => {
+        if (selected_item_id && products) {
+            const item = products.find(p => p.id == selected_item_id);
+            return item ? [item] : [];
+        }
+        return [];
+    }, [selected_item_id, products]);
 
     const { data, setData, post, processing, errors } = useForm({
         title: '',
@@ -28,7 +36,7 @@ export default function Create() {
         is_secondary_payment_required: true,
         is_private: false,
         max_participants: '',
-        items: [],
+        items: initialItems,
         allowed_fans: []
     });
 
@@ -56,6 +64,12 @@ export default function Create() {
             data: payload
         });
     };
+
+    useEffect(() => {
+        if (initialItems.length > 0 && !data.creator_id) {
+            setData('creator_id', initialItems[0].creator_id);
+        }
+    }, [initialItems]);
 
     return (
         <FanLayout>

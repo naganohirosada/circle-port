@@ -108,8 +108,9 @@ export default function Index({
                     {/* --- COLLAPSIBLE DETAILED FILTERS --- */}
                     <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-[600px] opacity-100 pb-2' : 'max-h-0 opacity-0'}`}>
                         <form onSubmit={handleSearch} className="pt-4 border-t border-slate-100 space-y-6">
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                                {/* Type */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                
+                                {/* 1. Product Type */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">{__('Product Type')}</label>
                                     <select className="w-full bg-slate-50 border-none rounded-xl text-xs font-black uppercase py-3 focus:ring-cyan-500" value={data.product_type} onChange={e => setData('product_type', e.target.value)}>
@@ -118,7 +119,8 @@ export default function Index({
                                         <option value="2">💾 {__('Digital')}</option>
                                     </select>
                                 </div>
-                                {/* Availability */}
+
+                                {/* 2. Availability */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">{__('Availability')}</label>
                                     <select className="w-full bg-slate-50 border-none rounded-xl text-xs font-black uppercase py-3 focus:ring-cyan-500" value={data.stock_status} onChange={e => setData('stock_status', e.target.value)}>
@@ -127,7 +129,8 @@ export default function Index({
                                         <option value="2">{__('Sold Out')}</option>
                                     </select>
                                 </div>
-                                {/* Category */}
+
+                                {/* 3. Category */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">{__('Category')}</label>
                                     <select className="w-full bg-slate-50 border-none rounded-xl text-xs font-bold py-3 focus:ring-cyan-500" value={data.category_id} onChange={e => setData('category_id', e.target.value)}>
@@ -135,7 +138,8 @@ export default function Index({
                                         {categories.map(c => <option key={c.id} value={c.id}>{getT(c, 'name')}</option>)}
                                     </select>
                                 </div>
-                                {/* Sub Category */}
+
+                                {/* 4. Sub Category */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">{__('Sub Category')}</label>
                                     <select className="w-full bg-slate-50 border-none rounded-xl text-xs font-bold py-3 focus:ring-cyan-500 disabled:opacity-30" value={data.sub_category_id} onChange={e => setData('sub_category_id', e.target.value)} disabled={!data.category_id}>
@@ -145,7 +149,27 @@ export default function Index({
                                         ))}
                                     </select>
                                 </div>
-                                {/* Price */}
+
+                                {/* --- 追加：5. Tags --- */}
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">
+                                        {__('Tags')}
+                                    </label>
+                                    <select 
+                                        className="w-full bg-slate-50 border-none rounded-xl text-xs font-bold py-3 focus:ring-cyan-500" 
+                                        value={data.tag_id} 
+                                        onChange={e => setData('tag_id', e.target.value)}
+                                    >
+                                        <option value="">{__('All Tags')}</option>
+                                        {tags.map(tag => (
+                                            <option key={tag.id} value={tag.id}>
+                                                #{getT(tag, 'name') || tag.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* 6. Price Range */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">{__('Price Range')}</label>
                                     <div className="flex items-center gap-2">

@@ -58,6 +58,9 @@ class HandleInertiaRequests extends Middleware
                 'fee_rate'     => config('circleport.checkout.gateway_fee_rate'),
                 'shipping_fee' => config('circleport.checkout.domestic_shipping_fee'),
             ],
+            'flash' => [
+                'message' => fn () => $request->session()->get('message'), // ここが重要
+            ],
         ];
     }
 }

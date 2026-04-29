@@ -18,6 +18,20 @@ class Creator extends Authenticatable
         'name',
         'email',
         'password',
+        'profile',
+        'profile_image',
+        'cover_image',
+        'x_id',
+        'pixiv_id',
+        'bluesky_id',
+        'instagram_id',
+        'booth_url',
+        'fanbox_url',
+        'bank_name',
+        'branch_name',
+        'account_type',
+        'account_number',
+        'account_holder',
     ];
 
     protected $hidden = [
@@ -46,5 +60,29 @@ class Creator extends Authenticatable
     public function payouts(): HasMany
     {
         return $this->hasMany(Payout::class);
+    }
+
+    /**
+     * 自分をフォローしてくれているファン一覧（フォロワー）
+     */
+    public function followers()
+    {
+        return $this->belongsToMany(
+            User::class,    // 関連するモデル（ファンはUserモデル）
+            'follows',      // 中間テーブル名
+            'creator_id',   // 中間テーブル内での自分のID
+            'fan_id'        // 中間テーブル内での相手（ファン）のID
+        )->withTimestamps();
+    }
+
+    public function translations()
+    {
+        return $this->hasMany(CreatorTranslation::class);
+    }
+
+    // 現在の言語の翻訳を取得するためのヘルパー（オプション）
+    public function currentTranslation()
+    {
+        return $this->hasOne(CreatorTranslation::class)->where('locale', app()->getLocale());
     }
 }

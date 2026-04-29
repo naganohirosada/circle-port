@@ -89,6 +89,7 @@ class GroupOrderController extends Controller
             'products' => $products, // これを渡すことで filter エラーが解消されます
             'initial_selection' => $initial_data,
             'language' => $this->getTranslationData(), // 翻訳データ取得メソッド
+            'selected_item_id' => $request->query('item_id'),
         ]);
     }
 

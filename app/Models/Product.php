@@ -52,7 +52,6 @@ class Product extends Model implements HasMedia
         return $this->translations()->where('locale', 'ja')->first()?->name;
     }
 
-    // app/Models/Product.php
     public function images()
     {
         return $this->hasMany(ProductImage::class)->orderBy('sort_order');
@@ -119,5 +118,21 @@ class Product extends Model implements HasMedia
     public function isDigital(): bool
     {
         return (int)$this->product_type === self::TYPE_DIGITAL;
+    }
+
+    /**
+     * この商品に寄せられたレビュー一覧
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * 平均評価（星）の算出
+     */
+    public function getAverageRatingAttribute()
+    {
+        return $this->reviews()->avg('rating') ?: 0;
     }
 }

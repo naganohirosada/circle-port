@@ -91,4 +91,28 @@ class Fan extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * 自分がフォローしているクリエイター一覧
+     */
+    public function following()
+    {
+        return $this->belongsToMany(User::class, 'follows', 'fan_id', 'creator_id')->withTimestamps();
+    }
+
+    /**
+     * 自分をフォローしてくれているファン一覧
+     */
+    public function followers()
+    {
+        return $this->belongsToMany(User::class, 'follows', 'creator_id', 'fan_id')->withTimestamps();
+    }
+
+    /**
+     * 自分が投稿したレビュー一覧
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
 }

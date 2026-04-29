@@ -11,24 +11,23 @@ use App\Http\Controllers\Creator\DomesticShippingController;
 use App\Http\Controllers\Creator\ProjectAnnouncementController;
 use App\Http\Controllers\Creator\ProjectController;
 use App\Http\Controllers\Creator\AIController;
+use App\Http\Controllers\Creator\CreatorSettingsController;
 
 // 🎨 Creator (国内サークル向け)
 Route::prefix('creator')->name('creator.')->group(function () {
-    Route::middleware('guest:creator')->group(function () {
-        Route::get('login', [LoginController::class, 'create'])->name('login');
-        Route::post('login', [LoginController::class, 'store'])->name('login.store');
-        Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
-        Route::post('register', [RegisterController::class, 'register'])->name('register.store');
-    });
+    Route::get('/login', [LoginController::class, 'create'])->name('login');
+    Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+    Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+    Route::post('/register', [RegisterController::class, 'register'])->name('register.store');
 
     Route::middleware('auth:creator')->group(function () {
-        Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
+        Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-        Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
-        Route::post('products', [ProductController::class, 'store'])->name('products.store');
-        Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
-        Route::put('products/{product}', [ProductController::class, 'update'])->name('products.update');
+        Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+        Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
+        Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         // 製作管理（Production Ledger）
         Route::get('/production', [ProductionController::class, 'index'])->name('production.index');
@@ -63,5 +62,15 @@ Route::prefix('creator')->name('creator.')->group(function () {
 
         // AI翻訳用のルートを追加
         Route::post('/ai/translate', [AIController::class, 'translate'])->name('ai.translate');
+
+        Route::prefix('settings')->name('settings.')->group(function () {
+            // プロフィール編集
+            Route::get('/profile', [CreatorSettingsController::class, 'editProfile'])->name('profile');
+            Route::post('/profile', [CreatorSettingsController::class, 'updateProfile'])->name('profile.update');
+            
+            // 振込先設定
+            Route::get('/bank', [CreatorSettingsController::class, 'editBank'])->name('bank');
+            Route::post('/bank', [CreatorSettingsController::class, 'updateBank'])->name('bank.update');
+        });
     });
 });

@@ -166,7 +166,11 @@ export default function Index({ groupOrders, filters = {}, language }) {
             <div className="max-w-7xl mx-auto px-6 py-12">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
                     {items.length > 0 ? items.map((item) => {
-                        const progress = Math.min(Math.round((item.current_quantity / item.min_quantity) * 100), 100);
+                        const progress = item.max_participants > 0 
+                            ? Math.min(Math.round((item.participants_count / item.max_participants) * 100), 100) 
+                            : 0; // 定員が設定されていない、または0の場合は進捗0%（または100%として扱う）
+
+                        // 残り時間の取得
                         const daysLeft = getTimeLeft(item.recruitment_end_date);
                         
                         return (
