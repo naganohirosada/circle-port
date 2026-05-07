@@ -10,10 +10,26 @@ return [
         // 国内消費税率 (10%)
         'tax_rate' => 0.10,
 
-        // 決済代行手数料率 (8%)
+        // 一次決済：通常注文のシステム手数料 (8%)
         'gateway_fee_rate' => 0.080,
+
+        // 一次決済：GO注文のシステム手数料 (5%)
+        'go_gateway_fee_rate' => 0.050,
+
+        // 二次決済：国際配送のシステム手数料 (3%)
+        'international_gateway_fee_rate' => 0.030,
 
         // 国内送料固定額 (1200円)
         'domestic_shipping_fee' => 1200,
+
+        // 国際配送同梱手数料 (300円)
+        'international_bundling_fee' => 300,
+
+        // 資材・ハンドリング費 (0円)
+        'handling_fee' => 0,
+
+        // 為替スプレッド (3.5% 〜 5%)
+        'forex_spread_min' => 0.035,
+        'forex_spread_max' => 0.050,
     ],
 ];

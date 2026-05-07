@@ -7,7 +7,7 @@ use App\Repositories\Interfaces\SalesRepositoryInterface;
 class SalesService
 {
     protected $salesRepo;
-    const PLATFORM_FEE_RATE = 0.10; // 手数料10%（仮：将来的にマスタ化可能）
+    // const PLATFORM_FEE_RATE = 0.10; // 削除：実際のbreakdownデータから計算
 
     public function __construct(SalesRepositoryInterface $salesRepo)
     {
@@ -23,11 +23,11 @@ class SalesService
         $sumFee = 0;
 
         foreach ($payments as $payment) {
-            // 内訳から各金額を抽出（憲法：タイプは数値で管理）
-            // 1: 商品価格, 2: 手数料, 3: 消費税 (想定)
-            $itemAmount = $payment->breakdowns->where('type', 1)->sum('amount');
-            $feeAmount  = $payment->breakdowns->where('type', 2)->sum('amount');
-            $taxAmount  = $payment->breakdowns->where('type', 3)->sum('amount');
+            // 内訳から各金額を抽出（正しいタイプを使用）
+            // 1: 商品価格, 4: システム手数料, 5: 商品消費税
+            $itemAmount = $payment->breakdowns->where('type', PaymentBreakdown::TYPE_ITEM_TOTAL)->sum('amount');
+            $feeAmount  = $payment->breakdowns->where('type', PaymentBreakdown::TYPE_HANDLING_FEE)->sum('amount');
+            $taxAmount  = $payment->breakdowns->where('type', PaymentBreakdown::TYPE_ITEM_TAX)->sum('amount');
 
             $sumItemPrice += $itemAmount;
             $sumFee       += $feeAmount;

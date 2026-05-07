@@ -1,9 +1,10 @@
 import React from 'react';
 import FanLayout from '@/Layouts/FanLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { formatCurrency } from '@/Utils/helpers';
 
-export default function Success({ auth, shipping }) {
-    const { translations = {} } = usePage().props;
+export default function Success({ auth, shipping, fee_breakdown }) {
+    const { translations = {}, currency } = usePage().props;
     const __ = (key) => translations[key] || key;
 
     return (
@@ -42,9 +43,19 @@ export default function Success({ auth, shipping }) {
                                 <span className="text-gray-400 text-sm">{__('Carrier')}</span>
                                 <span className="font-bold text-gray-900">{shipping.carrier?.name}</span>
                             </div>
+                            <div className="space-y-1 mb-2 text-xs">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">{__('Base Shipping Fee')}</span>
+                                    <span>{formatCurrency(fee_breakdown?.base_shipping_fee || shipping.shipping_fee, currency)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">{__('System Fee (3%)')}</span>
+                                    <span>{formatCurrency(fee_breakdown?.international_fee || 0, currency)}</span>
+                                </div>
+                            </div>
                             <div className="flex justify-between border-t border-gray-200 mt-2 pt-2">
-                                <span className="text-gray-400 text-sm">{__('Total Paid')}</span>
-                                <span className="font-black text-indigo-600">￥{shipping.shipping_fee.toLocaleString()}</span>
+                                <span className="text-gray-400 text-sm font-bold">{__('Total Paid')}</span>
+                                <span className="font-black text-indigo-600">{formatCurrency(fee_breakdown?.total_amount || shipping.shipping_fee, currency)}</span>
                             </div>
                         </div>
 

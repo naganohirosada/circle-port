@@ -103,7 +103,7 @@ class InternationalShippingService
      * 送料決済用のStripeセッションを作成
      */
     /**
-     * 送料決済用のStripeセッションを作成 (既存メソッド)
+     * 送料決済用のStripeセッションを作成 (料金形態を反映)
      */
     public function createCheckoutSession(int $id, int $fanId): string
     {
@@ -121,6 +121,12 @@ class InternationalShippingService
             throw new \Exception("Payment record not found for shipping ID: {$id}");
         }
 
+        // 二次決済：国際配送手数料3%を追加
+        $baseShippingFee = $shipping->shipping_fee;
+        $internationalFeeRate = config('circleport.checkout.international_gateway_fee_rate', 0.03);
+        $internationalFee = ceil($baseShippingFee * $internationalFeeRate);
+        $totalAmount = $baseShippingFee + $internationalFee;
+
         $customerId = $fan->stripe_customer_id;
 
         $session = $stripe->checkout->sessions->create([
@@ -128,8 +134,8 @@ class InternationalShippingService
             'line_items' => [[
                 'price_data' => [
                     'currency' => 'jpy',
-                    'product_data' => ['name' => "International Shipping #{$id}"],
-                    'unit_amount' => $shipping->shipping_fee,
+                    'product_data' => ['name' => "International Shipping #{$id} (including 3% fee)"],
+                    'unit_amount' => $totalAmount,
                 ],
                 'quantity' => 1,
             ]],
@@ -141,6 +147,8 @@ class InternationalShippingService
                 'metadata' => [
                     'shipping_id' => $id,
                     'payment_id'  => $payment->id,
+                    'base_shipping_fee' => $baseShippingFee,
+                    'international_fee' => $internationalFee,
                 ],
             ],
             'customer' => $customerId ?: null,

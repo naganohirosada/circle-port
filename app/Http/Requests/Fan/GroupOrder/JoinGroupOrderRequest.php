@@ -37,6 +37,7 @@ class JoinGroupOrderRequest extends FormRequest
             'items.*.price' => ['required', 'numeric'],
             'items.*.variant_id' => ['nullable'], // 今後用
 
+            'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'total_amount' => ['required', 'numeric', 'min:0'],
         ];
     }

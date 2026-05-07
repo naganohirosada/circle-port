@@ -69,6 +69,36 @@ class StripeService
         // 手数料や配送料などの調整が必要な場合は、別途 line_items に追加するか、
         // 注文全体の合計（$order->total_amount）に基づく調整用アイテムを追加します。
 
+        $itemAmountSum = 0;
+        foreach ($order->items as $item) {
+            $itemAmountSum += $item->price * $item->quantity;
+        }
+
+        $tipAmount = 0;
+        if (!empty($order->notes)) {
+            $decoded = json_decode($order->notes, true);
+            if (is_array($decoded) && isset($decoded['creator_tip'])) {
+                $tipAmount = max(0, (int) $decoded['creator_tip']);
+            }
+        }
+
+        $convertedOrderTotal = floor($order->total_amount * $rate);
+        $convertedFeeAmount = max(0, $convertedOrderTotal - floor($itemAmountSum * $rate));
+
+        if ($convertedFeeAmount > 0) {
+            $lineItems[] = [
+                'price_data' => [
+                    'currency' => $currencyCode,
+                    'product_data' => [
+                        'name' => $tipAmount > 0 ? 'GO Order Fee + Creator Tip' : 'GO Order Fee (5%)',
+                        'description' => $tipAmount > 0 ? "GO platform fee plus creator tip for order #{$order->id}" : "GO platform fee for order #{$order->id}",
+                    ],
+                    'unit_amount' => $this->convertToStripeAmount($convertedFeeAmount, $currencyCode),
+                ],
+                'quantity' => 1,
+            ];
+        }
+
         return Session::create([
             'payment_method_types' => ['card'],
             'customer' => $order->fan->stripe_customer_id,

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { CheckCircle, Package, ArrowRight, ShoppingBag, Mail } from 'lucide-react';
+import { CheckCircle, Package, ArrowRight, ShoppingBag, Mail, DollarSign } from 'lucide-react';
+import { formatCurrency } from '@/Utils/helpers';
 
-export default function Success({ order_id }) {
-    const { language } = usePage().props;
+export default function Success({ order, fee_breakdown }) {
+    const { language, currency } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
     return (
@@ -37,25 +38,107 @@ export default function Success({ order_id }) {
                                 {__('Order Number')}
                             </span>
                             <span className="text-2xl font-light tracking-wider">
-                                #{order_id}
+                                #{order.id}
                             </span>
                         </div>
                         
                         <div className="h-px w-12 bg-slate-800 md:h-12 md:w-px"></div>
 
-                        <div className="flex items-center gap-4 text-left">
-                            <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center">
-                                <Mail size={20} className="text-cyan-400" />
-                            </div>
-                            <div>
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-1">
-                                    {__('Confirmation Email')}
-                                </span>
-                                <span className="text-sm text-slate-300">
-                                    {__('Sent to your email')}
-                                </span>
-                            </div>
+                        <div className="text-center md:text-left">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
+                                {__('Total Amount')}
+                            </span>
+                            <span className="text-2xl font-light tracking-wider">
+                                {formatCurrency(fee_breakdown.total, currency)}
+                            </span>
                         </div>
+                    </div>
+                </div>
+
+                {/* 料金内訳カード */}
+                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl mb-12">
+                    <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <DollarSign size={20} className="text-slate-600" />
+                        {__('Order Summary')}
+                    </h2>
+
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">{__('Items Total')}</span>
+                            <span className="font-bold text-slate-900">
+                                {formatCurrency(fee_breakdown.item_total, currency)}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">{__('Tax')}</span>
+                            <span className="font-bold text-slate-900">
+                                {formatCurrency(fee_breakdown.item_tax, currency)}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">{__('Shipping')}</span>
+                            <span className="font-bold text-slate-900">
+                                {formatCurrency(fee_breakdown.shipping, currency)}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">{__('Shipping Tax')}</span>
+                            <span className="font-bold text-slate-900">
+                                {formatCurrency(fee_breakdown.shipping_tax, currency)}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">
+                                {order.is_go_order ? __('GO Order Fee (5%)') : __('System Fee (8%)')}
+                            </span>
+                            <span className="font-bold text-slate-900">
+                                {formatCurrency(fee_breakdown.fee, currency)}
+                            </span>
+                        </div>
+
+                        <div className="h-px bg-slate-200 my-4" />
+
+                        <div className="flex justify-between text-lg font-bold">
+                            <span className="text-slate-900">{__('Total')}</span>
+                            <span className="text-slate-900">
+                                {formatCurrency(fee_breakdown.total, currency)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 注文商品リスト */}
+                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl mb-12">
+                    <h2 className="text-xl font-bold text-slate-900 mb-6">{__('Order Items')}</h2>
+                    <div className="space-y-4">
+                        {order.order_items?.map((item) => (
+                            <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+                                <div className="w-16 h-16 bg-white rounded-lg overflow-hidden border border-slate-200">
+                                    <img
+                                        src={item.product?.images?.[0]?.url || '/images/no-image.jpg'}
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="font-bold text-slate-900">
+                                        {item.product?.translations?.[0]?.name || item.product?.name_en}
+                                    </h3>
+                                    <p className="text-sm text-slate-600">
+                                        {__('Quantity')}: {item.quantity} × {formatCurrency(item.unit_price, currency)}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-bold text-slate-900">
+                                        {formatCurrency(item.unit_price * item.quantity, currency)}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

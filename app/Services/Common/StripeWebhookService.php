@@ -6,6 +6,8 @@ use App\Repositories\Interfaces\InternationalShippingRepositoryInterface;
 use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
 use App\Models\Order; // 追加
 use App\Models\Fan;
+use App\Models\Payment; // 追加
+use App\Models\PaymentBreakdown; // 追加
 use Illuminate\Support\Facades\Log;
 use Stripe\StripeClient;
 use Illuminate\Support\Facades\DB;
@@ -85,6 +87,8 @@ class StripeWebhookService
                 // 2. 国際配送料(International Shipping)の決済確定
                 if ($shippingId) {
                     $this->intlRepo->markAsPaid($shippingId);
+                    // 国際配送の支払い内訳を作成
+                    $this->createInternationalShippingBreakdownsForSession($shippingId, $session);
                     Log::info("Shipping ID #{$shippingId} marked as PAID via Webhook.");
                 }
             });
@@ -119,20 +123,26 @@ class StripeWebhookService
 
                 // Paymentレコードの更新
                 if ($paymentId || $orderId) {
-                    DB::table('payments')
-                        ->where($paymentId ? 'id' : 'order_id', $paymentId ?? $orderId)
-                        ->update([
-                            'status'         => PaymentStatus::SUCCEEDED,
-                            'external_transaction_id' => $intent->id,
-                            'updated_at'     => now(),
-                        ]);
+                    $targetPaymentId = $paymentId ?? ($orderId ? DB::table('payments')->where('order_id', $orderId)->value('id') : null);
+                    if ($targetPaymentId) {
+                        DB::table('payments')
+                            ->where('id', $targetPaymentId)
+                            ->update([
+                                'status'         => PaymentStatus::SUCCEEDED,
+                                'external_transaction_id' => $intent->id,
+                                'updated_at'     => now(),
+                            ]);
+                    }
                 }
 
-                // 国際配送ステータスの更新
+                // 国際配送ステータスの更新と内訳作成
                 if ($shippingId) {
                     DB::table('international_shippings')
                         ->where('id', $shippingId)
                         ->update(['status' => 40]); // Payment Completed
+
+                    // 国際配送の支払い内訳を作成
+                    $this->createInternationalShippingBreakdowns($shippingId, $intent);
                 }
             });
         } catch (\Exception $e) {
@@ -141,13 +151,54 @@ class StripeWebhookService
     }
 
     /**
-     * Stripeの最小単位から通常の数値へ変換
+     * Checkout Session用の国際配送内訳作成
      */
-    private function convertFromStripeAmount($amount, $currencyCode): float
+    protected function createInternationalShippingBreakdownsForSession($shippingId, $session): void
     {
-        $zeroDecimalCurrencies = ['JPY', 'KRW', 'VND', 'CLP'];
+        $shipping = DB::table('international_shippings')->where('id', $shippingId)->first();
+        if (!$shipping) {
+            return;
+        }
 
-        if (in_array(strtoupper($currencyCode), $zeroDecimalCurrencies)) {
+        $payment = DB::table('payments')->where('id', $shipping->payment_id)->first();
+        if (!$payment) {
+            return;
+        }
+
+        $baseShippingFee = $session->metadata->base_shipping_fee ?? $shipping->shipping_fee;
+        $internationalFee = $session->metadata->international_fee ?? 0;
+
+        // 内訳を作成
+        $breakdowns = [];
+
+        // 国際送料（バンドリング手数料）
+        if ($baseShippingFee > 0) {
+            $breakdowns[] = [
+                'payment_id' => $payment->id,
+                'type' => PaymentBreakdown::TYPE_INTL_SHIPPING,
+                'amount' => $baseShippingFee,
+                'currency_id' => $payment->currency_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        // 国際配送手数料（3%）
+        if ($internationalFee > 0) {
+            $breakdowns[] = [
+                'payment_id' => $payment->id,
+                'type' => PaymentBreakdown::TYPE_HANDLING_FEE,
+                'amount' => $internationalFee,
+                'currency_id' => $payment->currency_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if (!empty($breakdowns)) {
+            DB::table('payment_breakdown')->insert($breakdowns);
+        }
+    }
             return (float) $amount;
         }
 

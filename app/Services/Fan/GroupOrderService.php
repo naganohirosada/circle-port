@@ -5,7 +5,9 @@ namespace App\Services\Fan;
 use App\Repositories\Interfaces\GroupOrderRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Fan;
 use App\Models\GroupOrder;
+use App\Models\GroupOrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Order;
 use Stripe\PaymentIntent;
@@ -16,6 +18,7 @@ class GroupOrderService
 {
     protected $repository;
     protected $stripeService;
+    private const GO_FEE_RATE = 0.05;
 
     public function __construct(
         GroupOrderRepositoryInterface $repository,
@@ -108,14 +111,19 @@ class GroupOrderService
             throw new \Exception(__('This project has reached its maximum capacity.'));
         }
 
-        return DB::transaction(function () use ($go, $fan, $input) {
+        $preparedItems = $this->prepareGoParticipantItems($input['items'], $go->id);
+        $tipAmount = isset($input['tip_amount']) ? max(0, (int) round($input['tip_amount'])) : 0;
+        $amounts = $this->calculateGoOrderAmounts($preparedItems, $tipAmount);
+
+        return DB::transaction(function () use ($go, $fan, $input, $preparedItems, $amounts, $tipAmount) {
             // 1. 注文レコード作成
             $order = $this->repository->createOrder([
                 'group_order_id'      => $go->id,
                 'fan_id'              => $fan->id,
                 'shipping_address_id' => $input['address_id'],
-                'total_amount'        => $input['total_amount'],
-                'items'               => array_map(fn($i) => [...$i, 'product_id' => $i['product_id']], $input['items']),
+                'total_amount'        => $amounts['total_amount'],
+                'notes'               => $tipAmount > 0 ? json_encode(['creator_tip' => $tipAmount]) : null,
+                'items'               => $preparedItems,
                 'payment_status'      => 'pending',
             ]);
 
@@ -146,8 +154,62 @@ class GroupOrderService
     }
 
     /**
-     *
+     * 選択されたGOアイテムをサニタイズして価格を正規化する
      */
+    private function prepareGoParticipantItems(array $submittedItems, int $goId): array
+    {
+        $itemIds = collect($submittedItems)
+            ->pluck('id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $groupItems = GroupOrderItem::whereIn('id', $itemIds)
+            ->where('group_order_id', $goId)
+            ->get()
+            ->keyBy('id');
+
+        $prepared = [];
+
+        foreach ($submittedItems as $item) {
+            $selectedId = $item['id'] ?? null;
+            $quantity = max(0, intval($item['quantity'] ?? 0));
+
+            if (!$selectedId || $quantity <= 0 || !isset($groupItems[$selectedId])) {
+                continue;
+            }
+
+            $groupItem = $groupItems[$selectedId];
+
+            $prepared[] = [
+                'product_id'         => $groupItem->product_id,
+                'product_variant_id' => $groupItem->product_variant_id,
+                'quantity'           => $quantity,
+                'price'              => $groupItem->price,
+            ];
+        }
+
+        if (empty($prepared)) {
+            throw new \Exception(__('No valid group order items were selected.'));
+        }
+
+        return $prepared;
+    }
+
+    private function calculateGoOrderAmounts(array $items, int $tipAmount = 0): array
+    {
+        $goodsTotal = array_reduce($items, fn($sum, $item) => $sum + ($item['price'] * $item['quantity']), 0);
+        $fee = (int) ceil($goodsTotal * self::GO_FEE_RATE);
+
+        return [
+            'goods_total'   => $goodsTotal,
+            'go_fee'        => $fee,
+            'tip_amount'    => $tipAmount,
+            'total_amount'  => $goodsTotal + $fee + $tipAmount,
+        ];
+    }
+
     public function getPublicDetail(int $id): \App\Models\GroupOrder
     {
         return $this->repository->findPublicById($id);

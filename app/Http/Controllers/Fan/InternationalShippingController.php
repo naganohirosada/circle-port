@@ -22,11 +22,27 @@ class InternationalShippingController extends Controller
         // 1. 既存の配送リスト（支払い待ち、配送中など）
         $shippings = $this->shippingService->getShippingListForFan($fan);
 
+        // 各配送の料金内訳を追加
+        $shippingsWithFees = $shippings->map(function ($shipping) {
+            $baseShippingFee = $shipping->shipping_fee;
+            $internationalFeeRate = config('circleport.checkout.international_gateway_fee_rate', 0.03);
+            $internationalFee = ceil($baseShippingFee * $internationalFeeRate);
+            $totalAmount = $baseShippingFee + $internationalFee;
+
+            $shipping->fee_breakdown = [
+                'base_shipping_fee' => $baseShippingFee,
+                'international_fee' => $internationalFee,
+                'total_amount' => $totalAmount,
+            ];
+
+            return $shipping;
+        });
+
         // 2. 【追加】同梱（まとめ配送）依頼が可能な注文リスト
         $availableOrders = $this->shippingService->getConsolidatableOrders($fan->id);
 
         return Inertia::render('Fan/InternationalShipping/Index', [
-            'shippings' => $shippings,
+            'shippings' => $shippingsWithFees,
             'availableOrders' => $availableOrders // フロントエンドに渡す
         ]);
     }
@@ -74,8 +90,46 @@ class InternationalShippingController extends Controller
             ->with(['carrier'])
             ->findOrFail($id);
 
+        // 支払った金額の内訳を計算
+        $baseShippingFee = $shipping->shipping_fee;
+        $internationalFeeRate = config('circleport.checkout.international_gateway_fee_rate', 0.03);
+        $internationalFee = ceil($baseShippingFee * $internationalFeeRate);
+        $totalAmount = $baseShippingFee + $internationalFee;
+
         return Inertia::render('Fan/InternationalShipping/Success', [
-            'shipping' => $shipping
+            'shipping' => $shipping,
+            'fee_breakdown' => [
+                'base_shipping_fee' => $baseShippingFee,
+                'international_fee' => $internationalFee,
+                'total_amount' => $totalAmount,
+            ]
+        ]);
+    }
+
+    /**
+     * 国際配送詳細表示
+     */
+    public function show($id)
+    {
+        $shipping = InternationalShipping::where('fan_id', auth()->id())
+            ->with(['carrier', 'items.orderItem.product.translations' => function($query) {
+                $query->where('locale', app()->getLocale());
+            }])
+            ->findOrFail($id);
+
+        // 送料内訳の計算（料金形態を反映）
+        $baseShippingFee = $shipping->shipping_fee;
+        $internationalFeeRate = config('circleport.checkout.international_gateway_fee_rate', 0.03);
+        $internationalFee = ceil($baseShippingFee * $internationalFeeRate);
+        $totalAmount = $baseShippingFee + $internationalFee;
+
+        return Inertia::render('Fan/InternationalShipping/Show', [
+            'shipping' => $shipping,
+            'fee_breakdown' => [
+                'base_shipping_fee' => $baseShippingFee,
+                'international_fee' => $internationalFee,
+                'total_amount' => $totalAmount,
+            ]
         ]);
     }
 }

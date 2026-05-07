@@ -51,6 +51,14 @@ export default function Show({ product, auth }) {
         return t ? t[field] : '-';
     };
 
+    const getVariationLabel = (variation) => {
+        if (!variation) return null;
+        const translated = getTranslation(variation, 'variant_name');
+        return translated !== '-' ? translated : variation.variant_name || getTranslation(variation, 'name');
+    };
+
+    const selectedVariationName = selectedVariation ? getVariationLabel(selectedVariation) : null;
+
     // 【追加】閲覧者の言語設定に合わせたレビューコメントを取得
     const getReviewComment = (review) => {
         if (!review.translations || review.translations.length === 0) return null;
@@ -129,6 +137,11 @@ export default function Show({ product, auth }) {
                             </div>
                             <h1 className="text-4xl font-black text-slate-900 leading-tight uppercase tracking-tighter">{getTranslation(product, 'name')}</h1>
                             <div className="min-h-[4rem] pt-4">
+                                {selectedVariationName && (
+                                    <div className="text-sm font-black uppercase tracking-[0.25em] text-cyan-500 mb-2">
+                                        {selectedVariationName}
+                                    </div>
+                                )}
                                 {displayPrice !== null ? (
                                     <div className="text-5xl font-black text-slate-900 tracking-tighter">
                                         {formatCurrency(displayPrice, currency)}
@@ -157,7 +170,7 @@ export default function Show({ product, auth }) {
                                     {product.variations.map((v) => (
                                         <button key={v.id} disabled={!isDigital && v.stock <= 0} onClick={() => handleVariationSelect(v)} className={`relative p-5 rounded-2xl border-2 text-left transition-all ${selectedVariation?.id === v.id ? 'border-cyan-500 bg-white shadow-xl shadow-cyan-100/50 scale-[1.02]' : 'border-slate-100 bg-slate-50/50 hover:bg-white'}`}>
                                             <div className="flex justify-between items-center">
-                                                <div><span className="text-sm font-black uppercase">{getTranslation(v, 'name')}</span>
+                                                <div><span className="text-sm font-black uppercase">{getVariationLabel(v)}</span>
                                                     <div className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-widest">
                                                         {v.stock <= 0 && !isDigital 
                                                             ? __('Sold Out') 

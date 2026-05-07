@@ -59,6 +59,7 @@ class HandleInertiaRequests extends Middleware
             'checkout_settings' => [
                 'tax_rate'     => config('circleport.checkout.tax_rate'), 
                 'fee_rate'     => config('circleport.checkout.gateway_fee_rate'),
+                'go_fee_rate'  => config('circleport.checkout.go_gateway_fee_rate'),
                 'shipping_fee' => config('circleport.checkout.domestic_shipping_fee'),
             ],
             'flash' => [

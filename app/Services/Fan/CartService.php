@@ -61,6 +61,7 @@ class CartService
             $product = Product::with([
                 'translations' => fn($q) => $q->where('locale', $locale),
                 'images',
+                'creator.translations' => fn($q) => $q->where('locale', $locale),
                 'category.translations' => fn($q) => $q->where('locale', $locale),
             ])->find($item['product_id']);
 
@@ -77,6 +78,7 @@ class CartService
             $subtotal = $price * $item['quantity'];
             $totalPrice += $subtotal;
 
+            $creator = $product->creator;
             $details[] = [
                 'cart_key' => $key,
                 'product_id' => $product->id,
@@ -86,6 +88,12 @@ class CartService
                 'quantity' => (int)$item['quantity'],
                 'subtotal' => (int)$subtotal,
                 'image' => $product->images->where('is_primary', 1)->first()?->url ?? $product->images->first()?->url,
+                'group_order_id' => $item['group_order_id'] ?? null, // GO注文判定用
+                'creator' => $creator ? [
+                    'id' => $creator->id,
+                    'name' => $creator->shop_name ?? $creator->name ?? __('Creator'),
+                    'image' => $creator->profile_image,
+                ] : null,
             ];
         }
 
