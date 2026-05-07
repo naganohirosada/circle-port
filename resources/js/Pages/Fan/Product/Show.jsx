@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Head, usePage, Link, useForm } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import ReviewForm from '@/Components/models/product/ReviewForm';
+import { formatCurrency } from '@/Utils/helpers';
 import { 
     Tag, ShoppingBag, ChevronRight, Check, 
     Loader2, Megaphone, Plus, Minus, Share2, AlertCircle, 
@@ -11,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export default function Show({ product, auth }) {
-    const { language, locale } = usePage().props;
+    const { language, locale, currency } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
     const isDigital = product.product_type === 2;
@@ -45,8 +46,8 @@ export default function Show({ product, auth }) {
     // 商品・カテゴリ等の一般翻訳取得
     const getTranslation = (item, field) => {
         const t = item?.translations?.find(t => t.locale === locale) || 
-                  item?.translations?.find(t => t.locale === 'en') || 
-                  item?.translations?.[0];
+                item?.translations?.find(t => t.locale === 'en') || 
+                item?.translations?.[0];
         return t ? t[field] : '-';
     };
 
@@ -54,8 +55,8 @@ export default function Show({ product, auth }) {
     const getReviewComment = (review) => {
         if (!review.translations || review.translations.length === 0) return null;
         const t = review.translations.find(t => t.locale === locale) || 
-                  review.translations.find(t => t.locale === 'en') || 
-                  review.translations[0];
+                review.translations.find(t => t.locale === 'en') || 
+                review.translations[0];
         return t ? t.comment : null;
     };
 
@@ -129,9 +130,21 @@ export default function Show({ product, auth }) {
                             <h1 className="text-4xl font-black text-slate-900 leading-tight uppercase tracking-tighter">{getTranslation(product, 'name')}</h1>
                             <div className="min-h-[4rem] pt-4">
                                 {displayPrice !== null ? (
-                                    <div className="text-5xl font-black text-slate-900 tracking-tighter">¥{Number(displayPrice).toLocaleString()}</div>
+                                    <div className="text-5xl font-black text-slate-900 tracking-tighter">
+                                        {formatCurrency(displayPrice, currency)}
+                                    </div>
                                 ) : (
-                                    <div className="text-3xl font-black text-slate-900 tracking-tighter">¥{Number(priceRange.min).toLocaleString()} <span className="text-slate-300">~</span> ¥{Number(priceRange.max).toLocaleString()}</div>
+                                    <div className="text-3xl font-black text-slate-900 tracking-tighter">
+                                        {formatCurrency(priceRange.min, currency)} 
+                                        <span className="text-slate-300"> ~ </span> 
+                                        {formatCurrency(priceRange.max, currency)}
+                                    </div>
+                                )}
+                                {/* 円安対策の参考表示 */}
+                                {currency.code !== 'JPY' && (
+                                    <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">
+                                        Base Price: ¥{Number(displayPrice || priceRange.min).toLocaleString()} JPY
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -144,7 +157,14 @@ export default function Show({ product, auth }) {
                                     {product.variations.map((v) => (
                                         <button key={v.id} disabled={!isDigital && v.stock <= 0} onClick={() => handleVariationSelect(v)} className={`relative p-5 rounded-2xl border-2 text-left transition-all ${selectedVariation?.id === v.id ? 'border-cyan-500 bg-white shadow-xl shadow-cyan-100/50 scale-[1.02]' : 'border-slate-100 bg-slate-50/50 hover:bg-white'}`}>
                                             <div className="flex justify-between items-center">
-                                                <div><span className="text-sm font-black uppercase">{getTranslation(v, 'name')}</span><div className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{v.stock <= 0 && !isDigital ? __('Sold Out') : `¥${Number(v.price).toLocaleString()}`}</div></div>
+                                                <div><span className="text-sm font-black uppercase">{getTranslation(v, 'name')}</span>
+                                                    <div className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-widest">
+                                                        {v.stock <= 0 && !isDigital 
+                                                            ? __('Sold Out') 
+                                                            : formatCurrency(v.price, currency)
+                                                        }
+                                                    </div>
+                                                </div>
                                                 {selectedVariation?.id === v.id && <div className="w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-white"><Check size={14} strokeWidth={4} /></div>}
                                             </div>
                                         </button>

@@ -10,6 +10,19 @@ export default function FanLayout({ children }) {
     // 「ファンとしてログインしているか」を判定
     const isFan = !!auth.fan;
 
+    // 価格変換・フォーマット関数
+    const formatCurrency = (jpyPrice, currency) => {
+        if (!currency) return `¥${Number(jpyPrice).toLocaleString()}`;
+        
+        const converted = jpyPrice * currency.rate;
+        // 通貨コードがJPY以外なら小数点2桁を表示、JPYなら整数のみ
+        const options = currency.code === 'JPY' 
+            ? { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+            : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+
+        return `${currency.symbol}${Number(converted).toLocaleString(undefined, options)}`;
+    };
+
     return (
         <div className="min-h-screen bg-white">
             {/* Navigation */}

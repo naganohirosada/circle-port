@@ -151,4 +151,21 @@ class InternationalShippingRepository implements InternationalShippingRepository
             ]);
         });
     }
+
+    /**
+     * ファンの配送一覧を取得（リレーションを含む）
+     */
+    public function getListForFan(int $fanId, string $locale)
+    {
+        return InternationalShipping::where('fan_id', $fanId)
+            ->with([
+                'items.orderItem.product.translations' => function($query) use ($locale) {
+                    $query->where('locale', $locale);
+                },
+                'items.orderItem.product.images',
+                'carrier'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
 }

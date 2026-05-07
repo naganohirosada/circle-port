@@ -13,6 +13,7 @@ class InternationalShippingItem extends Model
         'international_shipping_id',
         'order_item_id',
         'quantity',
+        'type',
     ];
 
     /**

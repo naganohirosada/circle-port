@@ -121,5 +121,7 @@ Route::prefix('fan')->name('fan.')->group(function () {
         Route::post('products/{product}/reviews', [ReviewController::class, 'store'])->name('products.reviews.store');
         // (オプション) レビュー削除も必要なら
         Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('products.reviews.destroy');
+
+        Route::post('international-shippings', [InternationalShippingController::class, 'store'])->name('international-shippings.store');
     });
 });

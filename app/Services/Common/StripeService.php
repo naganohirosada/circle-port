@@ -20,16 +20,20 @@ class StripeService
      */
     public function chargeSavedCard(Order $order, PaymentMethod $paymentMethod)
     {
+        // 決済通貨とStripe用金額を取得
+        [$currencyCode, $stripeAmount] = $this->getSettlementDetails($order);
+
         return PaymentIntent::create([
-            'amount' => (int) $order->total_amount,
-            'currency' => 'jpy',
+            'amount' => $stripeAmount,
+            'currency' => $currencyCode,
             'customer' => $order->fan->stripe_customer_id,
             'payment_method' => $paymentMethod->stripe_payment_method_id,
             'off_session' => true,
             'confirm' => true,
             'metadata' => [
                 'order_id' => $order->id,
-                'type' => 'group_order_immediate'
+                'type' => 'group_order_immediate',
+                'base_jpy_amount' => $order->total_amount
             ],
         ]);
     }
@@ -39,24 +43,37 @@ class StripeService
      */
     public function createEscrowAndSaveCardSession(Order $order): Session
     {
+        $fanCurrency = $order->fan->currency;
+        $currencyCode = strtolower($fanCurrency->code ?? 'jpy');
+        $rate = (float) ($fanCurrency->exchange_rate ?? 1.0);
+
         $lineItems = [];
         foreach ($order->items as $item) {
+            // 各アイテムの単価を外貨換算（切り捨て）し、Stripe単位へ
+            $convertedPrice = floor($item->price * $rate);
+            $stripeUnitAmount = $this->convertToStripeAmount($convertedPrice, $currencyCode);
+
             $lineItems[] = [
                 'price_data' => [
-                    'currency' => 'jpy',
-                    'product_data' => ['name' => $item->product->translations->first()->name ?? 'Item'],
-                    'unit_amount' => (int) $item->price,
+                    'currency' => $currencyCode,
+                    'product_data' => [
+                        'name' => $item->product->translations->first()->name ?? 'Item',
+                        'description' => "Base Price: ¥" . number_format($item->price) . " JPY",
+                    ],
+                    'unit_amount' => $stripeUnitAmount,
                 ],
                 'quantity' => $item->quantity,
             ];
         }
 
+        // 手数料や配送料などの調整が必要な場合は、別途 line_items に追加するか、
+        // 注文全体の合計（$order->total_amount）に基づく調整用アイテムを追加します。
+
         return Session::create([
             'payment_method_types' => ['card'],
-            'customer' => $order->fan->stripe_customer_id, // 既存顧客IDを指定
+            'customer' => $order->fan->stripe_customer_id,
             'line_items' => $lineItems,
             'mode' => 'payment',
-            // 【重要】決済後にこのカードを将来的に再利用可能にする設定
             'payment_intent_data' => [
                 'setup_future_usage' => 'off_session',
             ],
@@ -70,27 +87,66 @@ class StripeService
         ]);
     }
 
-	/**
+    /**
      * バッチ用：保存済みカードに対して決済を実行する
      */
     public function captureSavedCardPayment(Order $order, PaymentMethod $paymentMethod)
     {
         try {
+            [$currencyCode, $stripeAmount] = $this->getSettlementDetails($order);
+
             return PaymentIntent::create([
-                'amount' => (int) $order->total_amount,
-                'currency' => 'jpy',
+                'amount' => $stripeAmount,
+                'currency' => $currencyCode,
                 'customer' => $order->fan->stripe_customer_id,
                 'payment_method' => $paymentMethod->stripe_payment_method_id,
-                'off_session' => true, // ユーザーが操作していない状態で実行
-                'confirm' => true,     // 即時確定
+                'off_session' => true,
+                'confirm' => true,
                 'metadata' => [
                     'order_id' => $order->id,
-                    'type' => 'go_batch_settlement'
+                    'type' => 'go_batch_settlement',
+                    'base_jpy_amount' => $order->total_amount
                 ],
             ]);
         } catch (\Exception $e) {
             Log::error("GO Settlement Failed - Order ID: {$order->id} - Error: " . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * 注文データから決済通貨とStripe用金額を算出するヘルパー
+     */
+    private function getSettlementDetails(Order $order): array
+    {
+        $currency = $order->fan->currency;
+        $currencyCode = strtolower($currency->code ?? 'jpy');
+        $rate = (float) ($currency->exchange_rate ?? 1.0);
+
+        // 日本円 × レート を計算し、小数点以下を切り捨て
+        $convertedAmount = floor($order->total_amount * $rate);
+
+        // Stripeの最小単位（セント等）に変換
+        $stripeAmount = $this->convertToStripeAmount($convertedAmount, $currencyCode);
+
+        return [$currencyCode, $stripeAmount];
+    }
+
+    /**
+     * 通貨に応じたStripe用金額（最小単位）への変換
+     */
+    private function convertToStripeAmount($amount, $currencyCode): int
+    {
+        // 小数点を持たない通貨（ゼロデシマル通貨）
+        $zeroDecimalCurrencies = [
+            'jpy', 'krw', 'vnd', 'clp', 'isk', 'ugx'
+        ];
+
+        if (in_array(strtolower($currencyCode), $zeroDecimalCurrencies)) {
+            return (int) $amount;
+        }
+
+        // 米ドル(USD)などは 1ドル=100セント なので100倍する
+        return (int) ($amount * 100);
     }
 }

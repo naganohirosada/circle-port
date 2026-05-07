@@ -40,4 +40,9 @@ interface InternationalShippingRepositoryInterface
      * @return void
      */
     public function confirmPackingAndFee(int $id, array $data): void;
+
+    /**
+     * ファンのための配送一覧を取得する
+     */
+    public function getListForFan(int $fanId, string $locale);
 }

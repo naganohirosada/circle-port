@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('currencies', function (Blueprint $table) {
+            // JPYに対する為替レート (例: USDなら 0.0065 など)
+            $table->decimal('exchange_rate', 15, 8)->default(1.0)->after('symbol');
+            $table->timestamp('last_updated_at')->nullable()->after('exchange_rate');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('currencies', function (Blueprint $table) {
+            $table->dropColumn(['exchange_rate', 'last_updated_at']);
+        });
+    }
+};

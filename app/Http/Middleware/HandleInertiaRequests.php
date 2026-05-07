@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Illuminate\Support\Facades\App;
+use App\Models\Currency;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -30,6 +31,8 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $fan = $request->user('fan');
+        $currency = $fan ? $fan->currency : Currency::where('code', 'JPY')->first();
         return [
             ...parent::share($request),
             'locale' => App::getLocale(),
@@ -60,6 +63,11 @@ class HandleInertiaRequests extends Middleware
             ],
             'flash' => [
                 'message' => fn () => $request->session()->get('message'), // ここが重要
+            ],
+            'currency' => [
+                'code' => $currency->code,
+                'symbol' => $currency->symbol,
+                'rate' => (float)$currency->exchange_rate,
             ],
         ];
     }

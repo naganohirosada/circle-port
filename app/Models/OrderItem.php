@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class OrderItem extends Model
 {
@@ -30,5 +31,10 @@ class OrderItem extends Model
     public function variation(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'product_variation_id');
+    }
+
+    public function internationalShippingItem(): HasOne
+    {
+        return $this->hasOne(InternationalShippingItem::class);
     }
 }

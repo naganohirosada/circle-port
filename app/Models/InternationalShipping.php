@@ -8,9 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InternationalShipping extends Model
 {
+    const TYPE_REGULAR = 1;      // 通常配送
+    const TYPE_CONSOLIDATED = 2; // 同梱配送
+
     protected $fillable = [
         'fan_id', 'address_id', 'carrier_id', 'tracking_number', 
-        'status', 'total_weight', 'shipping_fee', 'dimensions', 'shipped_at'
+        'status', 'total_weight', 'shipping_fee', 'dimensions', 'shipped_at', 'type'
     ];
 
     protected $casts = [
@@ -62,5 +65,13 @@ class InternationalShipping extends Model
             'international_shipping_id',
             'payment_id'
         )->withPivot('amount')->withTimestamps();
+    }
+
+    /**
+     * 同梱かどうかを判定するアクセサ
+     */
+    public function getIsConsolidatedAttribute(): bool
+    {
+        return $this->type === self::TYPE_CONSOLIDATED;
     }
 }

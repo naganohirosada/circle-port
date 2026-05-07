@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
+import { formatCurrency } from '@/Utils/helpers';
 import { 
     Search, Users, RotateCcw, 
     ChevronDown, ChevronUp, Filter,
@@ -16,7 +17,7 @@ export default function Index({
     filters,
     currentLocale 
 }) {
-    const { language } = usePage().props;
+    const { language, currency } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
     // 折りたたみ状態の管理
@@ -37,8 +38,8 @@ export default function Index({
     const getT = (item, field) => {
         if (!item || !item.translations) return '';
         const t = item.translations.find(t => t.locale === currentLocale) || 
-                  item.translations.find(t => t.locale === 'en') || 
-                  item.translations[0];
+                item.translations.find(t => t.locale === 'en') || 
+                item.translations[0];
         return t ? t[field] : '';
     };
 
@@ -257,10 +258,20 @@ export default function Index({
 
                                     {/* Price & Stock Status */}
                                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                        <p className="text-base font-black text-slate-900">
-                                            ¥{Number(item.display_min_price || item.price).toLocaleString()}
-                                            {item.has_multiple_prices && <span className="ml-0.5 text-xs text-slate-400">~</span>}
-                                        </p>
+                                        <div className="flex flex-col">
+                                            <p className="text-base font-black text-slate-900 leading-none">
+                                                {/* formatCurrencyヘルパーを使用して換算後の価格を表示 */}
+                                                {formatCurrency(item.display_min_price || item.price, currency)}
+                                                {item.has_multiple_prices && <span className="ml-0.5 text-xs text-slate-400">~</span>}
+                                            </p>
+                                            {/* 通貨がJPYでない場合のみ、参考として元の日本円価格を表示 */}
+                                            {currency.code !== 'JPY' && (
+                                                <span className="text-[9px] text-slate-400 font-bold mt-1">
+                                                    (¥{Number(item.display_min_price || item.price).toLocaleString()})
+                                                </span>
+                                            )}
+                                        </div>
+
                                         <div className={`flex items-center gap-1 ${isAvailable ? 'text-emerald-500' : 'text-slate-300'}`}>
                                             {isAvailable ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
                                             <span className="text-[9px] font-black uppercase">

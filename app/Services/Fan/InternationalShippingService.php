@@ -8,7 +8,10 @@ use Stripe\Stripe;
 use App\Models\Language;
 use App\Enums\PaymentStatus;
 use App\Models\Fan;
-use Stripe\Checkout\Session;
+use App\Models\Order; // 追加
+use App\Models\InternationalShipping; // 追加
+use App\Models\InternationalShippingItem;
+use Illuminate\Support\Facades\DB; // 追加
 
 class InternationalShippingService
 {
@@ -20,17 +23,95 @@ class InternationalShippingService
     }
 
     /**
+     * 同梱（まとめ配送）可能な注文一覧を取得
+     * 条件：倉庫到着済み（STATUS_ARRIVED_AT_WAREHOUSE）かつ、まだ国際配送に紐付いていないもの
+     * 通常注文・GO注文の両方が対象となります。
+     */
+    public function getConsolidatableOrders(int $fanId)
+    {
+        return Order::where('fan_id', $fanId)
+            ->where('status', Order::STATUS_ARRIVED_AT_WAREHOUSE)
+            ->where(function ($query) {
+                // A. 国際配送レコードがまだ存在しない場合
+                $query->whereDoesntHave('orderItems.internationalShippingItem')
+                // B. または、配送レコードは存在するが「同梱に切り替え可能」な場合
+                ->orWhereHas('orderItems.internationalShippingItem.internationalShipping', function ($q) {
+                    $q->where('type', InternationalShipping::TYPE_REGULAR) // 通常配送のみ
+                      ->whereIn('status', [10, 20]); // 見積もり中、または支払い待ち状態のみ
+                });
+            })
+            ->with([
+                'orderItems.product.images',
+                'orderItems.product.translations' => function($query) {
+                    $query->where('locale', app()->getLocale());
+                },
+                'orderItems.product.translations' => function($query) {
+                    $query->where('locale', app()->getLocale());
+                },
+                'orderItems.internationalShippingItem'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * 複数注文をまとめた国際配送（同梱）依頼の実行
+     */
+    public function requestConsolidation(int $fanId, array $orderIds)
+    {
+        return DB::transaction(function () use ($fanId, $orderIds) {
+            
+            // --- A. 既存の（自動生成された）不要な配送レコードを特定 ---
+            // 選択された OrderItem に紐付いている既存の配送IDを取得
+            $oldShippingIds = InternationalShippingItem::whereIn('order_item_id', function($query) use ($orderIds) {
+                $query->select('id')->from('order_items')->whereIn('order_id', $orderIds);
+            })->pluck('international_shipping_id')->unique();
+
+            // --- B. 新しい同梱配送レコード（TYPE_CONSOLIDATED）を作成 ---
+            $newShipping = InternationalShipping::create([
+                'fan_id' => $fanId,
+                'type'   => InternationalShipping::TYPE_CONSOLIDATED,
+                'status' => 10, // 依頼済み（再見積もり待ち）
+                'shipping_fee' => 0,
+            ]);
+
+            // --- C. アイテムの紐付け替え ---
+            $orders = Order::whereIn('id', $orderIds)->with('orderItems')->get();
+            foreach ($orders as $order) {
+                foreach ($order->orderItems as $item) {
+                    $newShipping->items()->create([
+                        'order_item_id' => $item->id,
+                        'quantity' => $item->quantity,
+                    ]);
+                }
+            }
+
+            // --- D. 【重要】古い個別配送レコードの削除 ---
+            if ($oldShippingIds->isNotEmpty()) {
+                // まだ支払いが行われていないレコードのみを削除（安全策）
+                // InternationalShippingItem は database の CASCADE 設定、または手動で削除
+                InternationalShipping::whereIn('id', $oldShippingIds)
+                    ->whereIn('status', [10, 20])
+                    ->delete();
+            }
+
+            return $newShipping;
+        });
+    }
+
+    /**
      * 送料決済用のStripeセッションを作成
+     */
+    /**
+     * 送料決済用のStripeセッションを作成 (既存メソッド)
      */
     public function createCheckoutSession(int $id, int $fanId): string
     {
-        // StripeClient インスタンスを生成
         $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
         
         $shipping = $this->intlRepo->findForPayment($id, $fanId);
-        $fan = \App\Models\Fan::findOrFail($fanId);
+        $fan = Fan::findOrFail($fanId);
 
-        // 事前作成済みの pending 決済レコードを取得
         $payment = $shipping->payments()
             ->where('status', PaymentStatus::PENDING)
             ->latest()
@@ -40,32 +121,8 @@ class InternationalShippingService
             throw new \Exception("Payment record not found for shipping ID: {$id}");
         }
 
-        // 1. デフォルト決済方法と顧客ID
-        $defaultMethod = $this->paymentRepo->getDefaultPaymentMethod($fanId);
         $customerId = $fan->stripe_customer_id;
 
-        // 2. 保存済みカードがあれば PaymentIntent で直接決済
-        if ($defaultMethod && $customerId) {
-            try {
-                $stripe->paymentIntents->create([
-                    'amount' => $shipping->shipping_fee,
-                    'currency' => 'jpy',
-                    'customer' => $customerId,
-                    'payment_method' => $defaultMethod->provider_id,
-                    'off_session' => true,
-                    'confirm' => true,
-                    'metadata' => [
-                        'shipping_id' => $id,
-                        'payment_id'  => $payment->id,
-                    ],
-                ]);
-                return route('fan.international-shippings.payment-success', $id);
-            } catch (\Stripe\Exception\CardException $e) {
-                // 失敗時は Checkout 画面へ流すため続行
-            }
-        }
-
-        // 3. Checkout セッション作成 (ここを $stripe->checkout->sessions に変更)
         $session = $stripe->checkout->sessions->create([
             'payment_method_types' => ['card'],
             'line_items' => [[
@@ -94,14 +151,12 @@ class InternationalShippingService
     }
 
     /**
-     * ファンの言語設定に合わせた配送一覧を取得
+     * ファンの言語設定に合わせた配送一覧を取得 (既存メソッド)
      */
     public function getShippingListForFan(Fan $user)
     {
-        // 言語コードの特定（Serviceの責務：コンテキストの解決）
-        $languageCode = Language::where('id', $user->language_id)->value('code') ?? 'en';
+        $locale = app()->getLocale();
 
-        // Repositoryの呼び出し
-        return $this->intlRepo->getByFanWithTranslations($user->id, $languageCode);
+        return $this->intlRepo->getListForFan($user->id, $locale);
     }
 }

@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
+import { formatCurrency } from '@/Utils/helpers';
 import { 
     ShoppingBag, Trash2, Plus, Minus, ArrowRight, ShieldCheck, 
     MapPin, CreditCard, Loader2, ArrowLeft, CheckSquare, Square 
 } from 'lucide-react';
 
 export default function Index({ cart = { items: [] }, shippingAddresses, paymentMethods }) {
-    const { language, auth, checkout_settings } = usePage().props;
+    const { language, auth, checkout_settings, currency } = usePage().props;
     const [isProcessing, setIsProcessing] = useState(false);
     
     // 状態管理：配送先・支払い方法・選択された商品のキー
@@ -172,8 +173,11 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                             <button onClick={() => removeItem(item.cart_key)} className="text-slate-300 hover:text-pink-500 transition-colors"><Trash2 size={16} /></button>
                                         </div>
                                     </div>
+                                    
                                     <div className="text-right py-1 min-w-[100px]">
-                                        <p className="text-base font-light text-slate-900">¥{item.subtotal.toLocaleString()}</p>
+                                        <p className="text-base font-black text-slate-900">
+                                            {formatCurrency(item.subtotal, currency)}
+                                        </p>
                                     </div>
                                 </div>
                             ))}
@@ -223,27 +227,52 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
 
                                     {/* 金額内訳詳細 */}
                                     <div className="space-y-4">
+                                        {/* 小計 */}
                                         <div className="flex justify-between text-sm text-slate-400">
                                             <span>{__('Subtotal')} ({totals.selectedItems.length} {__('items')})</span>
-                                            <span className="text-white">¥{totals.itemTotal.toLocaleString()}</span>
+                                            <span className="text-white">
+                                                {formatCurrency(totals.itemTotal, currency)}
+                                            </span>
                                         </div>
+
+                                        {/* 国内送料 */}
                                         <div className="flex justify-between text-sm text-slate-400">
                                             <span>{__('Domestic Shipping')}</span>
-                                            <span className="text-white">¥{totals.shipping.toLocaleString()}</span>
+                                            <span className="text-white">
+                                                {formatCurrency(totals.shipping, currency)}
+                                            </span>
                                         </div>
+
+                                        {/* 消費税 */}
                                         <div className="flex justify-between text-sm text-slate-400">
                                             <span>{__('Tax')} (10%)</span>
-                                            <span className="text-white">¥{totals.tax.toLocaleString()}</span>
+                                            <span className="text-white">
+                                                {formatCurrency(totals.tax, currency)}
+                                            </span>
                                         </div>
+
+                                        {/* システム手数料 */}
                                         <div className="flex justify-between text-sm text-slate-400 border-b border-slate-800 pb-4">
                                             <span>{__('System Fee')} (7.5%)</span>
-                                            <span className="text-white">¥{totals.fee.toLocaleString()}</span>
+                                            <span className="text-white">
+                                                {formatCurrency(totals.fee, currency)}
+                                            </span>
                                         </div>
                                     </div>
-                                    
-                                    <div className="flex justify-between items-center pt-2">
-                                        <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">{__('Total')}</span>
-                                        <span className="text-4xl font-light">¥{totals.grandTotal.toLocaleString()}</span>
+                                    <div className="flex justify-between items-center text-slate-900">
+                                        <span className="text-sm font-black uppercase tracking-widest">{__('Total')}</span>
+                                        <div className="text-right">
+                                            <span className="text-3xl font-black italic tracking-tighter text-cyan-600">
+                                                {/* totalAmount を totals.grandTotal に修正 */}
+                                                {formatCurrency(totals.grandTotal, currency)}
+                                            </span>
+                                            {currency.code !== 'JPY' && (
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+                                                    {/* ここも totals.grandTotal に修正 */}
+                                                    Estimated: ¥{Number(totals.grandTotal).toLocaleString()}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 

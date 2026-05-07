@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Payment;
 use App\Models\PaymentBreakdown;
 use App\Models\ProductVariant;
+use App\Models\Currency; // 追加
 use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Support\Str;
@@ -28,11 +29,6 @@ class CheckoutService
 
     /**
      * 注文処理実行
-     * @param $fan
-     * @param array $cartData
-     * @param int $paymentMethodId
-     * @param int addressId
-     * @param array $selectedCartKeys
      */
     public function execute(
         $fan,
@@ -46,34 +42,41 @@ class CheckoutService
             throw new \Exception(__('Cart is empty.'));
         }
 
-        return DB::transaction(function () use ($fan, $cartItem, $shippingAddressId, $paymentMethodId, $selectedCartKeys) {
+        return DB::transaction(function () use ($fan, $cartItem, $cartData, $paymentMethodId, $shippingAddressId, $selectedCartKeys) {
             // 1. 在庫の悲観的ロックとチェック
-            if (!empty($cartItem['variation_id'])) {
-                $this->validateAndLockStock($cartItem);
-            }
+            // 既存ロジック：各アイテムの在庫を確認
+            $this->validateAndLockStock($cartItem);
 
-            // 2. 【重要】ここで使う！：サーバーサイドで正確な金額を計算
-            // フロントの金額改ざんを物理的に無効化します（憲法第1条）
+            // 2. サーバーサイドで正確な金額を計算（日本円ベース）
+            // 憲法第1条に基づき再計算
             $amounts = $this->calculateFirstPhaseAmounts($cartItem);
 
-            // 3. 外部決済（Stripe等）の実行
-            // calculateFirstPhaseAmounts で出した $amounts['total'] を請求します
+            // 3. 【多通貨対応】外貨決済額の計算
+            // ファンの優先通貨を取得し、決済時のレートと外貨額（切り捨て）を算出
+            $currency = $fan->currency ?? Currency::where('code', 'JPY')->first();
+            $rate = (float) ($currency->exchange_rate ?? 1.0);
+            $settlementAmount = floor($amounts['total'] * $rate);
+
+            // 4. 外部決済（Stripe等）の実行（本来はここでStripeServiceを呼び出す想定）
             $txId = 'pi_test_' . Str::random(20); 
 
-            // 計算済みの $amounts を渡すように微修正して呼び出し
+            // 5. データの準備（多通貨情報を追加して渡す）
             $preparedData = $this->prepareOrderData(
                 $fan, 
-                $amounts,           // 再計算した金額データ
-                $cartItem,         // 明細データ
-                $shippingAddressId, // 選択された配送先
-                $paymentMethodId,   // 選択された決済方法
-                $txId               // 決済ID
+                $amounts,
+                $cartItem,
+                $shippingAddressId,
+                $paymentMethodId,
+                $txId,
+                $currency,         // 追加：通貨モデル
+                $rate,             // 追加：決済レート
+                $settlementAmount  // 追加：外貨額
             );
 
-            // 5. Repository を通じて一括保存
+            // 6. Repository を通じて一括保存
             $order = $this->orderRepo->createWithDetails($preparedData);
 
-            // 6. 在庫を実際に減らす
+            // 7. 在庫を実際に減らす
             $this->reduceStock($cartItem);
 
             // カート内を削除
@@ -84,25 +87,25 @@ class CheckoutService
     }
 
     /**
-     * 
-     * @param array $items
+     * 在庫のロックとチェック（既存維持）
      */
     private function validateAndLockStock(array $items)
     {
         foreach ($items as $item) {
-            $variation = ProductVariant::where('id', $item['variation_id'])
-                ->lockForUpdate()
-                ->first();
+            if (isset($item['variation_id']) && !empty($item['variation_id'])) {
+                $variation = ProductVariant::where('id', $item['variation_id'])
+                    ->lockForUpdate()
+                    ->first();
 
-            if (!$variation || $variation->stock < $item['quantity']) {
-                throw new Exception(__('Sorry, some items are out of stock.'));
+                if (!$variation || $variation->stock < $item['quantity']) {
+                    throw new Exception(__('Sorry, some items are out of stock.'));
+                }
             }
         }
     }
 
     /**
-     * 
-     * @param array $items
+     * 在庫減少処理（既存維持）
      */
     private function reduceStock(array $items)
     {
@@ -110,37 +113,30 @@ class CheckoutService
             $variationId = $item['variation_id'] ?? null;
 
             if ($variationId) {
-                // 1. バリエーションがある場合：ProductVariant の在庫を減らす
-                ProductVariant::where('id', $variationId)
-                    ->decrement('stock', $item['quantity']);
+                ProductVariant::where('id', $variationId)->decrement('stock', $item['quantity']);
             } else {
-                // 2. バリエーションがない場合：Product 本体の在庫を減らす
-                // $item['id'] は商品（Product）のIDを指している想定
-                Product::where('id', $item['id'])
-                    ->decrement('stock_quantity', $item['quantity']);
+                Product::where('id', $item['id'])->decrement('stock_quantity', $item['quantity']);
             }
         }
     }
 
     /**
-     * 
-     * @param $fan
-     * @param $cartData
-     * @param $pmId
-     * @param $txId
+     * 保存用データの整形（多通貨決済情報を統合）
      */
-    private function prepareOrderData($fan, $amounts, $cartData, $addressId, $pmId, $txId): array
+    private function prepareOrderData($fan, $amounts, $cartData, $addressId, $pmId, $txId, $currency, $rate, $settlementAmount): array
     {
-        $currencyId = $fan->currency_id ?? config('circleport.default_currency_id');
+        $currencyId = $currency->id ?? config('circleport.default_currency_id');
 
-        // 憲法第1条（堅牢性）に基づき、内訳を厳密に5分割する
         return [
             'order' => [
                 'fan_id'            => $fan->id,
                 'address_id'        => $addressId,
                 'payment_method_id' => $pmId,
-                'total_amount'      => $amounts['total'], // 税込合計額
+                'total_amount'      => $amounts['total'], // JPYベース合計
                 'currency_id'       => $currencyId,
+                'settlement_currency' => $currency->code, // 追加：決済通貨コード
+                'settlement_rate'     => $rate,           // 追加：決済時のレート
+                'settlement_amount'   => $settlementAmount, // 追加：決済外貨額
                 'status'            => Order::STATUS_PAID,
             ],
             'items' => array_map(fn($item) => [
@@ -157,35 +153,24 @@ class CheckoutService
                 'method_type'             => Payment::METHOD_CARD,
             ],
             'breakdowns' => [
-                // 1. 商品代金（税抜）
                 ['type' => PaymentBreakdown::TYPE_ITEM_TOTAL, 'amount' => $amounts['item_total'], 'currency_id' => $currencyId],
-                
-                // 5. 商品代金に対する税（10%）
                 ['type' => PaymentBreakdown::TYPE_ITEM_TAX, 'amount' => $amounts['item_tax'], 'currency_id' => $currencyId],
-                
-                // 4. システム利用料・手数料
                 ['type' => PaymentBreakdown::TYPE_HANDLING_FEE, 'amount' => $amounts['fee'], 'currency_id' => $currencyId],
-                
-                // 2. 国内配送料（税抜）
                 ['type' => PaymentBreakdown::TYPE_DOMESTIC_SHIPPING, 'amount' => $amounts['shipping'], 'currency_id' => $currencyId],
-                
-                // 7. 配送料に対する税（10%）
                 ['type' => PaymentBreakdown::TYPE_SHIPPING_TAX, 'amount' => $amounts['shipping_tax'], 'currency_id' => $currencyId],
             ],
         ];
     }
 
     /**
-     * 
-     * @param array $cartItems
+     * 金額再計算ロジック（既存維持）
      */
     private function calculateFirstPhaseAmounts(array $cartItems): array
     {
-        $shipping = config('circleport.checkout.domestic_shipping_fee');
-        $taxRate  = config('circleport.checkout.tax_rate'); // 例: 0.10
-        $feeRate  = config('circleport.checkout.gateway_fee_rate'); // 例: 0.08
+        $shipping = config('circleport.checkout.domestic_shipping_fee', 500);
+        $taxRate  = config('circleport.checkout.tax_rate', 0.10);
+        $feeRate  = config('circleport.checkout.gateway_fee_rate', 0.08);
 
-        // 1. 商品代金合計（税抜）
         $itemTotal = 0;
         foreach ($cartItems as $item) {
             $vId = $item['variation_id'] ?? null;
@@ -198,33 +183,22 @@ class CheckoutService
             }
         }
 
-        // 2. 国内送料（税抜 / 固定額）
         $domesticShipping = $shipping;
-
-        // 3. 【重要】国内消費税の分離計算（10%）
-        // クリエイターの売上計算を正確にするため、商品と送料の税を分けます
-        // 憲法：ファンへの請求額に影響が出ないよう、個別に floor してから合算
         $itemTax     = floor($itemTotal * $taxRate);
         $shippingTax = floor($domesticShipping * $taxRate);
         $totalTax    = $itemTax + $shippingTax;
 
-        // 4. 決済手数料 (8%)
-        // (商品代 + 送料 + 合計消費税) の総額に対して 8%
-        // 憲法第3条：コスト回収のため、1円未満は「切り上げ(ceil)」
         $totalBeforeFee = $itemTotal + $domesticShipping + $totalTax;
         $gatewayFee     = ceil($totalBeforeFee * $feeRate);
+        $grandTotal     = $totalBeforeFee + $gatewayFee;
 
-        // 5. 最終合計額 (ファンへの請求額)
-        $grandTotal = $totalBeforeFee + $gatewayFee;
-
-        // 憲法第1条：prepareOrderData が期待する全てのキーを返却
         return [
-            'item_total'   => $itemTotal,       // 商品代金合計（税抜）
-            'item_tax'     => $itemTax,         // 商品代金に対する税
-            'shipping'     => $domesticShipping,// 国内送料（税抜）
-            'shipping_tax' => $shippingTax,     // 送料に対する税
-            'fee'          => $gatewayFee,      // 決済手数料
-            'total'        => $grandTotal,      // 総合計（税込）
+            'item_total'   => $itemTotal,
+            'item_tax'     => $itemTax,
+            'shipping'     => $domesticShipping,
+            'shipping_tax' => $shippingTax,
+            'fee'          => $gatewayFee,
+            'total'        => $grandTotal,
         ];
     }
 }

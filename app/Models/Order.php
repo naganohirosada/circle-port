@@ -11,7 +11,7 @@ class Order extends Model
 {
     use SoftDeletes;
 
-    // 憲法：ステータスの数値管理
+    // ステータスの数値管理
     const STATUS_PENDING = 10;                // 支払い待ち
     const STATUS_PAID = 20;                   // 支払い完了（受注）
     const STATUS_SHIPPED_TO_WAREHOUSE = 30;   // クリエイターから倉庫へ発送中
@@ -23,8 +23,11 @@ class Order extends Model
         'fan_id',
         'address_id',
         'payment_method_id',
-        'total_amount',
-        'currency_id',
+        'total_amount',      // 日本円ベースの総額
+        'currency_id',       // 表示に使用した通貨ID
+        'settlement_currency', // 【追加】実際に決済した通貨コード (例: USD)
+        'settlement_rate',     // 【追加】決済時の為替レート
+        'settlement_amount',   // 【追加】実際に決済した外貨額（整数）
         'status',
         'notes',
     ];
