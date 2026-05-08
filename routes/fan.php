@@ -25,6 +25,7 @@ Route::prefix('fan')->name('fan.')->group(function () {
     
     // --- 未ログイン時のみアクセス可能 ---
     Route::middleware('guest:fan')->group(function () {
+        
         Route::get('login', [LoginController::class, 'create'])->name('login');
         Route::post('login', [LoginController::class, 'store'])->name('login.store');
         Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
