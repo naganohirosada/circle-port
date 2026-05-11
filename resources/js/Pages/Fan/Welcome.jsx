@@ -3,7 +3,7 @@ import { Link, Head, usePage } from '@inertiajs/react';
 import { 
     Globe, ShoppingBag, Box, Users, Heart, ArrowRight, Sparkles, 
     Send, ShieldCheck, Zap, Info, ChevronDown, CheckCircle2,
-    Search, Package, CreditCard, Gift
+    Search, Package, CreditCard, Gift, ChevronRight
 } from 'lucide-react';
 
 export default function Welcome() {
@@ -31,7 +31,7 @@ export default function Welcome() {
                         <span className="text-xl font-black tracking-tighter uppercase italic tracking-widest">CirclePort</span>
                     </div>
                     <div className="flex items-center gap-6">
-                        <a href="#how-it-works" className="hidden sm:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-cyan-600 transition-colors">
+                        <a href="/guide" className="hidden sm:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-cyan-600 transition-colors">
                             {__('How it Works')}
                         </a>
                         <Link href={auth.fan ? route('fan.dashboard') : route('fan.login')} className="px-6 py-2.5 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-cyan-600 transition-all shadow-md font-bold text-center">
@@ -180,6 +180,12 @@ export default function Welcome() {
                         </div>
                     </div>
                 </div>
+
+                <div className="mt-20 text-center">
+                    <Link href="/guide" className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-widest text-cyan-600 hover:text-cyan-700 transition-all border-b-2 border-cyan-600 pb-1">
+                        {__('View Detailed Guide')} <ChevronRight size={16} />
+                    </Link>
+                </div>
             </section>
 
             {/* --- 5. Pricing Section --- */}
@@ -217,6 +223,7 @@ export default function Welcome() {
                         <span className="text-slate-400 font-bold uppercase tracking-widest">© 2026 CirclePort Project. All rights reserved.</span>
                     </div>
                     <div className="flex gap-12">
+                        <Link href="/guide" className="hover:text-cyan-600 transition-colors font-bold uppercase tracking-widest">{__('Guide')}</Link>
                         <a href="#" className="hover:text-cyan-600 transition-colors font-bold uppercase tracking-widest">{__('Privacy')}</a>
                         <a href="#" className="hover:text-cyan-600 transition-colors font-bold uppercase tracking-widest">{__('Terms')}</a>
                         <Link href={route('welcome.creator')} className="text-indigo-500 underline underline-offset-8 decoration-2 hover:text-indigo-700 transition-all font-bold tracking-normal">{__('Are you a Creator?')}</Link>

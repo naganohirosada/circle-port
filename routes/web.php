@@ -14,6 +14,10 @@ Route::get('/for-creators', function () {
     return Inertia::render('Creator/Welcome');
 })->name('welcome.creator');
 
+Route::get('/guide', function () {
+    return Inertia::render('Fan/Guide');
+})->name('fan.guide');
+
 // ファン向けのルートを定義
 require __DIR__.'/fan.php';
 require __DIR__.'/creator.php';
