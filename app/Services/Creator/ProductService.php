@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 use Exception;
 use App\Models\Category;
 use App\Models\Tag;
+use App\Models\HsCode;
+use App\Models\Product;
 
 class ProductService
 {
@@ -57,7 +59,7 @@ class ProductService
                 'weight_g'          => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
                 'hs_code_id'        => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
                 'digital_file_path' => $digitalFilePath, // 前述のロジック
-                'status'            => 1, // 仮に「公開待ち」ステータスで開始
+                'status'            => Product::STATUS_PENDING, // 仮に「公開待ち」ステータスで開始
             ]);
 
             $productSku = "CP-" . now()->format('Ymd') . "-" . str_pad($product->id, 5, '0', STR_PAD_LEFT);

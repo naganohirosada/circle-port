@@ -49,16 +49,30 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         if (data.category_id) {
             const selected = categories.find(c => c.id == data.category_id);
             setSubCategories(selected?.sub_categories || []);
+            
+            // 親カテゴリにデフォルトHSコードがあればセット（サブカテゴリ選択で上書きされる前提）
+            if (selected?.default_hs_code_id) {
+                setData(prev => ({ ...prev, hs_code_id: selected.default_hs_code_id }));
+            }
+        } else {
+            setSubCategories([]);
         }
     }, [data.category_id]);
+
+    // サブカテゴリ選択時の連動
+    useEffect(() => {
+        if (data.sub_category_id) {
+            const selectedSub = subCategories.find(sc => sc.id == data.sub_category_id);
+            // サブカテゴリ固有のHSコードがあれば、それを優先してセット
+            if (selectedSub?.default_hs_code_id) {
+                setData('hs_code_id', selectedSub.default_hs_code_id);
+            }
+        }
+    }, [data.sub_category_id]);
 
     useEffect(() => {
         setData('has_variants', data.variations.length > 0);
     }, [data.variations.length]);
-
-    useEffect(() => {
-        console.log('Validation Errors:', errors);
-    }, [errors]);
 
     const hasErrorInTab = (lang) => {
         return Object.keys(errors).some(key => key.includes(`.${lang}`));
@@ -290,11 +304,27 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                     <InputError message={errors.weight} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">HSコード</label>
-                                    <select className="w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4" value={data.hs_code_id} onChange={e => setData('hs_code_id', e.target.value)}>
-                                        <option value="">選択してください</option>
-                                        {hs_codes.map(h => <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>)}
-                                    </select>
+                                    <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">
+                                        配送・通関用分類 (HSコード)
+                                    </label>
+                                    <div className="relative">
+                                        <select 
+                                            className="w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4 focus:ring-2 focus:ring-indigo-500 appearance-none" 
+                                            value={data.hs_code_id} 
+                                            onChange={e => setData('hs_code_id', e.target.value)}
+                                        >
+                                            <option value="">カテゴリから自動設定されます</option>
+                                            {hs_codes.map(h => (
+                                                <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>
+                                            ))}
+                                        </select>
+                                        {/* 自動入力された際のアシストテキスト */}
+                                        {data.hs_code_id && (
+                                            <p className="mt-2 text-[10px] text-indigo-500 font-bold ml-1">
+                                                ✨ カテゴリに基づき、最適なコードを自動選択しました。
+                                            </p>
+                                        )}
+                                    </div>
                                     <InputError message={errors.hs_code_id} />
                                 </div>
                             </div>

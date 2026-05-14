@@ -1,0 +1,152 @@
+[
+  {
+    "code": "490199",
+    "name_en": "Printed books, brochures and similar printed matter (Others)",
+    "name_ja": "印刷物（同人誌、漫画、小説、一般書籍）",
+    "is_priority": true
+  },
+  {
+    "code": "490300",
+    "name_en": "Children's picture, drawing or colouring books",
+    "name_ja": "絵本、画集、イラスト集",
+    "is_priority": true
+  },
+  {
+    "code": "392640",
+    "name_en": "Statuettes and other ornamental articles of plastics",
+    "name_ja": "プラスチック製品（アクリルスタンド、フィギュア）",
+    "is_priority": true
+  },
+  {
+    "code": "711719",
+    "name_en": "Imitation jewelry of base metal",
+    "name_ja": "卑金属製の身辺用模造細工品（ピンバッジ、メタルキーホルダー）",
+    "is_priority": true
+  },
+  {
+    "code": "610910",
+    "name_en": "T-shirts, singlets and other vests, knitted or crocheted, of cotton",
+    "name_ja": "綿製Tシャツ、タンクトップ",
+    "is_priority": true
+  },
+  {
+    "code": "610990",
+    "name_en": "T-shirts, singlets and other vests, of other textile materials",
+    "name_ja": "その他繊維製Tシャツ（ポリエステル等）",
+    "is_priority": true
+  },
+  {
+    "code": "491191",
+    "name_en": "Pictures, designs and photographs",
+    "name_ja": "写真、図像、図案（ポスター、タペストリー）",
+    "is_priority": true
+  },
+  {
+    "code": "630492",
+    "name_en": "Other furnishing articles, not knitted or crocheted, of cotton",
+    "name_ja": "室内用品（ブランケット、クッションカバー、抱き枕カバー）",
+    "is_priority": true
+  },
+  {
+    "code": "420222",
+    "name_en": "Handbags with outer surface of plastic sheeting or textile materials",
+    "name_ja": "ハンドバッグ（ビニール製、布製、トートバッグ）",
+    "is_priority": true
+  },
+  {
+    "code": "481720",
+    "name_en": "Letter cards, plain postcards and correspondence cards",
+    "name_ja": "便箋、ポストカード、グリーティングカード",
+    "is_priority": true
+  },
+  {
+    "code": "482010",
+    "name_en": "Registers, account books, note books, order books, receipt books",
+    "name_ja": "ノート、帳簿、日記帳",
+    "is_priority": true
+  },
+  {
+    "code": "482110",
+    "name_en": "Paper or paperboard labels of all kinds, printed",
+    "name_ja": "紙製のラベル、ステッカー（印刷されたもの）",
+    "is_priority": true
+  },
+  {
+    "code": "491199",
+    "name_en": "Other printed matter, including printed pictures and photographs",
+    "name_ja": "その他の印刷物（クリアファイル等への印刷）",
+    "is_priority": true
+  },
+  {
+    "code": "581092",
+    "name_en": "Embroidery of chemical fibres",
+    "name_ja": "刺繍製品（ワッペン、刺繍タグ）",
+    "is_priority": true
+  },
+  {
+    "code": "611020",
+    "name_en": "Jerseys, pullovers, cardigans, waistcoats and similar articles, of cotton",
+    "name_ja": "セーター、カーディガン、パーカー（綿製）",
+    "is_priority": true
+  },
+  {
+    "code": "621490",
+    "name_en": "Shawls, scarves, mufflers, mantillas, veils and the like (Others)",
+    "name_ja": "ショール、スカーフ、マフラー",
+    "is_priority": true
+  },
+  {
+    "code": "640299",
+    "name_en": "Other footwear with outer soles and uppers of rubber or plastics",
+    "name_ja": "ゴム製またはプラスチック製履物（サンダル等）",
+    "is_priority": false
+  },
+  {
+    "code": "650500",
+    "name_en": "Hats and other headgear, knitted or crocheted",
+    "name_ja": "帽子（ニット帽、キャップ）",
+    "is_priority": true
+  },
+  {
+    "code": "670411",
+    "name_en": "Complete wigs of synthetic textile materials",
+    "name_ja": "合成繊維製ウィッグ（コスプレ用等）",
+    "is_priority": true
+  },
+  {
+    "code": "852351",
+    "name_en": "Solid-state non-volatile storage devices (USB flash drives)",
+    "name_ja": "USBメモリ（データ入りメディア）",
+    "is_priority": true
+  },
+  {
+    "code": "950300",
+    "name_en": "Tricycles, scooters, pedal cars... dolls; other toys",
+    "name_ja": "玩具（ぬいぐるみ、フィギュア、プラモデル）",
+    "is_priority": true
+  },
+  {
+    "code": "960810",
+    "name_en": "Ball point pens",
+    "name_ja": "ボールペン",
+    "is_priority": true
+  },
+  {
+    "code": "960910",
+    "name_en": "Pencils and crayons, with leads encased in a rigid sheath",
+    "name_ja": "鉛筆、色鉛筆",
+    "is_priority": true
+  },
+  {
+    "code": "392690",
+    "name_en": "Other articles of plastics",
+    "name_ja": "その他のプラスチック製品（スマホケース等）",
+    "is_priority": true
+  },
+  {
+    "code": "420232",
+    "name_en": "Articles of a kind normally carried in the pocket or in the handbag (Plastic/Textile)",
+    "name_ja": "財布、小物入れ（布製、ビニール製）",
+    "is_priority": true
+  }
+]

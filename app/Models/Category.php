@@ -28,4 +28,9 @@ class Category extends Model
                     
         return $translation ? $translation->name : $this->name_ja; // 最終手段でja
     }
+
+    public function defaultHsCode()
+    {
+        return $this->belongsTo(HsCode::class, 'default_hs_code_id');
+    }
 }

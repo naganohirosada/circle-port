@@ -7,12 +7,23 @@ use App\Models\Category;
 use App\Models\CategoryTranslation;
 use App\Models\SubCategory;
 use App\Models\SubCategoryTranslation;
+use App\Models\HsCode;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CategorySeeder extends Seeder
 {
     public function run(): void
     {
+
+        Schema::disableForeignKeyConstraints();
+        
+        Category::truncate();
+        CategoryTranslation::truncate();
+        SubCategory::truncate();
+        SubCategoryTranslation::truncate();
+
+        Schema::enableForeignKeyConstraints();
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         Category::truncate();
         CategoryTranslation::truncate();
@@ -20,93 +31,139 @@ class CategorySeeder extends Seeder
         SubCategoryTranslation::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
+        // HSコードのIDをコード（6桁）から取得するヘルパー
+        $getHsId = function($code) {
+            if (!$code) return null;
+            // JSON等でドットが含まれている場合を考慮して置換
+            $cleanCode = str_replace('.', '', $code);
+            return HsCode::where('code', $cleanCode)->first()?->id;
+        };
+
         $data = [
-            // 1. 本・誌
+            // --- 01. 本・誌 ---
             [
-                'slug' => 'books',
-                'trans' => ['ja' => '本・誌', 'en' => 'Books & Magazines', 'en-us' => 'Books & Magazines', 'zh' => '書籍・雜誌', 'fr' => 'Livres et Magazines', 'th' => 'หนังสือและนิตยสาร'],
+                'hs' => '490199', // 印刷物一般
+                'trans' => ['ja' => '本・誌', 'en' => 'Books & Magazines', 'zh' => '書籍・雜誌', 'ko' => '도서/잡지', 'th' => 'หนังสือและนิตยสาร'],
                 'subs' => [
-                    ['ja' => '同人誌（漫画）', 'en' => 'Doujinshi (Manga)', 'en-us' => 'Doujinshi (Manga)', 'zh' => '同人誌（漫畫）', 'fr' => 'Doujinshi (Manga)', 'th' => 'โดจินชิ (มังงะ)'],
-                    ['ja' => '同人誌（小説）', 'en' => 'Doujinshi (Novels)', 'en-us' => 'Doujinshi (Novels)', 'zh' => '同人誌（小說）', 'fr' => 'Doujinshi (Romans)', 'th' => 'โดจินชิ (นิยาย)'],
-                    ['ja' => 'イラスト集・画集', 'en' => 'Artbooks', 'en-us' => 'Art Books', 'zh' => '畫集・原畫集', 'fr' => 'Livres d\'art', 'th' => 'สมุดภาพ'],
-                    ['ja' => '設定資料集', 'en' => 'Setting Documents', 'en-us' => 'Production Art Books', 'zh' => '設定資料集', 'fr' => 'Documents de conception', 'th' => 'สมุดรวมข้อมูลตั้งค่า'],
+                    ['hs' => '490199', 'name' => ['ja' => '同人誌（漫画）', 'en' => 'Doujinshi (Manga)', 'zh' => '同人誌（漫畫）']],
+                    ['hs' => '490199', 'name' => ['ja' => '同人誌（小説）', 'en' => 'Doujinshi (Novels)', 'zh' => '同人誌（小說）']],
+                    ['hs' => '490300', 'name' => ['ja' => '画集・イラスト集', 'en' => 'Artbooks', 'zh' => '畫集・原畫集']], // 絵本・画集専用コード
+                    ['hs' => '490199', 'name' => ['ja' => '設定資料集・ファンブック', 'en' => 'Fanbooks', 'zh' => '設定資料集']],
                 ]
             ],
-            // 2. アクセサリー
+            // --- 02. アクリル・プラスチック製品 ---
             [
-                'slug' => 'accessories',
-                'trans' => ['ja' => 'アクセサリー', 'en' => 'Accessories', 'en-us' => 'Accessories', 'zh' => '配飾 / 周邊', 'fr' => 'Accessoires', 'th' => 'เครื่องประดับ'],
+                'hs' => '392640', // プラスチック製小像
+                'trans' => ['ja' => 'アクリル・プラスチック', 'en' => 'Acrylic & Plastics', 'zh' => '壓克力 / 塑料', 'ko' => '아크릴/플라스틱', 'th' => 'อะคริลิค'],
                 'subs' => [
-                    ['ja' => 'アクリルスタンド', 'en' => 'Acrylic Stands', 'en-us' => 'Acrylic Stands', 'zh' => '壓克力立牌', 'fr' => 'Supports en acrylique', 'th' => 'แสแตนด์อะคริลิค'],
-                    ['ja' => 'アクリルキーホルダー', 'en' => 'Acrylic Keychains', 'en-us' => 'Acrylic Keychains', 'zh' => '壓克力吊飾', 'fr' => 'Porte-clés en acrylique', 'th' => 'พวงกุญแจอะคริลิค'],
-                    ['ja' => '缶バッジ', 'en' => 'Can Badges', 'en-us' => 'Pin-Back Buttons', 'zh' => '徽章', 'fr' => 'Badges', 'th' => 'เข็มกลัด'],
-                    ['ja' => 'ピンバッジ', 'en' => 'Pin Badges', 'en-us' => 'Enamel Pins', 'zh' => '胸針', 'fr' => 'Pins', 'th' => 'พินบัッジ'],
+                    ['hs' => '392640', 'name' => ['ja' => 'アクリルスタンド', 'en' => 'Acrylic Stands', 'zh' => '壓克力立牌']],
+                    ['hs' => '392640', 'name' => ['ja' => 'アクリルキーホルダー', 'en' => 'Acrylic Keychains', 'zh' => '壓克力吊飾']],
+                    ['hs' => '392640', 'name' => ['ja' => 'アクリルジオラマ', 'en' => 'Acrylic Dioramas', 'zh' => '壓克力場景組']],
+                    ['hs' => '392690', 'name' => ['ja' => 'プラスチックコースター', 'en' => 'Plastic Coasters', 'zh' => '塑料杯墊']], // その他のプラスチック製品
                 ]
             ],
-            // 3. アパレル
+            // --- 03. バッジ・ピンズ ---
             [
-                'slug' => 'apparel',
-                'trans' => ['ja' => 'アパレル', 'en' => 'Apparel', 'en-us' => 'Clothing', 'zh' => '服飾', 'fr' => 'Vêtements', 'th' => 'เสื้อผ้า'],
+                'hs' => '711719', // 卑金属製模造細工品
+                'trans' => ['ja' => 'バッジ・ピンズ', 'en' => 'Badges & Pins', 'zh' => '徽章 / 胸針', 'ko' => '뱃지/핀', 'th' => 'เข็มกลัด'],
                 'subs' => [
-                    ['ja' => 'Tシャツ', 'en' => 'T-shirts', 'en-us' => 'T-shirts', 'zh' => 'T恤', 'fr' => 'T-shirts', 'th' => 'เสื้อยืด'],
-                    ['ja' => 'パーカー', 'en' => 'Hoodies', 'en-us' => 'Hoodies', 'zh' => '連帽衫', 'fr' => 'Sweats à capuche', 'th' => 'เสื้อฮู้ด'],
-                    ['ja' => 'トートバッグ', 'en' => 'Tote Bags', 'en-us' => 'Tote Bags', 'zh' => '托特包', 'fr' => 'Sacs cabas', 'th' => 'กระเป๋าโท้ท'],
-                    ['ja' => 'キャップ', 'en' => 'Caps', 'en-us' => 'Caps & Hats', 'zh' => '帽子', 'fr' => 'Casquettes', 'th' => 'หมวก'],
+                    ['hs' => '711719', 'name' => ['ja' => '缶バッジ', 'en' => 'Can Badges', 'zh' => '馬口鐵徽章']],
+                    ['hs' => '711719', 'name' => ['ja' => 'ピンバッジ・ピンズ', 'en' => 'Enamel Pins', 'zh' => '金屬徽章']],
+                    ['hs' => '392640', 'name' => ['ja' => 'ラバーストラップ', 'en' => 'Rubber Straps', 'zh' => '軟膠吊飾']], // ゴム/プラスチック扱い
                 ]
             ],
-            // 4. 雑貨・インテリア
+            // --- 04. ステーショナリー ---
             [
-                'slug' => 'goods',
-                'trans' => ['ja' => '雑貨・インテリア', 'en' => 'Goods & Interior', 'en-us' => 'Home & Collectibles', 'zh' => '生活雜貨', 'fr' => 'Produits et Intérieur', 'th' => 'สินค้าทั่วไปและตกแต่งบ้าน'],
+                'hs' => '481720', // 便箋・カード
+                'trans' => ['ja' => '文具・ステーショナリー', 'en' => 'Stationery', 'zh' => '文具', 'ko' => '문구', 'th' => 'เครื่องเขียน'],
                 'subs' => [
-                    ['ja' => 'タペストリー', 'en' => 'Tapestries', 'en-us' => 'Wall Scrolls', 'zh' => '掛軸', 'fr' => 'Tapisseries', 'th' => 'ภาพแขวน'],
-                    ['ja' => '抱き枕カバー', 'en' => 'Dakimakura Covers', 'en-us' => 'Body Pillow Covers', 'zh' => '等身抱枕套', 'fr' => 'Housses de Dakimakura', 'th' => 'ปลอกหมอนข้าง'],
-                    ['ja' => 'ブランケット', 'en' => 'Blankets', 'en-us' => 'Blankets', 'zh' => '毯子', 'fr' => 'Couvertures', 'th' => 'ผ้าห่ม'],
-                    ['ja' => 'マグカップ', 'en' => 'Mugs', 'en-us' => 'Mugs', 'zh' => '馬克杯', 'fr' => 'Mugs', 'th' => 'แก้วมัค'],
+                    ['hs' => '481720', 'name' => ['ja' => 'ポストカード', 'en' => 'Postcards', 'zh' => '明信片']],
+                    ['hs' => '482110', 'name' => ['ja' => 'ステッカー・シール', 'en' => 'Stickers', 'zh' => '貼紙']], // 紙製ラベル
+                    ['hs' => '392610', 'name' => ['ja' => 'クリアファイル', 'en' => 'Clear Folders', 'zh' => '資料夾']], // 事務用品（プラスチック）
+                    ['hs' => '482390', 'name' => ['ja' => 'マスキングテープ', 'en' => 'Masking Tape', 'zh' => '紙膠帶']],
                 ]
             ],
-            // 5. デジタル
+            // --- 05. アパレル ---
             [
-                'slug' => 'digital',
-                'trans' => ['ja' => 'デジタル', 'en' => 'Digital Contents', 'en-us' => 'Digital Downloads', 'zh' => '數位內容', 'fr' => 'Contenu numérique', 'th' => 'เนื้อหาดิจิทัล'],
+                'hs' => '610910', // Tシャツ（綿製）
+                'trans' => ['ja' => 'アパレル', 'en' => 'Apparel', 'zh' => '服飾', 'ko' => '어패럴', 'th' => 'เสื้อผ้า'],
                 'subs' => [
-                    ['ja' => 'ゲーム', 'en' => 'Games', 'en-us' => 'Games', 'zh' => '遊戲', 'fr' => 'Jeux', 'th' => 'เกม'],
-                    ['ja' => 'ボイスデータ', 'en' => 'Voice Data', 'en-us' => 'ASMR / Voice Clips', 'zh' => '語音數據', 'fr' => 'Données vocales', 'th' => 'ข้อมูลเสียง'],
-                    ['ja' => '音楽・楽曲', 'en' => 'Music', 'en-us' => 'Music & Tracks', 'zh' => '音樂', 'fr' => 'Musique', 'th' => 'ดนตรี'],
-                    ['ja' => 'デジタル画集', 'en' => 'Digital Artbooks', 'en-us' => 'Digital Art Books', 'zh' => '數位畫集', 'fr' => 'Livres d\'art numériques', 'th' => 'สมุดภาพดิจิทัล'],
+                    ['hs' => '610910', 'name' => ['ja' => 'Tシャツ', 'en' => 'T-shirts', 'zh' => 'T恤']],
+                    ['hs' => '611020', 'name' => ['ja' => 'パーカー・スウェット', 'en' => 'Hoodies & Sweatshirts', 'zh' => '連帽衫']],
+                    ['hs' => '420222', 'name' => ['ja' => 'トートバッグ・カバン', 'en' => 'Bags', 'zh' => '包袋']], // 紡織材料製バッグ
+                    ['hs' => '650500', 'name' => ['ja' => '帽子・キャップ', 'en' => 'Hats & Caps', 'zh' => '帽子']],
+                ]
+            ],
+            // --- 06. インテリア・布製品 ---
+            [
+                'hs' => '491191', // 写真・図像（ポスター・タペストリー）
+                'trans' => ['ja' => 'インテリア・生活雑貨', 'en' => 'Interior', 'zh' => '家居用品', 'ko' => '인테리어', 'th' => 'ตกแต่งบ้าน'],
+                'subs' => [
+                    ['hs' => '491191', 'name' => ['ja' => 'タペストリー', 'en' => 'Tapestries', 'zh' => '掛軸']],
+                    ['hs' => '630492', 'name' => ['ja' => '抱き枕カバー', 'en' => 'Dakimakura Covers', 'zh' => '等身抱枕套']], // 綿製室内用品
+                    ['hs' => '630130', 'name' => ['ja' => 'ブランケット・毛布', 'en' => 'Blankets', 'zh' => '毛毯']],
+                    ['hs' => '630492', 'name' => ['ja' => 'クッション・枕', 'en' => 'Cushions', 'zh' => '靠枕']],
+                ]
+            ],
+            // --- 07. 雑貨・玩具 ---
+            [
+                'hs' => '950300', // 玩具一般（ぬいぐるみ、フィギュア）
+                'trans' => ['ja' => '雑貨・おもちゃ', 'en' => 'Toys & Goods', 'zh' => '雜貨 / 玩具', 'ko' => '잡화/완구', 'th' => 'สินค้าเบ็ดเตล็ด'],
+                'subs' => [
+                    ['hs' => '950300', 'name' => ['ja' => 'ぬいぐるみ', 'en' => 'Plushies', 'zh' => '玩偶']],
+                    ['hs' => '392690', 'name' => ['ja' => 'スマホケース', 'en' => 'Phone Cases', 'zh' => '手機殼']],
+                    ['hs' => '691200', 'name' => ['ja' => 'マグカップ・食器', 'en' => 'Mugs & Tableware', 'zh' => '馬克杯']],
+                ]
+            ],
+            // --- 08. デジタルコンテンツ ---
+            [
+                'hs' => null, // 配送なし
+                'trans' => ['ja' => 'デジタルコンテンツ', 'en' => 'Digital Content', 'zh' => '電子出版', 'ko' => '디지털 콘텐츠', 'th' => 'ดิจิทัลคอนเทนต์'],
+                'subs' => [
+                    ['hs' => null, 'name' => ['ja' => 'イラストデータ', 'en' => 'Illustrations', 'zh' => '插畫數據']],
+                    ['hs' => null, 'name' => ['ja' => '音楽・ボイス', 'en' => 'Music & Voice', 'zh' => '音樂 / 語音']],
+                    ['hs' => null, 'name' => ['ja' => '3Dモデル', 'en' => '3D Models', 'zh' => '3D模型']],
                 ]
             ],
         ];
 
+        $locales = ['ja', 'en', 'zh', 'th', 'id', 'vi', 'fr', 'de', 'ko'];
+
         foreach ($data as $cItem) {
+            // 親カテゴリの作成
             $category = Category::create([
                 'status' => 1,
                 'display_order' => 0,
-                'name_ja' => $cItem['trans']['ja'],
-                'name_en' => $cItem['trans']['en'],
+                'default_hs_code_id' => $getHsId($cItem['hs']),
+                'name_ja' => $cItem['trans']['ja'], // 互換性のため
+                'name_en' => $cItem['trans']['en']  // 互換性のため
             ]);
 
-            foreach ($cItem['trans'] as $lang => $val) {
+            // 親カテゴリの翻訳登録
+            foreach ($locales as $locale) {
                 CategoryTranslation::create([
                     'category_id' => $category->id,
-                    'locale' => $lang,
-                    'name' => $val
+                    'locale' => $locale,
+                    'name' => $cItem['trans'][$locale] ?? $cItem['trans']['en'] ?? $cItem['trans']['ja']
                 ]);
             }
 
+            // サブカテゴリの作成
             foreach ($cItem['subs'] as $sItem) {
                 $subCategory = SubCategory::create([
                     'category_id' => $category->id,
                     'sort_order' => 0,
-                    'name_ja' => $sItem['ja'],
-                    'name_en' => $sItem['en'],
+                    'default_hs_code_id' => $getHsId($sItem['hs']),
+                    'name_ja' => $sItem['name']['ja'], // 互換性のため
+                    'name_en' => $sItem['name']['en']  // 互換性のため
                 ]);
 
-                foreach ($sItem as $lang => $val) {
+                // サブカテゴリの翻訳登録
+                foreach ($locales as $locale) {
                     SubCategoryTranslation::create([
                         'sub_category_id' => $subCategory->id,
-                        'locale' => $lang,
-                        'name' => $val
+                        'locale' => $locale,
+                        'name' => $sItem['name'][$locale] ?? $sItem['name']['en'] ?? $sItem['name']['ja']
                     ]);
                 }
             }

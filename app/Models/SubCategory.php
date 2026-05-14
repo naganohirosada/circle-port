@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Category;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SubCategory extends Model
 {
@@ -16,5 +18,10 @@ class SubCategory extends Model
     public function translations()
     {
         return $this->hasMany(SubCategoryTranslation::class);
+    }
+
+    public function defaultHsCode(): BelongsTo
+    {
+        return $this->belongsTo(HsCode::class, 'default_hs_code_id');
     }
 }

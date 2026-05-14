@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\DomesticShippingController;
 use App\Http\Controllers\Admin\CreatorController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\CategoryController;
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
@@ -74,5 +75,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/settings', [SettingController::class, 'update'])->name('settings.update');
 
         Route::post('/payments/{payment}/refund', [PaymentController::class, 'refund'])->name('payments.refund');
+
+        Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
     });
 });

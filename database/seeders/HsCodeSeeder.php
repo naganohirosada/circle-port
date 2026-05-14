@@ -1,53 +1,53 @@
 <?php
+
 namespace Database\Seeders;
 
 use App\Models\HsCode;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class HsCodeSeeder extends Seeder
 {
     public function run(): void
     {
-        $hsCodes = [
-            [
-                'code' => '4901.99',
-                'name_ja' => '印刷物（同人誌・小説・一般書籍）',
-                'name_en' => 'Printed books, brochures and similar printed matter',
-            ],
-            [
-                'code' => '4903.00',
-                'name_ja' => '絵本・画集（イラスト集など）',
-                'name_en' => 'Children\'s picture, drawing or colouring books',
-            ],
-            [
-                'code' => '3926.40',
-                'name_ja' => 'プラスチック製品（アクリルスタンド・アクキー）',
-                'name_en' => 'Statuettes and other ornamental articles of plastics',
-            ],
-            [
-                'code' => '7117.19',
-                'name_ja' => '卑金属製の身辺用模造細工品（ピンバッジ・メタルキーホルダー）',
-                'name_en' => 'Imitation jewelry of base metal',
-            ],
-            [
-                'code' => '6109.10',
-                'name_ja' => '綿製Tシャツ（アパレル）',
-                'name_en' => 'T-shirts, singlets and other vests, knitted or crocheted, of cotton',
-            ],
-            [
-                'code' => '4911.91',
-                'name_ja' => '写真、図像、図案（ポスター・タペストリー）',
-                'name_en' => 'Pictures, designs and photographs',
-            ],
-            [
-                'code' => '6304.92',
-                'name_ja' => '室内用品（ブランケット・クッションカバー）',
-                'name_en' => 'Other furnishing articles, of cotton',
-            ],
-        ];
+        // 1. 外部キー制約を一時的に無効化
+        Schema::disableForeignKeyConstraints();
 
-        foreach ($hsCodes as $hs) {
-            HsCode::create($hs);
+        // 2. データの削除 (Truncate がエラーになる場合は delete() を使用)
+        // ここでは ID をリセットするために制約無視の Truncate を実行
+        DB::table('hs_codes')->truncate();
+
+        // 3. 外部キー制約を元に戻す (インポート前でも後でも良いが、最後に必ず戻す)
+        Schema::enableForeignKeyConstraints();
+
+        // JSONファイルの読み込み
+        $jsonPath = database_path('data/hs_codes.json');
+        
+        if (!File::exists($jsonPath)) {
+            $this->command->error("JSON file not found at: {$jsonPath}");
+            return;
+        }
+
+        $json = File::get($jsonPath);
+        $data = json_decode($json, true);
+
+        // 1000件ずつ分割してインポート
+        $chunks = array_chunk($data, 1000);
+
+        foreach ($chunks as $chunk) {
+            $insertData = array_map(function ($item) {
+                return [
+                    'code'        => $item['code'],
+                    'name_en'     => $item['name_en'],
+                    'name_ja'     => $item['name_ja'] ?? null,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ];
+            }, $chunk);
+
+            DB::table('hs_codes')->insert($insertData);
         }
     }
 }

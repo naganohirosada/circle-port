@@ -48,8 +48,6 @@ class ProductController extends Controller
     {
         // 運営指定のタグを翻訳付きで取得
         $tags = Tag::with(['translations' => function($query) {
-            // クリエイター画面が日本語なら日本語のみ取得、
-            // または全言語取得してフロントで処理
             $query->where('locale', 'ja'); 
         }])->where('is_active', true)->get()->map(function($tag) {
             return [

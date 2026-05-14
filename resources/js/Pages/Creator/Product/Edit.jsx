@@ -60,12 +60,31 @@ const languages = [
         has_variants: product.variations?.length > 0,
     });
 
+    // 3. カテゴリ連動
     useEffect(() => {
         if (data.category_id) {
             const selected = categories.find(c => c.id == data.category_id);
             setSubCategories(selected?.sub_categories || []);
+            
+            // 親カテゴリにデフォルトHSコードがあればセット（サブカテゴリ選択で上書きされる前提）
+            if (selected?.default_hs_code_id) {
+                setData(prev => ({ ...prev, hs_code_id: selected.default_hs_code_id }));
+            }
+        } else {
+            setSubCategories([]);
         }
     }, [data.category_id]);
+
+    // サブカテゴリ選択時の連動
+    useEffect(() => {
+        if (data.sub_category_id) {
+            const selectedSub = subCategories.find(sc => sc.id == data.sub_category_id);
+            // サブカテゴリ固有のHSコードがあれば、それを優先してセット
+            if (selectedSub?.default_hs_code_id) {
+                setData('hs_code_id', selectedSub.default_hs_code_id);
+            }
+        }
+    }, [data.sub_category_id]);
 
     useEffect(() => {
         setData('has_variants', data.variations.length > 0);
