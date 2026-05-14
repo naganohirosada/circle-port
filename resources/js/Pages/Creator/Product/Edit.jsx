@@ -7,7 +7,7 @@ import axios from 'axios';
 export default function Edit({ auth, product, categories, hs_codes, tags }) {
     // 0. 翻訳データ取得ヘルパー
     const mapTranslations = (translations, field) => {
-        const map = { ja: '', en: '', zh: '', th: '', fr: '' };
+        const map = { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' };
         translations?.forEach(t => {
             if (map.hasOwnProperty(t.locale)) map[t.locale] = t[field] || '';
         });
@@ -19,12 +19,16 @@ export default function Edit({ auth, product, categories, hs_codes, tags }) {
     const [imagePreviews, setImagePreviews] = useState([]); 
     const [isTranslating, setIsTranslating] = useState(false);
 
-    const languages = [
+const languages = [
         { code: 'ja', label: '日本語', flag: '🇯🇵' },
         { code: 'en', label: '英語', flag: '🇺🇸' },
         { code: 'zh', label: '中国語', flag: '🇨🇳' },
         { code: 'th', label: 'タイ語', flag: '🇹🇭' },
+        { code: 'id', label: 'インドネシア語', flag: '🇮🇩' },
+        { code: 'vi', label: 'ベトナム語', flag: '🇻🇳' },
         { code: 'fr', label: 'フランス語', flag: '🇫🇷' },
+        { code: 'de', label: 'ドイツ語', flag: '🇩🇪' },
+        { code: 'ko', label: '韓国語', flag: '🇰🇷' },
     ];
 
     // 1. フォーム初期値 (すべての項目を保持)
@@ -107,7 +111,7 @@ export default function Edit({ auth, product, categories, hs_codes, tags }) {
 
     const addVariant = () => {
         setData('variations', [...data.variations, {
-            variant_name: { ja: '', en: '', zh: '', th: '', fr: '' },
+            variant_name: { ...initialLangObj },
             price: data.price,
             stock: data.product_type === 1 ? '' : 9999,
             weight: data.weight,

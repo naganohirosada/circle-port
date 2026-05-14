@@ -207,13 +207,13 @@ export default function GroupOrderDetail({ go, language }) {
                                     <div className={labelStyle}>{__('Target Creator')}</div>
                                     <div className="flex items-center gap-3">
                                         {go.creator.image_url ? (
-                                            <img src={go.creator.image_url} alt={go.creator.name} className="w-8 h-8 rounded-full object-cover" />
+                                            <img src={go.creator.image_url} alt={go.creator.shop_name} className="w-8 h-8 rounded-full object-cover" />
                                         ) : (
                                             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 font-black text-base uppercase">
-                                                {go.creator.name ? go.creator.name.substring(0, 1) : 'C'}
+                                                {go.creator.shop_name ? go.creator.shop_name.substring(0, 1) : 'C'}
                                             </div>
                                         )}
-                                        <span className="font-black uppercase tracking-widest text-sm text-white">{go.creator.name}</span>
+                                        <span className="font-black uppercase tracking-widest text-sm text-white">{go.creator.shop_name}</span>
                                     </div>
                                 </div>
                                 <div>

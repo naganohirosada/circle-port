@@ -41,14 +41,14 @@ export default function GroupOrders({ groupOrders, language }) {
                                     // 画像がある場合
                                     <img 
                                         src={go.creator.image_url} 
-                                        alt={go.creator.name} // アクセシビリティのためにaltを追加
+                                        alt={go.creator.shop_name} // アクセシビリティのためにaltを追加
                                         className="w-20 h-20 rounded-full object-cover ring-4 ring-slate-50 group-hover:ring-cyan-100 transition-all"
                                     />
                                 ) : (
                                     // 画像がない場合のダミー：イニシャルを表示
                                     <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center ring-4 ring-slate-50 group-hover:ring-cyan-100 transition-all text-slate-400 font-black text-3xl uppercase tracking-tighter">
                                         {/* クリエイター名の最初の1文字、または2文字を取得 */}
-                                        {go.creator.name ? go.creator.name.substring(0, 1) : 'C'}
+                                        {go.creator.shop_name ? go.creator.shop_name.substring(0, 1) : 'C'}
                                     </div>
                                 )}
 

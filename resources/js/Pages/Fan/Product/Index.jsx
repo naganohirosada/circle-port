@@ -6,7 +6,7 @@ import {
     Search, Users, RotateCcw, 
     ChevronDown, ChevronUp, Filter,
     CheckCircle2, XCircle, 
-    ChevronRight, LayoutGrid, Box
+    ChevronRight, LayoutGrid, Box, User
 } from 'lucide-react';
 
 export default function Index({ 
@@ -229,6 +229,26 @@ export default function Index({
                                             </span>
                                         )}
                                     </div>
+                                </div>
+
+                                {/* クリエイター情報セクションを追加 */}
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Link 
+                                        href={route('fan.creator.show', item.creator.id)}
+                                        className="flex items-center gap-2 group/creator"
+                                        onClick={(e) => e.stopPropagation()} // 親のLink遷移を防止
+                                    >
+                                        <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-100 border border-slate-200">
+                                            {item.creator?.image ? (
+                                                <img src={`/storage/${item.creator.image}`} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-400"><User size={12} /></div>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] font-black text-slate-500 group-hover/creator:text-cyan-500 transition-colors uppercase">
+                                            {item.creator?.name}
+                                        </span>
+                                    </Link>
                                 </div>
 
                                 {/* Content Area */}

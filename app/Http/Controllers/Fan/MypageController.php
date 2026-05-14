@@ -22,10 +22,10 @@ class MypageController extends Controller
      */
     public function dashboard(): Response
     {
-        $userId = auth()->id();
+        $fanId = Auth::id();
         
         // Service層から統計データを取得（憲法：ビジネスロジックの分離）
-        $stats = $this->mypageService->getPurchaseStats($userId);
+        $stats = $this->mypageService->getPurchaseStats($fanId);
 
         return Inertia::render('Fan/Mypage/Dashboard', [
             'stats' => $stats
@@ -59,6 +59,45 @@ class MypageController extends Controller
 
         return Inertia::render('Fan/Mypage/GroupOrderDetail', [
             'go' => $go
+        ]);
+    }
+
+    /**
+     * 参加中のGroup Order一覧を取得
+     */
+    public function joinedGroupOrders(): Response
+    {
+        $fanId = Auth::id();
+        $groupOrders = $this->mypageService->getJoinedGroupOrders($fanId);
+
+        return Inertia::render('Fan/Mypage/JoinedGroupOrders', [
+            'groupOrders' => $groupOrders,
+        ]);
+    }
+
+    /**
+     * 配送中の注文一覧
+     */
+    public function shippingOrders(): Response
+    {
+        $fanId = Auth::id();
+        $orders = $this->mypageService->getShippingOrders($fanId);
+
+        return Inertia::render('Fan/Mypage/ShippingOrders', [
+            'orders' => $orders
+        ]);
+    }
+
+    /**
+     * 同梱待ちの注文一覧
+     */
+    public function consolidationOrders(): Response
+    {
+        $fanId = Auth::id();
+        $orders = $this->mypageService->getConsolidationOrders($fanId);
+
+        return Inertia::render('Fan/Mypage/ConsolidationOrders', [
+            'orders' => $orders
         ]);
     }
 }

@@ -1,16 +1,17 @@
 import React from 'react';
 import { useForm, Head, Link, usePage } from '@inertiajs/react';
-import { User, Mail, Globe, Lock, AtSign, Rocket, ArrowRight } from 'lucide-react';
+import { User, Mail, Globe, Lock, AtSign, Rocket, ArrowRight, Languages } from 'lucide-react';
 
-export default function Register({ countries }) {
+export default function Register({ countries, languages }) {
     const { language } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
     const { data, setData, post, processing, errors } = useForm({
         name: '',
-        unique_id: '', // 追加：招待用ID
+        unique_id: '',
         email: '',
         country_id: '',
+        language_id: '',
         password: '',
         password_confirmation: '',
     });
@@ -89,6 +90,28 @@ export default function Register({ countries }) {
                             {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                         {errors.country_id && <p className="text-red-500 text-[10px] font-black mt-2 uppercase tracking-widest ml-4">{errors.country_id}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">
+                            <Languages size={14} /> {__('Display Language')}
+                        </label>
+                        <div className={inputWrapperStyle}>
+                            <div className={iconStyle}><Languages size={24} /></div>
+                            <select 
+                                value={data.language_id}
+                                className={inputStyle}
+                                onChange={e => setData('language_id', e.target.value)}
+                            >
+                                <option value="">{__('Select Language')}</option>
+                                {languages.map(lang => (
+                                    <option key={lang.id} value={lang.id}>
+                                        {lang.native_name || lang.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {errors.language_id && <p className="text-red-500 text-[10px] font-black mt-1 uppercase tracking-widest ml-4">{errors.language_id}</p>}
                     </div>
 
                     {/* Email */}

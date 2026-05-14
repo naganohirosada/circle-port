@@ -7,8 +7,8 @@ export default function Show({ auth, creator }) {
     const getProductImage = (product) => product?.images?.[0]?.url || product?.images?.[0]?.path || null;
 
     return (
-        <AdminLayout user={auth.user} header={`クリエイター詳細: ${creator.name}`}>
-            <Head title={`クリエイター詳細 - ${creator.name}`} />
+        <AdminLayout user={auth.user} header={`クリエイター詳細: ${creator.shop_name}`}>
+            <Head title={`クリエイター詳細 - ${creator.shop_name}`} />
 
             <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
                 {/* ヘッダー・戻るナビ */}
@@ -24,9 +24,9 @@ export default function Show({ auth, creator }) {
                         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
                             <div className="flex flex-col items-center text-center">
                                 <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500 text-3xl font-black mb-4 border-4 border-white shadow-sm">
-                                    {creator.name?.substring(0, 1)}
+                                    {creator.shop_name?.substring(0, 1)}
                                 </div>
-                                <h2 className="text-xl font-black text-gray-900">{creator.name}</h2>
+                                <h2 className="text-xl font-black text-gray-900">{creator.shop_name}</h2>
                                 <p className="text-sm text-gray-400 font-medium mb-6">{creator.email}</p>
                                 
                                 <div className="w-full grid grid-cols-2 gap-4 pt-6 border-t border-gray-50">

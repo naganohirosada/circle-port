@@ -51,14 +51,17 @@ class ProductService
                 'category_id'       => $data['category_id'],
                 'sub_category_id'   => $data['sub_category_id'] ?? null,
                 'product_type'      => $data['product_type'],
-                'sku'               => $this->generateSku(), // 自動生成を適用
+                'sku'               => 'TEMP-' . uniqid(),
                 'price'             => $hasVariants ? null : $data['price'],
                 'stock_quantity'    => $isDigital ? 9999 : ($hasVariants ? null : $data['stock']),
                 'weight_g'          => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
                 'hs_code_id'        => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
                 'digital_file_path' => $digitalFilePath, // 前述のロジック
-                'status'            => 5,
+                'status'            => 1, // 仮に「公開待ち」ステータスで開始
             ]);
+
+            $productSku = "CP-" . now()->format('Ymd') . "-" . str_pad($product->id, 5, '0', STR_PAD_LEFT);
+            $product->update(['sku' => $productSku]);
 
             // 3. 翻訳保存
             foreach ($this->locales as $locale) {
@@ -91,7 +94,9 @@ class ProductService
 
             // 6. バリエーション保存
             if ($hasVariants) {
+                $product->variations()->delete();
                 foreach ($data['variations'] as $vData) {
+                    $variantSku = $productSku . "-" . ($index + 1) . "-" . Str::upper(Str::random(4));
                     $vDigitalPath = null;
                     if ($isDigital && isset($vData['digital_file'])) {
                         $vDigitalPath = $vData['digital_file']->store('digital_products/variants', 'private');
@@ -100,7 +105,7 @@ class ProductService
                     $variant = $this->repository->createVariant($product, [
                         'price'             => $vData['price'],
                         'stock_quantity'    => $isDigital ? 9999 : ($vData['stock'] ?? 0),
-                        'sku'               => $product->sku . '-' . ($index + 1), // 親SKU-連番
+                        'sku'               => $variantSku,
                         'weight_g'          => !$isDigital ? ($vData['weight'] ?? null) : 0,
                         'hs_code_id'        => !$isDigital ? ($vData['hs_code_id'] ?? null) : null,
                         'digital_file_path' => $vDigitalPath,

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use App\Http\Requests\Creator\Auth\CreatorRegisterRequest;
 
 class RegisterController extends Controller
 {
@@ -20,34 +21,24 @@ class RegisterController extends Controller
         $this->creatorService = $creatorService;
     }
 
+    /**
+     * 新規登録フォームの表示
+     * @return \Inertia\Response
+     */
     public function showRegistrationForm()
     {
         return Inertia::render('Creator/Auth/Register');
     }
 
-    public function register(Request $request)
+    /**
+     * 新規登録処理
+      * @param CreatorRegisterRequest $request
+      * @return \Illuminate\Http\RedirectResponse
+      * @throws \Throwable
+     */
+    public function register(CreatorRegisterRequest $request)
     {
-        $validated = $request->validate([
-            'shop_name' => 'required|string|max:255|unique:creators',
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|string|email|max:255|unique:creators',
-            'password'  => 'required|string|min:8|confirmed',
-            
-            // SNS (任意)
-            'x_id'         => 'nullable|string|max:100',
-            'pixiv_id'     => 'nullable|string|max:100',
-            'bluesky_id'   => 'nullable|string|max:100',
-            'instagram_id' => 'nullable|string|max:100',
-            'booth_url'    => 'nullable|url|max:255',
-            'fanbox_url'   => 'nullable|url|max:255',
-
-            // 振込先 (任意)
-            'bank_name'      => 'nullable|string|max:255',
-            'branch_name'    => 'nullable|string|max:255',
-            'account_type'   => 'nullable|string|in:普通,当座',
-            'account_number' => 'nullable|string|max:20',
-            'account_holder' => 'nullable|string|max:255',
-        ]);
+        $validated = $request->validated();
 
         $creator = DB::transaction(function () use ($validated) {
             // 1. クリエイター作成

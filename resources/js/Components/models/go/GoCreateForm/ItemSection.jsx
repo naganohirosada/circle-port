@@ -54,7 +54,7 @@ export default function ItemSection({ data, setData, errors, products = [], crea
                             <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-cyan-100 group-hover:text-cyan-600 transition-colors">
                                 <User size={24} />
                             </div>
-                            <span className="text-xs font-black uppercase tracking-tight text-slate-700">{creator.name}</span>
+                            <span className="text-xs font-black uppercase tracking-tight text-slate-700">{creator.shop_name}</span>
                             {selectedCreatorId === creator.id && (
                                 <CheckCircle2 size={16} className="text-cyan-500 mt-auto" />
                             )}

@@ -30,7 +30,7 @@ class CreatorController extends Controller
 
         // 2. Group Orderの一覧（ページネーション対応）
         $groupOrders = GroupOrder::where('creator_id', $creator->id)
-            ->with(['items.product.images'])
+            ->with(['items.product.images', 'items.product.variations'])
             ->withCount('participants')
             ->latest()
             ->paginate(8, ['*'], 'go_page')

@@ -7,6 +7,7 @@ use App\Services\Fan\FanAuthService;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Services\CountryService; 
+use App\Models\Language;
 
 class RegisterController extends Controller
 {
@@ -27,7 +28,8 @@ class RegisterController extends Controller
     public function showRegistrationForm(): Response
     {
         return Inertia::render('Fan/Auth/Register', [
-            'countries' => $this->countryService->getCountriesForRegistration()
+            'countries' => $this->countryService->getCountriesForRegistration(),
+            'languages' => Language::all(),
         ]);
     }
 

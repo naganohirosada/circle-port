@@ -14,6 +14,10 @@ Route::get('/for-creators', function () {
     return Inertia::render('Creator/Welcome');
 })->name('welcome.creator');
 
+Route::get('/creator/guide', function () {
+    return Inertia::render('Creator/Guide');
+})->name('creator.guide');
+
 Route::get('/guide', function () {
     return Inertia::render('Fan/Guide');
 })->name('fan.guide');

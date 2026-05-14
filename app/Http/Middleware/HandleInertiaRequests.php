@@ -32,7 +32,15 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $fan = $request->user('fan');
-        $currency = $fan ? $fan->currency : Currency::where('code', 'JPY')->first();
+        $currency = ($fan ? $fan->currency : null) ?? Currency::where('code', 'JPY')->first();
+
+        if (!$currency) {
+            $currency = (object)[
+                'code' => 'JPY',
+                'symbol' => '¥',
+                'exchange_rate' => 1.0,
+            ];
+        }
         return [
             ...parent::share($request),
             'locale' => App::getLocale(),

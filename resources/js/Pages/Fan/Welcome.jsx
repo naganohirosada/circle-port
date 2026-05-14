@@ -3,10 +3,11 @@ import { Link, Head, usePage } from '@inertiajs/react';
 import { 
     Globe, ShoppingBag, Box, Users, Heart, ArrowRight, Sparkles, 
     Send, ShieldCheck, Zap, Info, ChevronDown, CheckCircle2,
-    Search, Package, CreditCard, Gift, ChevronRight
+    Search, Package, CreditCard, Gift, ChevronRight, Star,
+    TrendingUp, ShieldAlert, Lock, Truck
 } from 'lucide-react';
 
-export default function Welcome() {
+export default function Welcome({featuredMissions = []}) {
     const { language, auth } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
@@ -34,7 +35,7 @@ export default function Welcome() {
                         <a href="/guide" className="hidden sm:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-cyan-600 transition-colors">
                             {__('How it Works')}
                         </a>
-                        <Link href={auth.fan ? route('fan.dashboard') : route('fan.login')} className="px-6 py-2.5 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-cyan-600 transition-all shadow-md font-bold text-center">
+                        <Link href={auth.fan ? route('fan.mypage.dashboard') : route('fan.login')} className="px-6 py-2.5 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-cyan-600 transition-all shadow-md font-bold text-center">
                             {auth.fan ? __('Dashboard') : __('Login')}
                         </Link>
                     </div>
@@ -210,6 +211,47 @@ export default function Welcome() {
                         <div className="p-10 md:p-12 rounded-[2.5rem] border border-white/10 bg-white/5 transition-all hover:scale-105 duration-500">
                             <p className="text-[11px] font-black uppercase text-slate-500 mb-6 tracking-widest">{__('Consolidation')}</p>
                             <p className="text-5xl md:text-[80px] font-black italic tracking-tighter mb-4 leading-none text-white">¥300</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* --- 5. [NEW] Trust & Security Badges Section --- */}
+            <section className="py-24 px-6 border-b border-slate-50">
+                <div className="max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                        <div className="space-y-8">
+                            <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">
+                                {__('Safe & Secure')}<br />
+                                <span className="text-cyan-500">{__('Global Infrastructure')}</span>
+                            </h2>
+                            <p className="text-slate-500 font-bold uppercase text-xs leading-relaxed tracking-widest max-w-md">
+                                {__('CirclePort employs industry-standard security and logistics management to ensure every transaction and shipment is protected.')}
+                            </p>
+                            <div className="flex flex-wrap gap-8 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
+                                {/* ここに実際のStripe, PayPal, Visa等のSVGロゴを配置することを推奨 */}
+                                <div className="flex items-center gap-2 font-black text-2xl tracking-tighter">STRIPE</div>
+                                <div className="flex items-center gap-2 font-black text-2xl tracking-tighter">PAYPAL</div>
+                                <div className="flex items-center gap-2 font-black text-2xl tracking-tighter">VISA</div>
+                                <div className="flex items-center gap-2 font-black text-2xl tracking-tighter">MASTER</div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-8 bg-slate-50 rounded-[2rem] space-y-4 border border-slate-100">
+                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-cyan-500 shadow-sm">
+                                    <Lock size={24} />
+                                </div>
+                                <h4 className="font-black uppercase tracking-widest text-xs">{__('Escrow Protection')}</h4>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{__('Funds are only released once items are confirmed at our hub.')}</p>
+                            </div>
+                            <div className="p-8 bg-slate-50 rounded-[2rem] space-y-4 border border-slate-100">
+                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-cyan-500 shadow-sm">
+                                    <ShieldCheck size={24} />
+                                </div>
+                                <h4 className="font-black uppercase tracking-widest text-xs">{__('Quality Inspection')}</h4>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{__('Our team checks every item for defects before global shipping.')}</p>
+                            </div>
                         </div>
                     </div>
                 </div>

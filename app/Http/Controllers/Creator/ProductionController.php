@@ -17,6 +17,8 @@ class ProductionController extends Controller
 
     /**
      * 製作リスト画面の表示
+     * @param Request $request
+     * @return \Inertia\Response
      */
     public function index(Request $request)
     {

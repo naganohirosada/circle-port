@@ -12,7 +12,7 @@ class AIController extends Controller
 
     public function translate(Request $request)
     {
-        $targetLocales = ['en', 'zh', 'th', 'fr'];
+        $targetLocales = ['en', 'zh', 'th', 'fr', 'id', 'vi', 'de', 'ko']; // 翻訳対象の言語コード
         $result = [
             'name' => [],
             'description' => [],

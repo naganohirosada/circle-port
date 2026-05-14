@@ -8,7 +8,7 @@ import { formatCurrency } from '@/Utils/helpers';
 import { 
     Tag, ShoppingBag, ChevronRight, Check, 
     Loader2, Megaphone, Plus, Minus, Share2, AlertCircle, 
-    Box, Laptop, Star, MessageSquare, Image as ImageIcon 
+    Box, Laptop, Star, MessageSquare, Image as ImageIcon , User
 } from 'lucide-react';
 
 export default function Show({ product, auth }) {
@@ -136,6 +136,24 @@ export default function Show({ product, auth }) {
                                 </div>
                             </div>
                             <h1 className="text-4xl font-black text-slate-900 leading-tight uppercase tracking-tighter">{getTranslation(product, 'name')}</h1>
+                            {/* クリエイターセクションを追加 */}
+                            <Link 
+                                href={route('fan.creator.show', product.creator.id)}
+                                className="inline-flex items-center gap-4 p-2 pr-6 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-all group"
+                            >
+                                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+                                    {product.creator?.image ? (
+                                        <img src={`/storage/${product.creator.image}`} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400"><User size={20} /></div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{__('Created by')}</span>
+                                    <span className="text-sm font-black text-slate-900 group-hover:text-cyan-600 transition-colors">{product.creator?.name}</span>
+                                </div>
+                                <ChevronRight size={16} className="ml-2 text-slate-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
+                            </Link>
                             <div className="min-h-[4rem] pt-4">
                                 {selectedVariationName && (
                                     <div className="text-sm font-black uppercase tracking-[0.25em] text-cyan-500 mb-2">

@@ -161,10 +161,20 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                         <div className="flex items-center gap-3">
                                             {creator.image && (
                                                 <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white bg-white">
-                                                    <img src={creator.image} className="w-full h-full object-cover" />
+                                                    <img 
+                                                        src={creator.image.startsWith('http') || creator.image.startsWith('/') 
+                                                            ? creator.image 
+                                                            : `/storage/${creator.image}`} 
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.style.display = 'none';
+                                                            e.target.parentNode.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-100"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>';
+                                                        }}
+                                                    />
                                                 </div>
                                             )}
-                                            <span className="font-black text-slate-800 text-sm uppercase tracking-tight">{creator.name}</span>
+                                            <span className="font-black text-slate-800 text-sm uppercase tracking-tight">{creator.shop_name}</span>
                                         </div>
                                     </div>
 

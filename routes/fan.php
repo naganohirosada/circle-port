@@ -53,6 +53,8 @@ Route::prefix('fan')->name('fan.')->group(function () {
 
         // マイページ関連
         Route::get('/mypage', [MypageController::class, 'dashboard'])->name('mypage.dashboard');
+        Route::get('/mypage/shipping-orders', [MypageController::class, 'shippingOrders'])->name('mypage.shipping-orders');
+        Route::get('/mypage/consolidation-orders', [MypageController::class, 'consolidationOrders'])->name('mypage.consolidation-orders');
         Route::prefix('profile')->name('mypage.profile.')->group(function () {
             Route::get('/', [ProfileController::class, 'edit'])->name('edit');
             Route::patch('/', [ProfileController::class, 'update'])->name('update');
@@ -94,6 +96,7 @@ Route::prefix('fan')->name('fan.')->group(function () {
             Route::get('/published', [GroupOrderController::class, 'index'])->name('published');
             Route::get('/create/{product_id?}', [GroupOrderController::class, 'create'])->name('create');
             Route::post('/', [GroupOrderController::class, 'store'])->name('store');
+            Route::get('/joined', [MypageController::class, 'joinedGroupOrders'])->name('joined');
             Route::get('/managed', [MypageController::class, 'groupOrders'])->name('managed');
             Route::get('/detail/{id}', [GroupOrderController::class, 'show'])->name('detail');
             Route::post('/{id}/join', [GroupOrderController::class, 'join'])->name('join');

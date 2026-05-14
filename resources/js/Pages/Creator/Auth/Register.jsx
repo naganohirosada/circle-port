@@ -24,6 +24,10 @@ export default function Register() {
         account_holder: '',
     });
 
+    const ErrorMsg = ({ message }) => (
+        message ? <div className="text-rose-500 text-[10px] font-black mt-2 ml-4 uppercase tracking-widest">{message}</div> : null
+    );
+
     const submit = (e) => {
         e.preventDefault();
         post(route('creator.register.store'));
@@ -64,6 +68,7 @@ export default function Register() {
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">代表者名</label>
                                 <input type="text" value={data.name} onChange={e => setData('name', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
+                                {errors.name && <p className="text-rose-500 text-[10px] font-black italic ml-1">{errors.name}</p>}
                             </div>
 
                             <div className="space-y-3">
@@ -77,12 +82,14 @@ export default function Register() {
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">パスワード</label>
                                 <input type="password" value={data.password} onChange={e => setData('password', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
+                                {errors.password && <p className="text-rose-500 text-[10px] font-black italic ml-1">{errors.password}</p>}
                             </div>
 
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">パスワード（確認）</label>
                                 <input type="password" value={data.password_confirmation} onChange={e => setData('password_confirmation', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
+                                {errors.password_confirmation && <p className="text-rose-500 text-[10px] font-black italic ml-1">{errors.password_confirmation}</p>}
                             </div>
                         </div>
                     </div>
@@ -102,17 +109,20 @@ export default function Register() {
                                     <input type="text" value={data.x_id} onChange={e => setData('x_id', e.target.value)}
                                         className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 pl-12 pr-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
                                 </div>
+                                {errors.x_id && <ErrorMsg message={errors.x_id} />}
                             </div>
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Pixiv ID</label>
                                 <input type="text" value={data.pixiv_id} onChange={e => setData('pixiv_id', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
+                                {errors.pixiv_id && <ErrorMsg message={errors.pixiv_id} />}
                             </div>
                             <div className="space-y-3 md:col-span-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">BOOTH URL</label>
                                 <input type="url" value={data.booth_url} onChange={e => setData('booth_url', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all"
                                     placeholder="https://xxx.booth.pm" />
+                                {errors.booth_url && <ErrorMsg message={errors.booth_url} />}
                             </div>
                         </div>
                     </div>
@@ -129,11 +139,13 @@ export default function Register() {
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">銀行名</label>
                                 <input type="text" value={data.bank_name} onChange={e => setData('bank_name', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
+                                {errors.bank_name && <ErrorMsg message={errors.bank_name} />}
                             </div>
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">支店名</label>
                                 <input type="text" value={data.branch_name} onChange={e => setData('branch_name', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
+                                {errors.branch_name && <ErrorMsg message={errors.branch_name} />}
                             </div>
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">口座種別</label>
@@ -147,12 +159,14 @@ export default function Register() {
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">口座番号</label>
                                 <input type="text" value={data.account_number} onChange={e => setData('account_number', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all" />
+                                {errors.account_number && <ErrorMsg message={errors.account_number} />}
                             </div>
                             <div className="space-y-3 md:col-span-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">口座名義（カナ）</label>
                                 <input type="text" value={data.account_holder} onChange={e => setData('account_holder', e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-transparent rounded-2xl font-bold py-4 px-6 focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all"
                                     placeholder="サークル ヤマダ" />
+                                {errors.account_holder && <ErrorMsg message={errors.account_holder} />}
                             </div>
                         </div>
                     </div>

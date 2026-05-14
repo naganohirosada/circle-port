@@ -26,9 +26,9 @@ export default function Index({ auth, creators }) {
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs">
-                                                {creator.name?.substring(0, 1)}
+                                                {creator.shop_name?.substring(0, 1)}
                                             </div>
-                                            <span className="font-bold text-gray-900">{creator.name}</span>
+                                            <span className="font-bold text-gray-900">{creator.shop_name}</span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-sm text-gray-500">{creator.email}</td>

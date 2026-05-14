@@ -22,6 +22,7 @@ class FanRepository implements FanRepositoryInterface
             'country_id' => $data['country_id'],
             'status' => Fan::STATUS_ACTIVE,
             'unique_id' => $data['unique_id'],
+            'language_id' => $data['language_id'],
         ]);
     }
 
@@ -39,7 +40,7 @@ class FanRepository implements FanRepositoryInterface
      * ファンのプロフィール更新
      * @param int $fanId
      * @param array $userData (name, email)
-     * @param array $fanData (country_id, lang, etc.)
+     * @param array $fanData (country_id, language_id, etc.)
      * @return bool
      */
     public function updateProfile(int $fanId, array $userData, array $fanData): bool

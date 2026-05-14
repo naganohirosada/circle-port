@@ -3,11 +3,12 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import { Users, Package, Rocket, ChevronRight, LayoutGrid, Box } from 'lucide-react';
 import Pagination from '@/Components/Pagination';
+import { formatCurrency } from '@/Utils/helpers';
 
 export default function Show({ creator, artworks, groupOrders, isFollowing, language, filters }) {
     const __ = (key) => language?.[key] || key;
     const [activeTab, setActiveTab] = useState(filters.tab || 'artwork');
-
+    const { currency } = usePage().props;
     const { post, processing } = useForm();
     const toggleFollow = () => post(route('fan.creator.follow', creator.id), { preserveScroll: true });
 
@@ -18,7 +19,7 @@ export default function Show({ creator, artworks, groupOrders, isFollowing, lang
 
     const profileImage = creator.profile_image 
         ? `/storage/${creator.profile_image}` 
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(creator.name)}&background=random&size=200`;
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(shop_name)}&background=random&size=200`;
 
     const placeholderImage = "https://placehold.jp/24/cccccc/ffffff/400x300.png?text=No%20Image";
 
@@ -122,18 +123,44 @@ export default function Show({ creator, artworks, groupOrders, isFollowing, lang
                     {activeTab === 'artwork' ? (
                         <div className="space-y-12">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                                {artworks.data.map(art => (
-                                    <Link key={art.id} href={route('fan.products.show', art.id)} className="group block">
-                                        <div className="aspect-square rounded-2xl overflow-hidden bg-slate-50 mb-3 group-hover:shadow-lg transition-all duration-300 border border-slate-100">
-                                            <img 
-                                                src={art.images?.[0] ? `/storage/${art.images[0].file_path}` : placeholderImage} 
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                                            />
-                                        </div>
-                                        <h3 className="font-bold text-slate-800 text-sm line-clamp-1 leading-tight">{art.translations?.[0]?.name}</h3>
-                                        <p className="text-slate-900 font-black mt-1 text-sm">¥{Number(art.price).toLocaleString()}</p>
-                                    </Link>
-                                ))}
+                                {artworks.data.map(art => {
+                                    // --- 価格表示ロジックの追加 ---
+                                    // バリエーションがある場合はその中から最小値を、ない場合は商品の基本価格を使用
+                                    const prices = art.variations?.length > 0 
+                                        ? art.variations.map(v => Number(v.price)) 
+                                        : [Number(art.price)];
+                                    
+                                    const minPrice = Math.min(...prices);
+                                    // 異なる価格が複数存在するか判定
+                                    const hasMultiplePrices = new Set(prices).size > 1;
+
+                                    return (
+                                        <Link key={art.id} href={route('fan.products.show', art.id)} className="group block">
+                                            <div className="aspect-square rounded-2xl overflow-hidden bg-slate-50 mb-3 group-hover:shadow-lg transition-all duration-300 border border-slate-100">
+                                                <img 
+                                                    src={art.images?.[0] ? `/storage/${art.images[0].file_path}` : placeholderImage} 
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                                                    alt=""
+                                                />
+                                            </div>
+                                            <h3 className="font-bold text-slate-800 text-sm line-clamp-1 leading-tight uppercase">
+                                                {art.translations?.[0]?.name || 'Untitled'}
+                                            </h3>
+                                            
+                                            {/* --- 価格表示部分の修正 --- */}
+                                            <div className="mt-1 flex items-baseline gap-1">
+                                                <span className="text-slate-900 font-black text-sm">
+                                                    {formatCurrency(minPrice, currency)}
+                                                </span>
+                                                {hasMultiplePrices && (
+                                                    <span className="text-slate-400 font-bold text-[10px]">
+                                                        {__('〜')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
                             </div>
                             <div className="flex justify-center pt-10 border-t border-slate-50">
                                 <Pagination links={artworks.links} />

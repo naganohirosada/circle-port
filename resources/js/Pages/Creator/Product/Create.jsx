@@ -16,15 +16,21 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         { code: 'en', label: '英語', flag: '🇺🇸' },
         { code: 'zh', label: '中国語', flag: '🇨🇳' },
         { code: 'th', label: 'タイ語', flag: '🇹🇭' },
+        { code: 'id', label: 'インドネシア語', flag: '🇮🇩' },
+        { code: 'vi', label: 'ベトナム語', flag: '🇻🇳' },
         { code: 'fr', label: 'フランス語', flag: '🇫🇷' },
+        { code: 'de', label: 'ドイツ語', flag: '🇩🇪' },
+        { code: 'ko', label: '韓国語', flag: '🇰🇷' },
     ];
+
+    const initialLangObj = { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' };
 
     // 2. フォーム初期値 (product参照を完全に排除)
     const { data, setData, post, processing, errors } = useForm({
         product_type: 1, // 1:現物, 2:デジタル
-        name: { ja: '', en: '', zh: '', th: '', fr: '' },
-        material: { ja: '', en: '', zh: '', th: '', fr: '' },
-        description: { ja: '', en: '', zh: '', th: '', fr: '' },
+        name: { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' },
+        material: { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' },
+        description: { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' },
         category_id: '',
         sub_category_id: '',
         price: '',
@@ -50,6 +56,10 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         setData('has_variants', data.variations.length > 0);
     }, [data.variations.length]);
 
+    useEffect(() => {
+        console.log('Validation Errors:', errors);
+    }, [errors]);
+
     const hasErrorInTab = (lang) => {
         return Object.keys(errors).some(key => key.includes(`.${lang}`));
     };
@@ -61,6 +71,7 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         }
         setIsTranslating(true);
         try {
+            // 注意: バックエンドの翻訳APIもこれら9言語を返す必要があります
             const response = await axios.post(route('creator.ai.translate'), {
                 name: data.name.ja,
                 description: data.description.ja,
@@ -89,7 +100,7 @@ export default function Create({ auth, categories, hs_codes, tags }) {
 
     const addVariant = () => {
         setData('variations', [...data.variations, {
-            variant_name: { ja: '', en: '', zh: '', th: '', fr: '' },
+            variant_name: { ...initialLangObj },
             price: data.price,
             stock: data.product_type === 1 ? '' : 9999,
             weight: data.weight,
@@ -231,6 +242,9 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                 </button>
                             ))}
                         </div>
+                        {/* 追加: タグのエラー表示 */}
+                        <InputError message={errors.tag_ids} className="mt-2" />
+                        {errors['tag_ids.0'] && <InputError message="タグの選択が正しくありません" className="mt-1" />}
                     </section>
 
                     {/* 05. 基本スペック */}

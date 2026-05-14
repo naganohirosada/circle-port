@@ -37,14 +37,14 @@ export default function Dashboard({ stats }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* 参加中のGOへのボタン */}
                         <Link 
-                            href={route('fan.go.index')} // ルート名は環境に合わせて調整してください
+                            href={route('fan.go.joined')}
                             className="flex items-center gap-6 p-8 bg-white rounded-[2.5rem] border-2 border-slate-50 hover:border-cyan-500 hover:shadow-xl hover:shadow-cyan-50 transition-all group"
                         >
                             <div className="p-4 bg-slate-50 rounded-2xl text-slate-400 group-hover:bg-cyan-50 group-hover:text-cyan-600 transition-colors">
                                 <Users size={32} />
                             </div>
                             <div className="flex-1">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1 block">Activity</span>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1 block">{__('Activity')}</span>
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{__('Joined GOs')}</h3>
                             </div>
                             <ChevronRight className="text-slate-200 group-hover:text-cyan-600 transition-colors" />
@@ -75,8 +75,8 @@ export default function Dashboard({ stats }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <StatusCard icon={CreditCard} label="Ordered" count={stats.ordered_count} href={route('fan.orders.index')} />
                         <StatusCard icon={Archive} label="In Warehouse" count={stats.warehouse_count} href={route('fan.international-shippings.index')} />
-                        <StatusCard icon={Truck} label="In Transit" count={stats.shipping_count} href="#" />
-                        <StatusCard icon={Package} label="Consolidation" count={stats.consolidation_count} href="#" />
+                        <StatusCard icon={Truck} label="In Transit" count={stats.shipping_count} href={route('fan.mypage.shipping-orders')} />
+                        <StatusCard icon={Package} label="Consolidation" count={stats.consolidation_count} href={route('fan.mypage.consolidation-orders')} />
                     </div>
                 </section>
 

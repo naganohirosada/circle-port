@@ -40,7 +40,10 @@ class ProductController extends Controller
         return Inertia::render('Creator/Product/Index', $data);
     }
 
-    // 登録画面
+    /**
+     * 作品登録画面の表示
+      * @return \Inertia\Response
+     */
     public function create()
     {
         // 運営指定のタグを翻訳付きで取得
@@ -63,6 +66,11 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * 作品登録処理
+      * @param ProductRequest $request
+      * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(ProductRequest $request)
     {
         try {
@@ -123,7 +131,11 @@ class ProductController extends Controller
         }
     }
 
-    // 削除処理
+    /**
+     * 作品削除処理
+      * @param int $id
+      * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy($id)
     {
         try {
