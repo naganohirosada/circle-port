@@ -1,59 +1,76 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Admin;
 
 use App\Models\Payment;
 use App\Models\Payout;
 use App\Models\PayoutDetail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PayoutService
 {
-    public function recordPaymentToPayout(Payment $payment)
+        public function recordPaymentToPayout(Payment $payment)
     {
-        // 1次決済以外、または未完了の決済は対象外
-        if (!$payment->order_id || (int)$payment->status !== 20) {
+        // 1. 決済ステータスの確認 (Enum キャスト対応)
+        if (!$payment->order_id || $payment->status !== \App\Enums\PaymentStatus::SUCCEEDED) {
             return;
         }
 
-        // 注文情報からクリエイターIDを取得
-        $creatorId = $payment->order->product_creator_id; 
+        // 2. 注文情報からクリエイターIDを取得
+        $payment->order->loadMissing('orderItems.product');
+        
+        $firstItem = $payment->order->orderItems->first();
+        if (!$firstItem || !$firstItem->product) {
+            Log::error("Payout Error: Order items or product not found for Order ID: {$payment->order_id}");
+            return;
+        }
 
-        // 【振込額の計算】
-        // 内訳(PaymentBreakdown)から算出
-        // クリエイター受取額 = (商品代 + 国内送料 + 商品税 + 送料税) - (システム手数料)
+        $creatorId = $firstItem->product->creator_id;
+
+        if (!$creatorId) {
+            Log::error("Payout Error: Creator ID is null for Product ID: {$firstItem->product_id}");
+            return;
+        }
+
+        // 3. 振込額の計算 (既存ロジック)
         $breakdowns = $payment->breakdowns;
         
-        $income = $breakdowns->whereIn('type', [1, 2, 5, 7])->sum('amount'); // 収益
-        $fee = $breakdowns->where('type', 4)->sum('amount');              // 手数料
+        // 収益 = 商品代(1) + 国内送料(2) + 商品税(5) + 送料税(7)
+        $income = $breakdowns->whereIn('type', [1, 2, 5, 7])->sum('amount');
+        // 手数料(4) を差し引く
+        $fee = $breakdowns->where('type', 4)->sum('amount');
         $creatorAmount = $income - $fee;
 
         if ($creatorAmount <= 0) return;
 
-        // 振込予定日（例：翌月末）
+        // 4. 振込予定日の設定 (翌月末)
         $scheduledDate = Carbon::now()->addMonth()->endOfMonth()->toDateString();
 
-        // 既存の未振込レコードを探すか、新規作成する
-        $payout = Payout::firstOrCreate(
-            [
-                'creator_id' => $creatorId,
-                'status' => Payout::STATUS_PENDING, // 10
-                'scheduled_date' => $scheduledDate,
-            ],
-            [
-                'amount' => 0,
-            ]
-        );
+        // 5. 振込レコードの作成・更新
+        // トランザクションを利用して整合性を確保
+        DB::transaction(function () use ($creatorId, $scheduledDate, $creatorAmount, $payment) {
+            $payout = Payout::firstOrCreate(
+                [
+                    'creator_id' => $creatorId,
+                    'status' => Payout::STATUS_PENDING,
+                    'scheduled_date' => $scheduledDate,
+                ],
+                [
+                    'amount' => 0,
+                ]
+            );
 
-        // 振込総額を加算
-        $payout->increment('amount', $creatorAmount);
+            // 振込総額を加算
+            $payout->increment('amount', $creatorAmount);
 
-        // どの決済が含まれているかの明細を作成
-        PayoutDetail::create([
-            'payout_id' => $payout->id,
-            'payment_id' => $payment->id,
-            'amount' => $creatorAmount,
-        ]);
+            // 決済明細を作成
+            PayoutDetail::create([
+                'payout_id' => $payout->id,
+                'payment_id' => $payment->id,
+                'amount' => $creatorAmount,
+            ]);
+        });
     }
 }

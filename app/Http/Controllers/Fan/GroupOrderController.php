@@ -57,7 +57,7 @@ class GroupOrderController extends Controller
         $dbLocale = ($currentLocale === 'en') ? 'en-us' : $currentLocale;
 
         // 1. すべてのクリエイターを取得 (Step 1 のリスト用)
-        $creators = Creator::select('id', 'name')->get();
+        $creators = Creator::select('id', 'name', 'shop_name', 'profile_image')->get();
 
         // 2. すべての商品を翻訳・画像付きで取得 
         // ※ItemSection.jsx 内の .filter() ロジックで利用します
@@ -83,6 +83,7 @@ class GroupOrderController extends Controller
                 $initial_data['creator_id'] = $product->creator_id;
             }
         }
+
 
         return Inertia::render('Go/create', [
             'creators' => $creators,

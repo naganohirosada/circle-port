@@ -17,15 +17,18 @@ export default function Show({ product, auth }) {
 
     const isDigital = product.product_type === 2;
     
+    // 【追加】バリエーションがあるかどうかを判定
+    const hasVariations = product.variations && product.variations.length > 0;
+
     // 価格範囲の計算
     const priceRange = useMemo(() => {
-        if (!product.variations || product.variations.length === 0) return null;
+        if (!hasVariations) return null;
         const prices = product.variations.map(v => Number(v.price));
         return {
             min: Math.min(...prices),
             max: Math.max(...prices)
         };
-    }, [product.variations]);
+    }, [product.variations, hasVariations]);
 
     // カート用フォーム
     const { data, setData, post, processing } = useForm({
@@ -36,12 +39,15 @@ export default function Show({ product, auth }) {
 
     const [selectedVariation, setSelectedVariation] = useState(null);
     const [displayPrice, setDisplayPrice] = useState(
-        product.variations?.length > 0 ? null : product.price
+        hasVariations ? null : product.price
     );
 
     const [activeImage, setActiveImage] = useState(
         product.images?.find(img => img.is_primary)?.url || product.images?.[0]?.url || '/images/no-image.jpg'
     );
+
+    // 【追加】バリエーションがあるのに選択されていない状態を判定
+    const isSelectionMissing = hasVariations && !selectedVariation;
 
     // 商品・カテゴリ等の一般翻訳取得
     const getTranslation = (item, field) => {
@@ -59,7 +65,6 @@ export default function Show({ product, auth }) {
 
     const selectedVariationName = selectedVariation ? getVariationLabel(selectedVariation) : null;
 
-    // 【追加】閲覧者の言語設定に合わせたレビューコメントを取得
     const getReviewComment = (review) => {
         if (!review.translations || review.translations.length === 0) return null;
         const t = review.translations.find(t => t.locale === locale) || 
@@ -76,6 +81,8 @@ export default function Show({ product, auth }) {
 
     const handleAddToCart = (e) => {
         e.preventDefault();
+        // 【追加】ガードを念のため処理内でも実行
+        if (isSelectionMissing) return;
         post(route('fan.cart.add'), { preserveScroll: true });
     };
 
@@ -136,7 +143,6 @@ export default function Show({ product, auth }) {
                                 </div>
                             </div>
                             <h1 className="text-4xl font-black text-slate-900 leading-tight uppercase tracking-tighter">{getTranslation(product, 'name')}</h1>
-                            {/* クリエイターセクションを追加 */}
                             <Link 
                                 href={route('fan.creator.show', product.creator.id)}
                                 className="inline-flex items-center gap-4 p-2 pr-6 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-all group"
@@ -171,7 +177,6 @@ export default function Show({ product, auth }) {
                                         {formatCurrency(priceRange.max, currency)}
                                     </div>
                                 )}
-                                {/* 円安対策の参考表示 */}
                                 {currency.code !== 'JPY' && (
                                     <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">
                                         Base Price: ¥{Number(displayPrice || priceRange.min).toLocaleString()} JPY
@@ -181,7 +186,7 @@ export default function Show({ product, auth }) {
                         </div>
 
                         {/* バリエーション */}
-                        {product.variations?.length > 0 && (
+                        {hasVariations && (
                             <div className="space-y-6 pt-8 border-t border-slate-100">
                                 <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{__('Select Variation')}</label>
                                 <div className="grid grid-cols-1 gap-3">
@@ -217,10 +222,27 @@ export default function Show({ product, auth }) {
                                 </div>
                             )}
                             <div className="space-y-4">
-                                <button onClick={handleAddToCart} disabled={processing || isOutOfStock} className={`w-full py-6 rounded-[1.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${isOutOfStock ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-cyan-600'}`}>
+                                {/* 【修正】disabled 属性に isSelectionMissing（バリエーション未選択）を追加 */}
+                                <button 
+                                    onClick={handleAddToCart} 
+                                    disabled={processing || isOutOfStock || isSelectionMissing} 
+                                    className={`w-full py-6 rounded-[1.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${
+                                        (isOutOfStock || isSelectionMissing) ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-cyan-600'
+                                    }`}
+                                >
                                     {isOutOfStock ? <AlertCircle size={20} /> : <ShoppingBag size={20} />}
-                                    {isOutOfStock ? __('Sold Out') : __('Add to Cart')}
+                                    {/* 【修正】テキストを動的に変更：売り切れ > バリエーション未選択 > カートに入れる */}
+                                    {isOutOfStock ? __('Sold Out') : isSelectionMissing ? __('Please Select Variation') : __('Add to Cart')}
                                 </button>
+                                
+                                {/* 【追加】バリエーション未選択時に表示する警告メッセージ */}
+                                {isSelectionMissing && !isOutOfStock && (
+                                    <p className="flex items-center gap-2 text-rose-500 text-[10px] font-bold uppercase italic justify-center animate-pulse">
+                                        <AlertCircle size={12} />
+                                        {__('Please select a variation to continue')}
+                                    </p>
+                                )}
+
                                 <Link href={route('fan.go.create', { item_id: product.id })} className="w-full border-2 border-slate-900 text-slate-900 py-6 rounded-[1.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-slate-900 hover:text-white transition-all active:scale-[0.98]">
                                     <Megaphone size={20} /> {__('Create GO with this item')}
                                 </Link>
@@ -229,10 +251,9 @@ export default function Show({ product, auth }) {
                     </div>
                 </div>
 
-                {/* --- レビューセクション --- */}
+                {/* レビューセクション (変更なし) */}
                 <div className="pt-24 border-t border-slate-100">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-                        {/* レビューリスト */}
                         <div className="lg:col-span-2 space-y-12">
                             <div className="flex items-center gap-4">
                                 <h3 className="text-3xl font-black italic uppercase tracking-tighter text-slate-900">Community Reviews</h3>
@@ -240,7 +261,6 @@ export default function Show({ product, auth }) {
                                     {averageRating} / 5.0
                                 </div>
                             </div>
-
                             <div className="space-y-10">
                                 {product.reviews?.length > 0 ? (
                                     product.reviews.map((review) => {
@@ -249,7 +269,6 @@ export default function Show({ product, auth }) {
                                             <div key={review.id} className="group space-y-4 border-b border-slate-50 pb-10 last:border-0">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex items-center gap-4">
-                                                        {/* fan (旧user) の情報を安全に表示 */}
                                                         <div className="w-12 h-12 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm transition-transform group-hover:scale-110">
                                                             <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.fan?.name || 'Guest')}&background=random`} alt="" />
                                                         </div>
@@ -262,13 +281,9 @@ export default function Show({ product, auth }) {
                                                     </div>
                                                     <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{new Date(review.created_at).toLocaleDateString()}</span>
                                                 </div>
-
-                                                {/* 表示言語に合わせて翻訳されたコメントを表示 */}
                                                 <p className="text-sm font-bold text-slate-600 leading-relaxed pl-16 italic min-h-[1.5rem]">
                                                     {comment ? `"${comment}"` : <span className="text-slate-300 italic">{__('No comment provided')}</span>}
                                                 </p>
-                                                
-                                                {/* レビュー画像ギャラリー */}
                                                 {review.images?.length > 0 && (
                                                     <div className="flex gap-3 pl-16">
                                                         {review.images.map((img) => (
@@ -290,7 +305,6 @@ export default function Show({ product, auth }) {
                             </div>
                         </div>
 
-                        {/* 投稿フォームエリア */}
                         <div className="lg:col-span-1">
                             <div className="sticky top-24">
                                 {auth.user ? (
@@ -301,10 +315,10 @@ export default function Show({ product, auth }) {
                                             <Star size={32} fill="currentColor" />
                                         </div>
                                         <p className="text-white font-black text-lg leading-tight uppercase tracking-tighter">
-                                            レビューを書いて<br />作品を応援しよう！
+                                            {__('Join the community to write a review!')}
                                         </p>
                                         <Link href={route('login')} className="block w-full py-5 bg-white text-slate-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-cyan-400 transition-all">
-                                            Login to Review
+                                            {__('Login to Review')}
                                         </Link>
                                     </div>
                                 )}

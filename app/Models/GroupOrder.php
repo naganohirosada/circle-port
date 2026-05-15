@@ -26,6 +26,9 @@ class GroupOrder extends Model
     const PAYMENT_STATUS_COMPLETED = 3;
     const PAYMENT_STATUS_FAILED = 4;
 
+    const SHIPPING_MODE_SEPARATE = 1; // GOM（主催者）への一括配送
+    const SHIPPING_MODE_UNIFIED = 2;   // 各参加者への個別配送
+
     protected $guarded = ['id'];
 
     protected $fillable = [

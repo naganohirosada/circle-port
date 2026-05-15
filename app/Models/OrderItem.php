@@ -28,9 +28,21 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function variation(): BelongsTo
+    /**
+     * バリエーションへのリレーション
+     * フロントエンドで product_variant としてアクセスされるため、この名称にします
+     */
+    public function productVariant()
     {
-        return $this->belongsTo(ProductVariant::class, 'product_variation_id');
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    /**
+     * 互換性のためのエイリアス
+     */
+    public function variation()
+    {
+        return $this->productVariant();
     }
 
     public function internationalShippingItem(): HasOne

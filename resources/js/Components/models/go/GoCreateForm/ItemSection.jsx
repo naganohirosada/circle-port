@@ -52,7 +52,15 @@ export default function ItemSection({ data, setData, errors, products = [], crea
                                     : 'border-slate-100 bg-white hover:border-slate-200'}`}
                         >
                             <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-cyan-100 group-hover:text-cyan-600 transition-colors">
-                                <User size={24} />
+                                {creator.profile_image ? (
+                                    <img 
+                                        src={`/storage/${creator.profile_image}`}
+                                        alt={creator.shop_name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <User size={24} />
+                                )}
                             </div>
                             <span className="text-xs font-black uppercase tracking-tight text-slate-700">{creator.shop_name}</span>
                             {selectedCreatorId === creator.id && (
@@ -141,6 +149,11 @@ export default function ItemSection({ data, setData, errors, products = [], crea
                                     <span className="text-[10px] font-black text-cyan-400 tracking-tighter">¥{Number(item.price).toLocaleString()}</span>
                                     <button type="button" onClick={() => removeItem(item.product_id)} className="text-rose-400 hover:text-rose-300"><Trash2 size={14} /></button>
                                 </div>
+                                {Object.keys(errors).filter(key => key.startsWith(`items.${index}.`)).map(errorKey => (
+                                    <p key={errorKey} className="text-[10px] text-rose-400 font-bold ml-4 flex items-center gap-1">
+                                        <AlertCircle size={10} /> {errors[errorKey]}
+                                    </p>
+                                ))}
                             </div>
                         ))}
                     </div>

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Support\Str;
 use App\Services\Fan\CartService;
+use Illuminate\Support\Facades\Log;
 
 
 class CheckoutService
@@ -50,13 +51,9 @@ class CheckoutService
             // 既存ロジック：各アイテムの在庫を確認
             $this->validateAndLockStock($cartItem);
 
-            // 2. 国際配送かどうかを判定
-            $address = Address::find($shippingAddressId);
-            $isInternational = $address && $address->country_code !== 'JP';
-
             // 3. サーバーサイドで正確な金額を計算（日本円ベース）
             // 憲法第1条に基づき再計算
-            $amounts = $this->calculateFirstPhaseAmounts($cartItem, $isGoOrder, $isInternational, $tips);
+            $amounts = $this->calculateFirstPhaseAmounts($cartItem, $isGoOrder, false, $tips);
 
             // 4. 【多通貨対応】外貨決済額の計算
             // ファンの優先通貨を取得し、決済時のレートと外貨額（切り捨て）を算出
@@ -79,7 +76,6 @@ class CheckoutService
                 $rate,             // 追加：決済レート
                 $settlementAmount,  // 追加：外貨額
                 $isGoOrder,        // 追加：GO注文フラグ
-                $isInternational   // 追加：国際配送フラグ
             );
 
             // 7. Repository を通じて一括保存
@@ -106,7 +102,7 @@ class CheckoutService
                     ->lockForUpdate()
                     ->first();
 
-                if (!$variation || $variation->stock < $item['quantity']) {
+                if (!$variation || $variation->stock_quantity < $item['quantity']) {
                     throw new Exception(__('Sorry, some items are out of stock.'));
                 }
             }
@@ -122,7 +118,7 @@ class CheckoutService
             $variationId = $item['variation_id'] ?? null;
 
             if ($variationId) {
-                ProductVariant::where('id', $variationId)->decrement('stock', $item['quantity']);
+                ProductVariant::where('id', $variationId)->decrement('stock_quantity', $item['quantity']);
             } else {
                 Product::where('id', $item['id'])->decrement('stock_quantity', $item['quantity']);
             }
@@ -132,7 +128,7 @@ class CheckoutService
     /**
      * 保存用データの整形（多通貨決済情報を統合）
      */
-    private function prepareOrderData($fan, $amounts, $cartData, $addressId, $pmId, $txId, $currency, $rate, $settlementAmount, $isGoOrder, $isInternational = false): array
+    private function prepareOrderData($fan, $amounts, $cartData, $addressId, $pmId, $txId, $currency, $rate, $settlementAmount, $isGoOrder): array
     {
         $currencyId = $currency->id ?? config('circleport.default_currency_id');
 
@@ -166,10 +162,8 @@ class CheckoutService
                 ['type' => PaymentBreakdown::TYPE_ITEM_TOTAL, 'amount' => $amounts['item_total'], 'currency_id' => $currencyId],
                 ['type' => PaymentBreakdown::TYPE_ITEM_TAX, 'amount' => $amounts['item_tax'], 'currency_id' => $currencyId],
                 ['type' => PaymentBreakdown::TYPE_HANDLING_FEE, 'amount' => $amounts['fee'], 'currency_id' => $currencyId],
-                ['type' => ($isInternational ? PaymentBreakdown::TYPE_INTL_SHIPPING : PaymentBreakdown::TYPE_DOMESTIC_SHIPPING), 'amount' => $amounts['shipping'], 'currency_id' => $currencyId],
+                ['type' => PaymentBreakdown::TYPE_DOMESTIC_SHIPPING, 'amount' => $amounts['shipping'], 'currency_id' => $currencyId],
                 ['type' => PaymentBreakdown::TYPE_SHIPPING_TAX, 'amount' => $amounts['shipping_tax'], 'currency_id' => $currencyId],
-                // 国際配送手数料を追加
-                ($isInternational ? ['type' => PaymentBreakdown::TYPE_HANDLING_FEE, 'amount' => $amounts['international_fee'], 'currency_id' => $currencyId] : null),
             ]),
         ];
     }
@@ -187,6 +181,10 @@ class CheckoutService
         bool $isInternational = false,
         array $tips = [] // 追加
     ): array {
+        if (empty($cartItems)) {
+            throw new \Exception(__('Cart items are empty.')); // カートが空の場合の例外処理
+        }
+
         $taxRate  = config('circleport.checkout.tax_rate', 0.10);
 
         // 1. 手数料率の設定（GO注文 5% / 通常 8%）
@@ -197,25 +195,28 @@ class CheckoutService
         // 国際配送の場合の追加システム利用料 (3%)
         $internationalFeeRate = $isInternational ? config('circleport.checkout.international_gateway_fee_rate', 0.03) : 0;
 
-        // 2. 商品合計額の算出
         $itemTotal = 0;
+        $hasPhysical = false;
         foreach ($cartItems as $item) {
             $vId = $item['variation_id'] ?? null;
             if ($vId) {
-                $variation = ProductVariant::findOrFail($vId);
+                $variation = ProductVariant::find($vId);
+ 
                 $itemTotal += $variation->price * $item['quantity'];
+                if ($variation->product->product_type === Product::TYPE_PHYSICAL) $hasPhysical = true;
             } else {
-                $product = Product::findOrFail($item['id']);
+                $product = Product::find($item['id']);
                 $itemTotal += $product->price * $item['quantity'];
+                if ($product->product_type === Product::TYPE_PHYSICAL) $hasPhysical = true; 
             }
         }
 
         // 3. 配送料の設定
-        if ($isInternational) {
-            // 国際配送：300円のバンドリング手数料（資材・ハンドリング無料戦略）
+        if (!$hasPhysical) {
+            $shipping = 0;
+        } else if ($isInternational) {
             $shipping = config('circleport.checkout.international_bundling_fee', 300);
         } else {
-            // 国内配送：config から取得した標準配送料金
             $shipping = config('circleport.checkout.domestic_shipping_fee', 1200);
         }
 

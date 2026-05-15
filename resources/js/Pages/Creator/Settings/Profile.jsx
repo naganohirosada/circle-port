@@ -1,5 +1,3 @@
-// resources/js/Pages/Creator/Settings/Profile.jsx
-
 import React, { useEffect, useState } from 'react';
 import CreatorLayout from '@/Layouts/CreatorLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
@@ -86,7 +84,7 @@ export default function Profile({ creator, language }) {
                     <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
                         <div className="h-48 md:h-64 bg-slate-100 relative group">
                             <img 
-                                src={data.cover_image ? URL.createObjectURL(data.cover_image) : (creator?.cover_image ? `/storage/${creator.cover_image}` : defaultCover)} 
+                                src={data.cover_image ? `/storage/${creator.cover_image}` : (creator?.cover_image ? `/storage/${creator.cover_image}` : defaultCover)} 
                                 className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
                                 alt="Cover"
                             />
@@ -103,7 +101,7 @@ export default function Profile({ creator, language }) {
                             <div className="relative -mt-16 md:-mt-20 inline-block group">
                                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-[6px] border-white overflow-hidden bg-white shadow-2xl">
                                     <img 
-                                        src={data.profile_image ? URL.createObjectURL(data.profile_image) : (creator?.profile_image ? `/storage/${creator.profile_image}` : defaultProfile)} 
+                                        src={data.profile_image ? `/storage/${data.profile_image}` : (creator?.profile_image ? `/storage/${creator.profile_image}` : defaultProfile)} 
                                         className="w-full h-full object-cover"
                                         alt="Profile"
                                     />

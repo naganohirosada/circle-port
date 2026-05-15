@@ -7,6 +7,7 @@ use App\Services\Checkout\CheckoutService;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Order; // 追加
+use Illuminate\Support\Facades\Log;
 
 class CheckoutController extends Controller
 {
@@ -45,6 +46,9 @@ class CheckoutController extends Controller
                             ->with('message', __('Order completed successfully!'));
 
         } catch (\Exception $e) {
+            // デバッグ: エラー内容をログに出力
+            \Log::error('Checkout Error:', ['message' => $e->getMessage()]);
+
             // 失敗：エラーメッセージと共にカートへ戻す
             return back()->withErrors(['checkout_error' => $e->getMessage()]);
         }
@@ -56,17 +60,22 @@ class CheckoutController extends Controller
      */
     public function success($orderId)
     {
-        $order = Order::with(['orderItems.product.translations', 'payment.breakdowns'])
-            ->findOrFail($orderId);
+        // images と variation (およびその翻訳) を追加でロード
+        $order = Order::with([
+            'orderItems.product.translations', 
+            'orderItems.product.images', // 画像を追加
+            'orderItems.variation.translations', // バリエーション名用に追加
+            'payment.breakdowns'
+        ])->findOrFail($orderId);
 
-        // 料金内訳の計算
+        // 料金内訳の計算 (既存のまま)
         $breakdowns = $order->payment->breakdowns ?? collect();
         $feeBreakdown = [
-            'item_total' => $breakdowns->where('type', 1)->sum('amount'), // 商品代金合計
-            'item_tax' => $breakdowns->where('type', 5)->sum('amount'), // 商品消費税
-            'shipping' => $breakdowns->whereIn('type', [2, 3])->sum('amount'), // 送料
-            'shipping_tax' => $breakdowns->where('type', 7)->sum('amount'), // 送料消費税
-            'fee' => $breakdowns->where('type', 4)->sum('amount'), // システム手数料
+            'item_total' => $breakdowns->where('type', 1)->sum('amount'),
+            'item_tax' => $breakdowns->where('type', 5)->sum('amount'),
+            'shipping' => $breakdowns->whereIn('type', [2, 3])->sum('amount'),
+            'shipping_tax' => $breakdowns->where('type', 7)->sum('amount'),
+            'fee' => $breakdowns->where('type', 4)->sum('amount'),
             'total' => $order->total_amount,
         ];
 

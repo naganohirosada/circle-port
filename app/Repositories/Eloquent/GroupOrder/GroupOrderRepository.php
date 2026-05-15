@@ -39,11 +39,7 @@ class GroupOrderRepository implements GroupOrderRepositoryInterface
     {
         return GroupOrderItem::create([
             'group_order_id' => $groupOrderId,
-            'product_id' => $itemData['item_id'],
-            'product_variant_id' => $itemData['variation_id'],
-            'item_name'      => $itemData['item_name'],
-            'price'          => $itemData['price'],
-            'stock_limit'    => $itemData['stock_limit'],
+            'product_id' => $itemData['product_id'],
         ]);
     }
 

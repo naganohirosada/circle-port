@@ -51,6 +51,7 @@ class CartService
     public function getCartDetails(string $locale): array
     {
         $cartItems = $this->cartRepo->getCart();
+
         if (empty($cartItems)) return [];
 
         $details = [];
@@ -82,6 +83,8 @@ class CartService
             $details[] = [
                 'cart_key' => $key,
                 'product_id' => $product->id,
+                'variation_id' => $variation?->id,
+                'product_type' => (int)$product->product_type,
                 'name' => $product->translations->first()?->name ?? $product->name_en,
                 'variation_name' => $variation?->translations->first()?->name,
                 'price' => (int)$price,

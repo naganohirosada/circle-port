@@ -129,12 +129,12 @@ export default function BasicSection({ data, setData, errors, mode = 'all' }) {
                     {/* モード2: 個別配送 */}
                     <button
                         type="button"
-                        onClick={() => setData('shipping_mode', 'individual')}
+                        onClick={() => setData('shipping_mode', 2)}
                         className={`p-8 rounded-[2.5rem] border-2 transition-all text-left relative overflow-hidden group
-                            ${data.shipping_mode === 'individual' ? 'border-cyan-500 bg-cyan-50 shadow-xl shadow-cyan-100' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                            ${data.shipping_mode === 2 ? 'border-cyan-500 bg-cyan-50 shadow-xl shadow-cyan-100' : 'border-slate-100 bg-white hover:border-slate-200'}`}
                     >
                         <div className="flex items-start gap-4 relative z-10">
-                            <div className={`p-4 rounded-2xl ${data.shipping_mode === 'individual' ? 'bg-cyan-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-4 rounded-2xl ${data.shipping_mode === 2 ? 'bg-cyan-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
                                 <UserCheck size={24} />
                             </div>
                             <div className="space-y-2">
@@ -154,7 +154,12 @@ export default function BasicSection({ data, setData, errors, mode = 'all' }) {
                         </div>
                     </button>
                 </div>
-                <InputError message={errors.shipping_mode} />
+                {errors.shipping_mode && (
+                    <div className="mt-4 flex items-center gap-2 text-rose-500 bg-rose-50 p-3 rounded-xl border border-rose-100 animate-shake">
+                        <AlertCircle size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-tight">{errors.shipping_mode}</span>
+                    </div>
+                )}
             </div>
 
             {/* 公開設定と許可ユーザー */}

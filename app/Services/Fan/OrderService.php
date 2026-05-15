@@ -11,7 +11,7 @@ class OrderService {
     }
 
     public function getOrderHistory($fan) {
-        $userLocale = $fan->language_code;
+        $userLocale = $fan->language->code;
         $orders = $this->orderRepo->getPaginatedForFan($fan->id);
 
         $statusMap = [
@@ -43,13 +43,25 @@ class OrderService {
     }
 
     private function resolveDisplayImage($product) {
-        $image = $product->images->where('is_primary', 1)->first() ?? $product->images->first();
+        if (!$product) return null;
+
+        $image = $product->images->where('is_primary', 1)->first() 
+            ?? $product->images->first();
+
         if (!$image) return null;
-        return $image->image_url ?: asset('storage/' . $image->file_path);
+
+        return asset('storage/' . $image->file_path);
     }
 
     private function resolveTranslation($model, $locale) {
-        $trans = $model->translations->where('locale', $locale)->first() ?? $model->translations->first();
+        if (!$model) {
+            return '---';
+        }
+
+
+        $trans = $model->translations->where('locale', $locale)->first() 
+            ?? $model->translations->first();
+
         return $trans ? $trans->name : '---';
     }
 

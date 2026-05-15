@@ -112,33 +112,45 @@ export default function Success({ order, fee_breakdown }) {
                 </div>
 
                 {/* 注文商品リスト */}
-                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl mb-12">
+                                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl mb-12 text-left">
                     <h2 className="text-xl font-bold text-slate-900 mb-6">{__('Order Items')}</h2>
                     <div className="space-y-4">
-                        {order.order_items?.map((item) => (
-                            <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                                <div className="w-16 h-16 bg-white rounded-lg overflow-hidden border border-slate-200">
-                                    <img
-                                        src={item.product?.images?.[0]?.url || '/images/no-image.jpg'}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                    />
+                        {order.order_items?.map((item) => {
+                            // 表示名の決定（バリエーションがあればそちらを優先）
+                            const displayName = item.variation 
+                                ? (item.variation.translations?.[0]?.name || item.variation.name_en)
+                                : (item.product?.translations?.[0]?.name || item.product?.name_en);
+
+                            return (
+                                <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+                                    <div className="w-16 h-16 bg-white rounded-lg overflow-hidden border border-slate-200 flex-shrink-0">
+                                        <img
+                                            src={item.product?.images?.[0]?.file_path ? `/storage/${item.product.images[0].file_path}` : '/images/no-image.jpg'}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-slate-900 leading-tight">
+                                            {displayName}
+                                        </h3>
+                                        {item.variation && (
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+                                                {item.product?.translations?.[0]?.name}
+                                            </p>
+                                        )}
+                                        <p className="text-sm text-slate-600 mt-1">
+                                            {__('Quantity')}: {item.quantity} × {formatCurrency(item.unit_price, currency)}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold text-slate-900">
+                                            {formatCurrency(item.unit_price * item.quantity, currency)}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-slate-900">
-                                        {item.product?.translations?.[0]?.name || item.product?.name_en}
-                                    </h3>
-                                    <p className="text-sm text-slate-600">
-                                        {__('Quantity')}: {item.quantity} × {formatCurrency(item.unit_price, currency)}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-slate-900">
-                                        {formatCurrency(item.unit_price * item.quantity, currency)}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 

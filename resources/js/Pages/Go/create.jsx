@@ -32,13 +32,27 @@ export default function Create() {
         creator_id: '',
         recruitment_start_date: '',
         recruitment_end_date: '',
-        shipping_mode: 'bulk_to_gom',
+        shipping_mode: 1, // デフォルトは一括配送
         is_secondary_payment_required: true,
         is_private: false,
         max_participants: '',
         items: initialItems,
         allowed_fans: []
     });
+
+    const stepErrorMap = {
+        1: ['creator_id', 'items'],
+        2: ['recruitment_start_date', 'recruitment_end_date', 'max_participants', 'shipping_mode', 'is_private', 'allowed_fans'],
+        3: ['title', 'description'],
+    };
+
+    const hasStepError = (stepId) => {
+        const fields = stepErrorMap[stepId] || [];
+        // items.* のようなワイルドカードエラーも考慮
+        return Object.keys(errors).some(key => 
+            fields.includes(key) || (stepId === 1 && key.startsWith('items.'))
+        );
+    };
 
     const steps = [
         { id: 1, name: __('Select Items'), icon: <Package size={18} /> },
@@ -76,31 +90,49 @@ export default function Create() {
             <Head title={`${__('Launch New Box')} - CirclePort`} />
             
             <div className="max-w-5xl mx-auto px-8 py-16">
+                {Object.keys(errors).length > 0 && (
+                    <div className="mb-10 p-6 bg-rose-50 border-2 border-rose-100 rounded-[2rem] animate-in fade-in slide-in-from-top-4">
+                        <div className="flex items-center gap-3 text-rose-600 mb-4">
+                            <AlertTriangle size={20} />
+                            <h4 className="text-sm font-black uppercase tracking-widest">{__('Wait! Some details need your attention')}</h4>
+                        </div>
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                            {Object.entries(errors).map(([key, message]) => (
+                                <li key={key} className="text-[11px] font-bold text-rose-500 flex items-start gap-2">
+                                    <span className="mt-1 w-1 h-1 rounded-full bg-rose-400 shrink-0" />
+                                    {message}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
                 {/* ウィザード・プログレスバー */}
                 <div className="mb-12">
                     <div className="flex justify-between items-center relative">
-                        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 z-0"></div>
-                        <div 
-                            className="absolute top-1/2 left-0 h-0.5 bg-cyan-500 -translate-y-1/2 z-0 transition-all duration-500"
-                            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-                        ></div>
-
-                        {steps.map((step) => (
-                            <div key={step.id} className="relative z-10 flex flex-col items-center group">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-lg 
-                                    ${currentStep >= step.id ? 'bg-cyan-500 text-white scale-110' : 'bg-white text-slate-400 border-2 border-slate-100'}`}
-                                >
-                                    {currentStep > step.id ? <Check size={20} strokeWidth={3} /> : step.icon}
+                        {/* ... 背景ライン */}
+                        {steps.map((step) => {
+                            const errorInStep = hasStepError(step.id); // エラー判定
+                            return (
+                                <div key={step.id} className="relative z-10 flex flex-col items-center group">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-lg border-2
+                                        ${errorInStep ? 'bg-rose-50 border-rose-500 text-rose-500 animate-pulse' : 
+                                        currentStep >= step.id ? 'bg-cyan-500 border-cyan-500 text-white scale-110' : 
+                                        'bg-white text-slate-400 border-slate-100'}`}
+                                    >
+                                        {currentStep > step.id && !errorInStep ? <Check size={20} strokeWidth={3} /> : step.icon}
+                                    </div>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest mt-3 transition-colors 
+                                        ${errorInStep ? 'text-rose-600' : currentStep >= step.id ? 'text-cyan-600' : 'text-slate-400'}`}
+                                    >
+                                        {step.name}
+                                    </span>
                                 </div>
-                                <span className={`text-[10px] font-black uppercase tracking-widest mt-3 transition-colors 
-                                    ${currentStep >= step.id ? 'text-cyan-600' : 'text-slate-400'}`}
-                                >
-                                    {step.name}
-                                </span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
+                
 
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {currentStep === 1 && (

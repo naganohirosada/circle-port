@@ -127,5 +127,7 @@ Route::prefix('fan')->name('fan.')->group(function () {
         Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('products.reviews.destroy');
 
         Route::post('international-shippings', [InternationalShippingController::class, 'store'])->name('international-shippings.store');
+
+        Route::get('/{order}/download/{item}', [OrderController::class, 'downloadDigitalItem'])->name('orders.download');
     });
 });

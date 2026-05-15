@@ -138,16 +138,25 @@ export default function Index({ orders }) {
                 {/* ページネーション */}
                 {orders.links && orders.links.length > 3 && (
                     <div className="mt-16 flex justify-center gap-2">
-                        {orders.links.map((link, i) => (
-                            <Link
-                                key={i}
-                                href={link.url}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                className={`px-5 py-3 rounded-xl text-xs font-black transition-all ${
-                                    link.active ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 hover:bg-slate-100'
-                                } ${!link.url && 'opacity-30 cursor-not-allowed'}`}
-                            />
-                        ))}
+                        {orders.links.map((link, i) => {
+                            // urlがない場合は span を使い、ある場合のみ Link を使う
+                            return link.url ? (
+                                <Link
+                                    key={i}
+                                    href={link.url}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    className={`px-5 py-3 rounded-xl text-xs font-black transition-all ${
+                                        link.active ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 hover:bg-slate-100'
+                                    }`}
+                                />
+                            ) : (
+                                <span
+                                    key={i}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    className="px-5 py-3 rounded-xl text-xs font-black bg-white text-slate-200 opacity-50 cursor-not-allowed border border-slate-50"
+                                />
+                            );
+                        })}
                     </div>
                 )}
             </div>

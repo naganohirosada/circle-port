@@ -1,7 +1,7 @@
 import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { ArrowLeft, MapPin, CreditCard, ReceiptText, Calendar, AlertCircle, PackageCheck, Truck } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, ReceiptText, Calendar, AlertCircle, PackageCheck, Truck, Download } from 'lucide-react';
 
 // --- 定数定義 ---
 const STATUS_PENDING = 10;                // 支払い待ち
@@ -125,6 +125,16 @@ export default function Show({ order }) {
                                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4">
                                                 {item.variation?.name || 'Standard'}
                                             </p>
+
+                                            {item.product?.product_type === 2 && order.status >= STATUS_PAID && (
+                                                <a 
+                                                    href={route('fan.orders.download', [order.id, item.id])}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-50 text-cyan-700 rounded-xl text-xs font-bold hover:bg-cyan-100 transition-colors mb-4"
+                                                >
+                                                    <Download size={14} />
+                                                    {__('Download Digital Content')}
+                                                </a>
+                                            )}
                                             <p className="text-xs font-medium text-slate-500">
                                                 ¥{parseFloat(item.unit_price || 0).toLocaleString()} <span className="mx-1 text-slate-300">×</span> {item.quantity}
                                             </p>

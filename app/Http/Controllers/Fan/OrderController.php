@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Services\Fan\OrderService;
+use Illuminate\Support\Facades\Storage;
 
 class OrderController extends Controller
 {
@@ -83,5 +84,39 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => __('Payment failed again. Please try another card.')]);
         }
+    }
+
+    /**
+     * デジタル商品のダウンロード
+     * @param Order $order
+     * @param int $itemId 注文アイテムID
+     */
+    public function downloadDigitalItem(Order $order, $itemId)
+    {
+        // 憲法第1条：自分の注文かチェック
+        if ($order->fan_id !== Auth::guard('fan')->id()) abort(403);
+
+        // 支払い済み（STATUS_PAID = 20）以上かチェック
+        if ($order->status < Order::STATUS_PAID) {
+            return back()->withErrors(['error' => __('Payment is not completed yet.')]);
+        }
+
+        // 注文アイテムの取得
+        $item = $order->orderItems()->with(['product', 'variation'])->findOrFail($itemId);
+        $product = $item->product;
+        $variant = $item->variation;
+
+        // ファイルパスの決定（バリエーション優先、なければ商品直下）
+        $path = $variant?->digital_file_path ?: $product?->digital_file_path;
+
+        if (!$path || !Storage::exists($path)) {
+            abort(404, __('Digital file not found.'));
+        }
+
+        // 元のファイル名を取得（保存時のパスからファイル名を推測、または extension を維持）
+        $fileName = $product->translations()->where('locale', 'ja')->first()?->name ?? 'download_file';
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+        return Storage::download($path, "{$fileName}.{$extension}");
     }
 }

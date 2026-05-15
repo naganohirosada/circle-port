@@ -4,6 +4,7 @@ namespace App\Repositories\Eloquent\Order;
 use App\Models\Order;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use Illuminate\Support\Facades\DB;
+use App\Services\Admin\PayoutService;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -75,8 +76,8 @@ class OrderRepository implements OrderRepositoryInterface
                 $payment->breakdowns()->create($breakdown);
             }
 
-            if ((int)$payment->status === 20) {
-                app(\App\Services\PayoutService::class)->recordPaymentToPayout($payment);
+            if ($payment->status === \App\Enums\PaymentStatus::SUCCEEDED) {
+                app(PayoutService::class)->recordPaymentToPayout($payment);
             }
 
             return $order;

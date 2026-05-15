@@ -20,38 +20,57 @@ class GroupOrderStoreRequest extends FormRequest
             'creator_id' => 'required|exists:creators,id',
             'title' => 'required|string|max:255',
             'description' => 'required|string',
-            'recruitment_start_date' => 'required|date',
+            'recruitment_start_date' => 'required|date|after_or_equal:today',
             'recruitment_end_date' => 'required|date|after:recruitment_start_date',
-            'shipping_mode' => ['required', Rule::in(['individual', 'bulk'])],
+            'max_participants' => 'required|integer|min:1',
+            'shipping_mode' => 'required|in:1,2',
             'is_private' => 'required|boolean',
-            'allowed_fans' => 'nullable|array',
-            'allowed_fans.*' => 'exists:fans,id',
-            'is_secondary_payment_required' => 'required|boolean',
-
+            'allowed_fans' => 'required_if:is_private,true|array',
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:products,id',
-            'items.*.variation_id' => 'nullable|exists:product_variants,id', 
-            'items.*.item_name' => 'required|string|max:255', // ★ 追加：アイテム名の検証
-            'items.*.price' => 'required|integer|min:0',
-            'items.*.stock_limit' => 'required|integer|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_variant_id' => 'nullable|exists:product_variants,id',
+            'items.*.price' => 'required|numeric|min:0',
         ];
     }
 
     /**
-     * バリデーションエラーメッセージのカスタマイズ（多言語対応を意識）
+     * 翻訳対応したカスタムエラーメッセージ
+     */
+    public function messages(): array
+    {
+        return [
+            'creator_id.required' => __('Please select a creator.'),
+            'title.required' => __('Please enter a title for your GO.'),
+            'description.required' => __('Please provide a description.'),
+            'recruitment_start_date.required' => __('Please select a start date.'),
+            'recruitment_start_date.after_or_equal' => __('Start date must be today or later.'),
+            'recruitment_end_date.required' => __('Please select an end date.'),
+            'recruitment_end_date.after' => __('End date must be after the start date.'),
+            'max_participants.required' => __('Please enter the maximum number of participants.'),
+            'max_participants.min' => __('At least 1 participant is required.'),
+            'shipping_mode.required' => __('Please select a shipping mode.'),
+            'items.required' => __('Please add at least one item to your GO.'),
+            'items.min' => __('Please add at least one item to your GO.'),
+
+            // 個別アイテムのバリデーションエラー
+            'items.*.price.required' => __('Price is required.'),
+            'items.*.price.min' => __('Price cannot be negative.'),
+        ];
+    }
+
+    /**
+     * 属性名の翻訳（エラーメッセージ内の項目名）
      */
     public function attributes(): array
     {
         return [
-            'creator_id' => __('Target Creator'),
             'title' => __('Title'),
             'description' => __('Description'),
-            'recruitment_start_date' => __('Start Date'),
-            'recruitment_end_date' => __('End Date'),
+            'max_participants' => __('Max Participants'),
+            'recruitment_start_date' => __('Recruitment Start'),
+            'recruitment_end_date' => __('Recruitment End'),
             'shipping_mode' => __('Shipping Mode'),
-            'items' => __('Items'),
-            'items.*.price' => __('Price'),
-            'items.*.stock_limit' => __('Stock Limit'),
+            'is_private' => __('Privacy Setting'),
         ];
     }
 }

@@ -51,10 +51,10 @@ export default function ReviewForm({ productId, language }) {
             <div className="mb-6">
                 <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 flex items-center gap-2">
                     <Star className="text-cyan-400" fill="currentColor" size={20} />
-                    Write a Review
+                    {__('Write a Review')}
                 </h3>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                    あなたの感想をシェアしよう
+                    {__('Join the community to write a review!')}
                 </p>
             </div>
 
@@ -79,7 +79,7 @@ export default function ReviewForm({ productId, language }) {
                         value={data.comment}
                         onChange={e => setData('comment', e.target.value)}
                         className="w-full bg-slate-50 border-2 border-transparent rounded-2xl p-6 font-bold text-sm min-h-[120px] focus:bg-white focus:border-cyan-400 focus:ring-0 transition-all resize-none"
-                        placeholder={__('商品の感想を教えてください')}
+                        placeholder={__('Share your thoughts about this product...')}
                     />
                     {errors.comment && <p className="text-rose-500 text-[10px] font-black italic">{errors.comment}</p>}
                 </div>

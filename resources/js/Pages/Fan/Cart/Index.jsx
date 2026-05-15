@@ -58,11 +58,13 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
             return { itemTotal: 0, shipping: 0, tax: 0, fee: 0, tipTotal: 0, grandTotal: 0, selectedItems: [], isGoOrder: false, feeLabel: __('System Fee (8%)') };
         }
 
+        const hasPhysical = selectedItems.some(item => item.product_type === 1);
+
         const isGoOrder = selectedItems.some(item => item.group_order_id);
         const appliedFeeRate = isGoOrder ? go_fee_rate : fee_rate;
         const feeLabel = isGoOrder ? __('GO Order Fee (5%)') : __('System Fee (8%)');
 
-        const shipping = shipping_fee;
+        const shipping = hasPhysical ? shipping_fee : 0;
         const tax = Math.floor((itemTotal + shipping) * tax_rate);
         const fee = Math.ceil((itemTotal + shipping + tax) * appliedFeeRate);
         const tipTotal = Object.values(tips).reduce((sum, val) => sum + (Number(val) || 0), 0);
@@ -252,7 +254,9 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                     <div className="h-px bg-slate-800 my-4" />
                                     <div className="space-y-4">
                                         <div className="flex justify-between text-sm text-slate-400"><span>{__('Subtotal')}</span><span>{formatCurrency(totals.itemTotal, currency)}</span></div>
-                                        <div className="flex justify-between text-sm text-slate-400"><span>{__('Domestic Shipping')}</span><span>{formatCurrency(totals.shipping, currency)}</span></div>
+                                        {totals.hasPhysical && (
+                                            <div className="flex justify-between text-sm text-slate-400"><span>{__('Domestic Shipping')}</span><span>{formatCurrency(totals.shipping, currency)}</span></div>
+                                        )}
                                         <div className="flex justify-between text-sm text-slate-400"><span>{__('Tax')}</span><span>{formatCurrency(totals.tax, currency)}</span></div>
                                         <div className="flex justify-between text-sm text-slate-400"><span>{totals.feeLabel}</span><span>{formatCurrency(totals.fee, currency)}</span></div>
                                         {totals.tipTotal > 0 && <div className="flex justify-between text-sm text-cyan-400 font-bold pt-2 border-t border-slate-800"><span><Heart size={12} className="inline mr-1" /> {__('Support')}</span><span>{formatCurrency(totals.tipTotal, currency)}</span></div>}
