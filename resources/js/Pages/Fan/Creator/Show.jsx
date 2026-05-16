@@ -3,7 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import { Users, Package, Rocket, ChevronRight, LayoutGrid, Box } from 'lucide-react';
 import Pagination from '@/Components/Pagination';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 
 export default function Show({ creator, artworks, groupOrders, isFollowing, language, filters }) {
     const __ = (key) => language?.[key] || key;
@@ -150,7 +150,7 @@ export default function Show({ creator, artworks, groupOrders, isFollowing, lang
                                             {/* --- 価格表示部分の修正 --- */}
                                             <div className="mt-1 flex items-baseline gap-1">
                                                 <span className="text-slate-900 font-black text-sm">
-                                                    {formatCurrency(minPrice, currency)}
+                                                    {renderDualCurrency(minPrice, currency)}
                                                 </span>
                                                 {hasMultiplePrices && (
                                                     <span className="text-slate-400 font-bold text-[10px]">

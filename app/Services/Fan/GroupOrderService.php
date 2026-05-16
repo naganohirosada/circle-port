@@ -124,7 +124,7 @@ class GroupOrderService
                 'total_amount'        => $amounts['total_amount'],
                 'notes'               => $tipAmount > 0 ? json_encode(['creator_tip' => $tipAmount]) : null,
                 'items'               => $preparedItems,
-                'payment_status'      => 'pending',
+                'payment_status'      => GroupOrder::PAYMENT_STATUS_PENDING,
             ]);
 
             // 2. メインの決済手段(is_primary = 1)があるかチェック
@@ -136,7 +136,7 @@ class GroupOrderService
                     $intent = $this->stripeService->chargeSavedCard($order, $primaryMethod);
                     
                     if ($intent->status === 'succeeded') {
-                        $order->update(['payment_status' => 'paid']);
+                        $order->update(['payment_status' => GroupOrder::PAYMENT_STATUS_COMPLETED]);
                         // 即時決済成功時は Order オブジェクトを返す
                         return $order;
                     }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 import { 
     Search, Users, RotateCcw, 
     ChevronDown, ChevronUp, Filter,
@@ -22,6 +22,12 @@ export default function Index({
 
     // 折りたたみ状態の管理
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const FOREX_SPREAD = currency.code === 'JPY' ? 0 : 0.05;
+    const adjustedCurrency = React.useMemo(() => ({
+        ...currency,
+        rate: currency.rate * (1 + FOREX_SPREAD)
+    }), [currency, FOREX_SPREAD]);
 
     const { data, setData, get, processing, reset } = useForm({
         name: filters.name || '',
@@ -204,6 +210,7 @@ export default function Index({
                     {(data.mode === 'go' ? groupOrders.data : products.data).map((item) => {
                         // 在庫判定: デジタルは常に在庫あり、現物はトータル在庫を参照
                         const isAvailable = item.product_type === 2 || (item.total_stock > 0);
+                        const basePrice = item.display_min_price || item.price;
 
                         return (
                             <Link 
@@ -279,17 +286,20 @@ export default function Index({
                                     {/* Price & Stock Status */}
                                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                         <div className="flex flex-col">
-                                            <p className="text-base font-black text-slate-900 leading-none">
-                                                {/* formatCurrencyヘルパーを使用して換算後の価格を表示 */}
-                                                {formatCurrency(item.display_min_price || item.price, currency)}
-                                                {item.has_multiple_prices && <span className="ml-0.5 text-xs text-slate-400">~</span>}
-                                            </p>
-                                            {/* 通貨がJPYでない場合のみ、参考として元の日本円価格を表示 */}
-                                            {currency.code !== 'JPY' && (
-                                                <span className="text-[9px] text-slate-400 font-bold mt-1">
-                                                    (¥{Number(item.display_min_price || item.price).toLocaleString()})
-                                                </span>
-                                            )}
+                                            <div className="flex flex-col">
+                                                {/* メイン表示：日本円 */}
+                                                <p className="text-base font-black text-slate-900 leading-none">
+                                                    {renderDualCurrency(basePrice, adjustedCurrency)}
+                                                    {item.has_multiple_prices && <span className="ml-0.5 text-xs text-slate-400">~</span>}
+                                                </p>
+                                                
+                                                {/* サブ表示：設定通貨 (JPY以外の場合のみ) */}
+                                                {currency.code !== 'JPY' && (
+                                                    <span className="text-[9px] text-slate-400 font-bold mt-1">
+                                                        {item.has_multiple_prices && <span className="ml-0.5">~</span>}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         <div className={`flex items-center gap-1 ${isAvailable ? 'text-emerald-500' : 'text-slate-300'}`}>

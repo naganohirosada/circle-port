@@ -3,6 +3,7 @@ namespace App\Services\Gom;
 
 use App\Repositories\Interfaces\GroupOrderRepositoryInterface;
 use App\Jobs\ProcessPrimaryPaymentJob;
+use App\Models\GroupOrder;
 
 class PrimaryPaymentService {
     public function __construct(
@@ -19,7 +20,7 @@ class PrimaryPaymentService {
         }
 
         // ステータスを 2: PROCESSING (処理中) に変更
-        $this->repo->updateStatus($goId, ['primary_payment_status' => 2]);
+        $this->repo->updateStatus($goId, ['primary_payment_status' => GroupOrder::PAYMENT_STATUS_PROCESSING]);
 
         // 重い決済処理は Job に丸投げ
         ProcessPrimaryPaymentJob::dispatch($goId);

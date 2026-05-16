@@ -2,7 +2,7 @@ import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import { CheckCircle, Package, ArrowRight, ShoppingBag, Mail, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 
 export default function Success({ order, fee_breakdown }) {
     const { language, currency } = usePage().props;
@@ -49,7 +49,7 @@ export default function Success({ order, fee_breakdown }) {
                                 {__('Total Amount')}
                             </span>
                             <span className="text-2xl font-light tracking-wider">
-                                {formatCurrency(fee_breakdown.total, currency)}
+                                {renderDualCurrency(fee_breakdown.total, currency)}
                             </span>
                         </div>
                     </div>
@@ -66,28 +66,28 @@ export default function Success({ order, fee_breakdown }) {
                         <div className="flex justify-between text-sm">
                             <span className="text-slate-600">{__('Items Total')}</span>
                             <span className="font-bold text-slate-900">
-                                {formatCurrency(fee_breakdown.item_total, currency)}
+                                {renderDualCurrency(fee_breakdown.item_total, currency)}
                             </span>
                         </div>
 
                         <div className="flex justify-between text-sm">
                             <span className="text-slate-600">{__('Tax')}</span>
                             <span className="font-bold text-slate-900">
-                                {formatCurrency(fee_breakdown.item_tax, currency)}
+                                {renderDualCurrency(fee_breakdown.item_tax, currency)}
                             </span>
                         </div>
 
                         <div className="flex justify-between text-sm">
                             <span className="text-slate-600">{__('Shipping')}</span>
                             <span className="font-bold text-slate-900">
-                                {formatCurrency(fee_breakdown.shipping, currency)}
+                                {renderDualCurrency(fee_breakdown.shipping, currency)}
                             </span>
                         </div>
 
                         <div className="flex justify-between text-sm">
                             <span className="text-slate-600">{__('Shipping Tax')}</span>
                             <span className="font-bold text-slate-900">
-                                {formatCurrency(fee_breakdown.shipping_tax, currency)}
+                                {renderDualCurrency(fee_breakdown.shipping_tax, currency)}
                             </span>
                         </div>
 
@@ -96,7 +96,7 @@ export default function Success({ order, fee_breakdown }) {
                                 {order.is_go_order ? __('GO Order Fee (5%)') : __('System Fee (8%)')}
                             </span>
                             <span className="font-bold text-slate-900">
-                                {formatCurrency(fee_breakdown.fee, currency)}
+                                {renderDualCurrency(fee_breakdown.fee, currency)}
                             </span>
                         </div>
 
@@ -105,7 +105,7 @@ export default function Success({ order, fee_breakdown }) {
                         <div className="flex justify-between text-lg font-bold">
                             <span className="text-slate-900">{__('Total')}</span>
                             <span className="text-slate-900">
-                                {formatCurrency(fee_breakdown.total, currency)}
+                                {renderDualCurrency(fee_breakdown.total, currency)}
                             </span>
                         </div>
                     </div>
@@ -140,12 +140,12 @@ export default function Success({ order, fee_breakdown }) {
                                             </p>
                                         )}
                                         <p className="text-sm text-slate-600 mt-1">
-                                            {__('Quantity')}: {item.quantity} × {formatCurrency(item.unit_price, currency)}
+                                            {__('Quantity')}: {item.quantity} × {renderDualCurrency(item.unit_price, currency)}
                                         </p>
                                     </div>
                                     <div className="text-right">
                                         <p className="font-bold text-slate-900">
-                                            {formatCurrency(item.unit_price * item.quantity, currency)}
+                                            {renderDualCurrency(item.unit_price * item.quantity, currency)}
                                         </p>
                                     </div>
                                 </div>

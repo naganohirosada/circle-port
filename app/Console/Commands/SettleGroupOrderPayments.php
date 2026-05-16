@@ -38,7 +38,7 @@ class SettleGroupOrderPayments extends Command
 
             // 2. そのプロジェクトに紐づく「未払い」の注文をループ
             $orders = Order::where('group_order_id', $go->id)
-                ->where('payment_status', 'pending')
+                ->where('payment_status', GroupOrder::PAYMENT_STATUS_PENDING)
                 ->with(['fan.paymentMethods'])
                 ->get();
 
@@ -54,13 +54,13 @@ class SettleGroupOrderPayments extends Command
                     $intent = $this->stripeService->captureSavedCardPayment($order, $primaryCard);
 
                     if ($intent->status === 'succeeded') {
-                        $order->update(['payment_status' => 'paid']);
+                        $order->update(['payment_status' => GroupOrder::PAYMENT_STATUS_COMPLETED]);
                         $this->line(" - Order ID: {$order->id} 決済成功");
                     }
 
                 } catch (\Exception $e) {
                     $this->error(" - Order ID: {$order->id} 決済失敗: " . $e->getMessage());
-                    $order->update(['payment_status' => 'failed']); 
+                    $order->update(['payment_status' => GroupOrder::PAYMENT_STATUS_FAILED]);
                     // 2. ファンに通知を送信
                     $order->fan->notify(new PaymentFailedNotification($order));
                     $this->error(" - Order ID: {$order->id} 通知送信完了: " . $e->getMessage());

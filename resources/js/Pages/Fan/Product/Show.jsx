@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Head, usePage, Link, useForm } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import ReviewForm from '@/Components/models/product/ReviewForm';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 import { 
     Tag, ShoppingBag, ChevronRight, Check, 
     Loader2, Megaphone, Plus, Minus, Share2, AlertCircle, 
@@ -14,6 +14,12 @@ import {
 export default function Show({ product, auth }) {
     const { language, locale, currency } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
+
+    const FOREX_SPREAD = currency.code === 'JPY' ? 0 : 0.05;
+    const adjustedCurrency = useMemo(() => ({
+        ...currency,
+        rate: currency.rate * (1 + FOREX_SPREAD)
+    }), [currency, FOREX_SPREAD]);
 
     const isDigital = product.product_type === 2;
     
@@ -166,21 +172,28 @@ export default function Show({ product, auth }) {
                                         {selectedVariationName}
                                     </div>
                                 )}
+                                
                                 {displayPrice !== null ? (
                                     <div className="text-5xl font-black text-slate-900 tracking-tighter">
-                                        {formatCurrency(displayPrice, currency)}
+                                        {renderDualCurrency(displayPrice, adjustedCurrency)}
                                     </div>
                                 ) : (
                                     <div className="text-3xl font-black text-slate-900 tracking-tighter">
-                                        {formatCurrency(priceRange.min, currency)} 
-                                        <span className="text-slate-300"> ~ </span> 
-                                        {formatCurrency(priceRange.max, currency)}
+                                        {currency.code === 'JPY' ? (
+                                            <>¥{priceRange.min.toLocaleString()} <span className="text-slate-300">~</span></>
+                                        ) : (
+                                            <>
+                                                ¥{priceRange.min.toLocaleString()} ({renderDualCurrency(priceRange.min, adjustedCurrency)})
+                                                <span className="ml-2 text-slate-300 text-xl font-bold">~</span>
+                                            </>
+                                        )}
                                     </div>
                                 )}
+
                                 {currency.code !== 'JPY' && (
-                                    <div className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">
-                                        Base Price: ¥{Number(displayPrice || priceRange.min).toLocaleString()} JPY
-                                    </div>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-3 uppercase italic">
+                                        * {__('Price in your currency includes a 5% exchange spread.')}
+                                    </p>
                                 )}
                             </div>
                         </div>
@@ -191,13 +204,19 @@ export default function Show({ product, auth }) {
                                 <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{__('Select Variation')}</label>
                                 <div className="grid grid-cols-1 gap-3">
                                     {product.variations.map((v) => (
-                                        <button key={v.id} disabled={!isDigital && v.stock <= 0} onClick={() => handleVariationSelect(v)} className={`relative p-5 rounded-2xl border-2 text-left transition-all ${selectedVariation?.id === v.id ? 'border-cyan-500 bg-white shadow-xl shadow-cyan-100/50 scale-[1.02]' : 'border-slate-100 bg-slate-50/50 hover:bg-white'}`}>
+                                        <button 
+                                            key={v.id} 
+                                            disabled={!isDigital && v.stock <= 0} 
+                                            onClick={() => handleVariationSelect(v)} 
+                                            className={`relative p-5 rounded-2xl border-2 text-left transition-all ${selectedVariation?.id === v.id ? 'border-cyan-500 bg-white shadow-xl shadow-cyan-100/50 scale-[1.02]' : 'border-slate-100 bg-slate-50/50 hover:bg-white'}`}
+                                        >
                                             <div className="flex justify-between items-center">
-                                                <div><span className="text-sm font-black uppercase">{getVariationLabel(v)}</span>
+                                                <div>
+                                                    <span className="text-sm font-black uppercase">{getVariationLabel(v)}</span>
                                                     <div className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-widest">
                                                         {v.stock <= 0 && !isDigital 
                                                             ? __('Sold Out') 
-                                                            : formatCurrency(v.price, currency)
+                                                            : renderDualCurrency(v.price, adjustedCurrency)
                                                         }
                                                     </div>
                                                 </div>

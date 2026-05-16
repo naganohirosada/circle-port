@@ -1,7 +1,7 @@
 import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 import {
     ArrowLeft, Truck, Package, CreditCard, CheckCircle,
     MapPin, Calendar, DollarSign, AlertCircle
@@ -152,14 +152,14 @@ export default function Show({ shipping, fee_breakdown }) {
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-600">{__('Base Shipping Fee')}</span>
                                     <span className="font-bold text-slate-900">
-                                        {formatCurrency(fee_breakdown.base_shipping_fee, currency)}
+                                        {renderDualCurrency(fee_breakdown.base_shipping_fee, currency)}
                                     </span>
                                 </div>
 
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-600">{__('International Fee (3%)')}</span>
                                     <span className="font-bold text-slate-900">
-                                        {formatCurrency(fee_breakdown.international_fee, currency)}
+                                        {renderDualCurrency(fee_breakdown.international_fee, currency)}
                                     </span>
                                 </div>
 
@@ -168,7 +168,7 @@ export default function Show({ shipping, fee_breakdown }) {
                                 <div className="flex justify-between text-lg font-bold">
                                     <span className="text-slate-900">{__('Total')}</span>
                                     <span className="text-slate-900">
-                                        {formatCurrency(fee_breakdown.total_amount, currency)}
+                                        {renderDualCurrency(fee_breakdown.total_amount, currency)}
                                     </span>
                                 </div>
                             </div>
@@ -204,7 +204,7 @@ export default function Show({ shipping, fee_breakdown }) {
                                         }}
                                         className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold uppercase tracking-widest transition-colors"
                                     >
-                                        {__('Pay')} {formatCurrency(fee_breakdown.total_amount, currency)}
+                                        {__('Pay')} {renderDualCurrency(fee_breakdown.total_amount, currency)}
                                     </button>
                                 </div>
                             </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import FanLayout from '@/Layouts/FanLayout';
 import { Head, usePage, router } from '@inertiajs/react';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 import { 
     Package, Truck, CreditCard, CheckCircle2, 
     AlertCircle, ChevronRight, Box, Boxes, 
@@ -198,16 +198,16 @@ export default function Index({ auth, shippings, availableOrders }) {
                                                         <div className="space-y-4">
                                                             <div className="flex justify-between items-center text-slate-900 mb-2">
                                                                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{__('International Fee')}</span>
-                                                                <span className="text-2xl font-black italic tracking-tighter">{formatCurrency(s.fee_breakdown?.total_amount || s.shipping_fee, currency)}</span>
+                                                                <span className="text-2xl font-black italic tracking-tighter">{renderDualCurrency(s.fee_breakdown?.total_amount || s.shipping_fee, currency)}</span>
                                                             </div>
                                                             <div className="text-[10px] text-slate-500 space-y-1">
                                                                 <div className="flex justify-between">
                                                                     <span>{__('Base Shipping')}</span>
-                                                                    <span>{formatCurrency(s.fee_breakdown?.base_shipping_fee || s.shipping_fee, currency)}</span>
+                                                                    <span>{renderDualCurrency(s.fee_breakdown?.base_shipping_fee || s.shipping_fee, currency)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between">
                                                                     <span>{__('System Fee (3%)')}</span>
-                                                                    <span>{formatCurrency(s.fee_breakdown?.international_fee || 0, currency)}</span>
+                                                                    <span>{renderDualCurrency(s.fee_breakdown?.international_fee || 0, currency)}</span>
                                                                 </div>
                                                             </div>
                                                             <button 

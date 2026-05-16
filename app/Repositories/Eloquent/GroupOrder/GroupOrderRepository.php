@@ -176,7 +176,13 @@ class GroupOrderRepository implements GroupOrderRepositoryInterface
     {
         return GroupOrder::where('id', $id)
             ->where('is_private', false)
-            ->with(['creator', 'items'])
+            ->with([
+                'creator',
+                'items',
+                'items.product.translations',
+                'items.product.variations.translations',
+                'items.product.images'
+            ]) // 商品とその翻訳もロード
             ->withCount('participants')
             ->firstOrFail();
     }

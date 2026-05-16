@@ -192,6 +192,13 @@ class GroupOrderController extends Controller
     {
         $go = $this->groupOrderService->getPublicDetail($id);
 
+        $isJoined = false;
+        if (auth()->guard('fan')->check()) {
+            $isJoined = $go->participants()
+                ->where('fan_id', auth()->guard('fan')->id())
+                ->exists();
+        }
+
         // 非公開設定のチェック
         if ($go->is_private) {
             $inviteCode = $request->query('invite');
@@ -217,24 +224,18 @@ class GroupOrderController extends Controller
         if (auth()->guard('fan')->check()) {
             $fanId = auth()->guard('fan')->id();
 
-            // 1. group_order_participants を経由して、このGOに参加しているか確認
-            // 2. その参加情報に紐づく注文（primaryOrder）の決済（payments）が失敗しているか確認
             $participant = \App\Models\GroupOrderParticipant::where('group_order_id', $id)
                 ->where('fan_id', $fanId)
                 ->whereHas('primaryOrder.payment', function ($query) {
-                    // payments テーブルのステータスが失敗（例: 'failed' または 定数）
                     $query->where('status', Payment::STATUS_FAILED); 
                 })
                 ->with(['primaryOrder.payment' => function ($query) {
-                    $query->latest(); // 最新の決済試行を1番目に持ってくる
+                    $query->latest();
                 }])
                 ->first();
 
             if ($participant && $participant->primaryOrder) {
                 $latestPayment = $participant->primaryOrder->payments->first();
-                
-                // 最新の決済が依然として失敗（failed）のままの場合のみ、アラート対象とする
-                // (一度失敗しても、その後成功していれば $previousOrder は null のままにする)
                 if ($latestPayment && $latestPayment->status === Payment::STATUS_FAILED) {
                     $previousOrder = $participant->primaryOrder;
                 }
@@ -256,6 +257,7 @@ class GroupOrderController extends Controller
             'go' => $go,
             'addresses' => $addresses,
             'previousOrder' => $previousOrder,
+            'isJoined' => $isJoined,
         ]);
     }
 

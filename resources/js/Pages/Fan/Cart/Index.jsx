@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 import { 
     ShoppingBag, Trash2, Plus, Minus, ArrowRight, ShieldCheck, 
     MapPin, CreditCard, Loader2, ArrowLeft, CheckSquare, Square,
@@ -11,6 +11,12 @@ import {
 export default function Index({ cart = { items: [] }, shippingAddresses, paymentMethods }) {
     const { language, auth, checkout_settings, currency } = usePage().props;
     const [isProcessing, setIsProcessing] = useState(false);
+
+    const FOREX_SPREAD = currency.code === 'JPY' ? 0 : 0.05;
+    const adjustedCurrency = useMemo(() => ({
+        ...currency,
+        rate: currency.rate * (1 + FOREX_SPREAD)
+    }), [currency, FOREX_SPREAD]);
     
     const [selectedAddressId, setSelectedAddressId] = useState(auth.user.default_shipping_address_id || '');
     const [selectedPaymentId, setSelectedPaymentId] = useState(auth.user.default_payment_method_id || '');
@@ -203,8 +209,10 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                                         <button onClick={() => removeItem(item.cart_key)} className="text-slate-300 hover:text-pink-500"><Trash2 size={14} /></button>
                                                     </div>
                                                 </div>
-                                                <div className="text-right py-1 min-w-[80px]">
-                                                    <p className="text-sm font-black text-slate-900">{formatCurrency(item.subtotal, currency)}</p>
+                                                <div className="text-right py-1 min-w-[100px]">
+                                                    <p className="text-sm font-black text-slate-900">
+                                                        {renderDualCurrency(item.subtotal, adjustedCurrency)}
+                                                    </p>
                                                 </div>
                                             </div>
                                         ))}
@@ -219,7 +227,15 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                             </div>
                                             <div className="flex flex-wrap gap-2 items-center">
                                                 {[500, 1000, 2000].map(amt => (
-                                                    <button key={amt} type="button" onClick={() => handleTipChange(creator.id, amt)} className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all ${tips[creator.id] === amt ? 'bg-cyan-500 border-cyan-500 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>+¥{amt.toLocaleString()}</button>
+                                                    <button 
+                                                        key={amt} 
+                                                        type="button" 
+                                                        onClick={() => handleTipChange(creator.id, amt)} 
+                                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all ${tips[creator.id] === amt ? 'bg-cyan-500 border-cyan-500 text-white' : 'bg-white border-slate-200 text-slate-500'}`}
+                                                    >
+                                                        {/* チップボタン内の表記も日本円固定で分かりやすく */}
+                                                        +¥{amt.toLocaleString()}
+                                                    </button>
                                                 ))}
                                                 <div className="relative flex-1 min-w-[140px]">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold">¥</span>
@@ -253,19 +269,45 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                     </div>
                                     <div className="h-px bg-slate-800 my-4" />
                                     <div className="space-y-4">
-                                        <div className="flex justify-between text-sm text-slate-400"><span>{__('Subtotal')}</span><span>{formatCurrency(totals.itemTotal, currency)}</span></div>
-                                        {totals.hasPhysical && (
-                                            <div className="flex justify-between text-sm text-slate-400"><span>{__('Domestic Shipping')}</span><span>{formatCurrency(totals.shipping, currency)}</span></div>
+                                        <div className="flex justify-between text-sm text-slate-400">
+                                            <span>{__('Subtotal')}</span>
+                                            <span>{renderDualCurrency(totals.itemTotal, adjustedCurrency)}</span>
+                                        </div>
+                                        {totals.shipping > 0 && (
+                                            <div className="flex justify-between text-sm text-slate-400">
+                                                <span>{__('Domestic Shipping')}</span>
+                                                <span>{renderDualCurrency(totals.shipping, adjustedCurrency)}</span>
+                                            </div>
                                         )}
-                                        <div className="flex justify-between text-sm text-slate-400"><span>{__('Tax')}</span><span>{formatCurrency(totals.tax, currency)}</span></div>
-                                        <div className="flex justify-between text-sm text-slate-400"><span>{totals.feeLabel}</span><span>{formatCurrency(totals.fee, currency)}</span></div>
-                                        {totals.tipTotal > 0 && <div className="flex justify-between text-sm text-cyan-400 font-bold pt-2 border-t border-slate-800"><span><Heart size={12} className="inline mr-1" /> {__('Support')}</span><span>{formatCurrency(totals.tipTotal, currency)}</span></div>}
+                                        {totals.hasPhysical && (
+                                            <div className="flex justify-between text-sm text-slate-400"><span>{__('Domestic Shipping')}</span><span>{renderDualCurrency(totals.shipping, adjustedCurrency)}</span></div>
+                                        )}
+                                        <div className="flex justify-between text-sm text-slate-400">
+                                            <span>{__('Tax')}</span>
+                                            <span>{renderDualCurrency(totals.tax, adjustedCurrency)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm text-slate-400">
+                                            <span>{totals.feeLabel}</span>
+                                            <span>{renderDualCurrency(totals.fee, adjustedCurrency)}</span>
+                                        </div>
+                                        {totals.tipTotal > 0 && (
+                                            <div className="flex justify-between text-sm text-cyan-400 font-bold pt-2 border-t border-slate-800">
+                                                <span><Heart size={12} className="inline mr-1" /> {__('Support')}</span>
+                                                <span>+{renderDualCurrency(totals.tipTotal, adjustedCurrency)}</span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex justify-between items-center pt-6 border-t border-slate-800">
                                         <span className="text-sm font-black uppercase">{__('Total')}</span>
                                         <div className="text-right">
-                                            <span className="text-3xl font-black italic text-cyan-400">{formatCurrency(totals.grandTotal, currency)}</span>
-                                            {currency.code !== 'JPY' && <p className="text-[10px] text-slate-500 font-bold mt-1">(≈ ¥{Number(totals.grandTotal).toLocaleString()})</p>}
+                                            <span className="text-3xl font-black italic text-cyan-400">
+                                                {renderDualCurrency(totals.grandTotal, adjustedCurrency)}
+                                            </span>
+                                            {currency.code !== 'JPY' && (
+                                                <p className="text-[9px] text-slate-500 font-bold mt-2 uppercase italic leading-none">
+                                                    * Incl. 5% forex spread
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

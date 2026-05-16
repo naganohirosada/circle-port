@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Services\Fan\OrderService;
 use Illuminate\Support\Facades\Storage;
+use App\Models\GroupOrder;
 
 class OrderController extends Controller
 {
@@ -77,7 +78,7 @@ class OrderController extends Controller
             $intent = app(\App\Services\Common\StripeService::class)->captureSavedCardPayment($order, $primaryCard);
 
             if ($intent->status === 'succeeded') {
-                $order->update(['payment_status' => 'paid']);
+                $order->update(['payment_status' => GroupOrder::PAYMENT_STATUS_COMPLETED]);
                 return back()->with('success', __('Payment completed successfully!'));
             }
 

@@ -2,15 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import ShareSection from '@/Components/models/go/GoCreateForm/ShareSection';
-import { formatCurrency } from '@/Utils/helpers';
+import { renderDualCurrency, __ } from '@/Utils/helpers';
 import { 
     Package, Users, Info, ShieldCheck, Clock, MapPin, Rocket, 
     TrendingUp, AlertCircle, ChevronRight, Minus, Plus, CreditCard,
-    AlertTriangle, Check, Home, UserCheck, Heart
+    AlertTriangle, Check, Home, UserCheck, Heart, CheckCircle
 } from 'lucide-react';
 
-export default function Show({ go, addresses = [], language, previousOrder = null }) {
-    const { auth, currency } = usePage().props;
+export default function Show({ go, addresses = [], language, previousOrder = null, isJoined = false }) {
+    const { auth, currency, locale } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
     const [isAgreed, setIsAgreed] = useState(false);
@@ -22,6 +22,29 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
     const progressPercent = Math.min(Math.round((currentQty / minQty) * 100), 100);
     const isGoalMet = currentQty >= minQty;
 
+    const FOREX_SPREAD = currency.code === 'JPY' ? 0 : 0.05;
+    const adjustedCurrency = useMemo(() => ({
+        ...currency,
+        rate: currency.rate * (1 + FOREX_SPREAD)
+    }), [currency, FOREX_SPREAD]);
+
+    const formattedDeadline = useMemo(() => {
+        if (!go.recruitment_end_date) return '';
+        // ユーザー設定のタイムゾーン（未設定ならUTC）
+        const userTimezone = auth.user?.timezone?.timezone || 'UTC';
+        
+        return new Intl.DateTimeFormat(locale, {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: userTimezone,
+            hour12: false // 24時間表記
+        }).format(new Date(go.recruitment_end_date)).replace(/\//g, '/'); // 区切り文字の調整
+    }, [go.recruitment_end_date, auth.user, locale]);
+
     const timeLeft = useMemo(() => {
         if (!go.recruitment_end_date) return null;
         const diff = new Date(go.recruitment_end_date) - new Date();
@@ -32,17 +55,26 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
     const isExpired = timeLeft === 0;
 
     // --- フォーム管理 (チップ額を追加) ---
-    const { data, setData, post, processing } = useForm({
-        items: safeItems.map(item => ({ 
-            id: item?.id,
-            product_id: item?.product_id,
-            variant_id: item?.product_variant_id || null,
-            quantity: 0, 
-            price: item?.price || 0,
-            name: item?.product?.translations?.[0]?.name || 'Item'
-        })),
+    const { data, setData, post, processing, errors } = useForm({
+        items: safeItems.map(item => {
+            const product = item.product;
+            // プライマリ画像、または最初の画像を取得
+            const primaryImage = product?.images?.find(img => img.is_primary)?.url || product?.images?.[0]?.url;
+
+            return { 
+                id: item.id,
+                product_id: item.product_id,
+                variant_id: null, // バリエーション選択用
+                quantity: 0, 
+                price: item.price || product?.price || 0,
+                // localeを使用して現在の言語の翻訳名を取得
+                name: product?.translations?.find(t => t.locale === locale)?.name || item.item_name || 'Art Item',
+                image: primaryImage,
+                product_data: product // バリエーション一覧を保持
+            };
+        }),
         address_id: (addresses || [])?.find(a => a.is_default)?.id || (addresses?.[0]?.id) || '',
-        tip_amount: 0, // クリエイターへのチップ
+        tip_amount: 0,
         total_amount: 0
     });
 
@@ -63,8 +95,55 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
     const handleQtyChange = (index, newQty) => {
         const val = Math.max(0, parseInt(newQty) || 0);
         const newItems = [...data.items];
+        const product = newItems[index].product_data;
+        
+        // バリエーションがあるのに未選択のまま数量を増やそうとした場合
+        if (val > 0 && product?.variations?.length > 0 && !newItems[index].variant_id) {
+            alert(__('Please select a variation first.'));
+            return;
+        }
+
         newItems[index].quantity = val;
         setData('items', newItems);
+    };
+
+    const handleVariantChange = (index, variantId) => {
+        const newItems = [...data.items];
+        const item = newItems[index];
+        // 選択されたバリエーション情報を取得
+        const selectedVariant = item.product_data?.variations?.find(v => v.id === parseInt(variantId));
+
+        item.variant_id = variantId ? parseInt(variantId) : null;
+        if (selectedVariant) {
+            // バリエーションが選択されたらその価格をセット
+            item.price = selectedVariant.price;
+        } else {
+            // 未選択に戻った場合は、GOアイテムのデフォルト価格（または商品の基本価格）に戻す
+            item.price = go.items[index].price || item.product_data?.price || 0;
+        }
+        setData('items', newItems);
+    };
+
+    const getPriceDisplay = (item) => {
+        // バリエーション確定済み
+        if (item.variant_id) {
+            return renderDualCurrency(item.price, adjustedCurrency);
+        }
+        
+        // バリエーション未選択で複数ある場合
+        if (item.product_data?.variations?.length > 0) {
+            const prices = item.product_data.variations.map(v => Number(v.price));
+            const minPrice = Math.min(...prices);
+            
+            const jpyMin = `¥${minPrice.toLocaleString()}`;
+            if (currency.code === 'JPY') return `${jpyMin} 〜`;
+            
+            const locMin = renderDualCurrency(minPrice, adjustedCurrency);
+            return `${jpyMin} (${locMin}) 〜`;
+        }
+        
+        // 通常商品
+        return renderDualCurrency(item.price, adjustedCurrency);
     };
 
     const handleTipChange = (amount) => {
@@ -100,7 +179,7 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                 </div>
 
                 <div className="max-w-7xl mx-auto px-6 py-12">
-                    {previousOrder?.payment_status === 'failed' && (
+                    {previousOrder?.payment_status === 4 && (
                         <div className="mb-12 bg-rose-50 border-2 border-rose-100 rounded-[2.5rem] p-8 flex items-center justify-between shadow-xl shadow-rose-100/50">
                             <div className="flex items-center gap-6">
                                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-rose-500 shadow-sm">
@@ -130,6 +209,9 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                     <div className="text-left md:text-right border-l md:border-l-0 md:border-r border-slate-100 pl-6 md:pl-0 md:pr-6">
                                         <span className="text-[10px] font-black uppercase text-slate-400 block tracking-widest mb-1">{__('Time Remaining')}</span>
                                         <span className={`text-3xl font-black italic ${isExpired ? 'text-slate-300' : 'text-rose-500'}`}>{isExpired ? __('Ended') : `${timeLeft} ${__('Days')}`}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 mt-1 block">
+                                            {formattedDeadline} ({auth.user?.timezone?.timezone || 'UTC'})
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
@@ -152,10 +234,37 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                     {data.items.map((item, index) => (
                                         <div key={item.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:shadow-xl transition-all duration-500">
                                             <div className="flex items-center gap-6">
-                                                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 font-black italic border border-slate-50">IMG</div>
+                                                <div className="w-20 h-20 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex-shrink-0">
+                                                    {item.product_data && item.product_data.images && item.product_data.images.length > 0 ? (
+                                                        <img src={'/storage/' + item.product_data.images[0].file_path} className="w-full h-full object-cover" alt={item.name} />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-300 font-bold uppercase">No Img</div>
+                                                    )}
+                                                </div>
                                                 <div>
                                                     <h4 className="font-black text-slate-900 uppercase tracking-tight">{item.name}</h4>
-                                                    <p className="text-sm font-bold text-cyan-600 mt-1">¥{Number(item.price).toLocaleString()}</p>
+                                                    <p className="text-sm font-bold text-cyan-600">
+                                                        {getPriceDisplay(item)}
+                                                    </p>
+                                                    {item.product_data?.variations?.length > 0 && (
+                                                        <div className="max-w-[240px] relative mt-3">
+                                                            <select 
+                                                                className="..."
+                                                                value={item.variant_id || ''}
+                                                                onChange={(e) => handleVariantChange(index, e.target.value)}
+                                                            >
+                                                                <option value="">-- {__('Select Variation')} --</option>
+                                                                {item.product_data.variations.map(v => (
+                                                                    <option key={v.id} value={v.id} disabled={v.stock_quantity <= 0}>
+                                                                        {v.translations?.find(t => t.locale === locale)?.variant_name || v.name_en}
+                                                                        {/* 修正：¥XXX (LocalXXX) の形式で表示 */}
+                                                                        {` - ${renderDualCurrency(v.price)}`}
+                                                                        {v.stock_quantity <= 0 ? ` - ${__('Sold Out')}` : ''}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
@@ -253,32 +362,40 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                             <div className="flex justify-between items-center text-sm font-bold"><span className="text-slate-500">{__('Deadline')}</span><span className="flex items-center gap-2 text-rose-400"><Clock size={14} /> {go.recruitment_end_date}</span></div>
                                         </div>
                                         <div className="space-y-3 pt-6 border-t border-white/10">
-                                            <div className="flex justify-between items-center text-sm text-slate-400"><span>{__('Goods Total')}</span><span className="font-black text-white">¥{goodsTotal.toLocaleString()}</span></div>
-                                            <div className="flex justify-between items-center text-sm text-slate-400"><span>{__('GO Order Fee (5%)')}</span><span className="font-black text-white">¥{goFee.toLocaleString()}</span></div>
-                                            
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span>{__('Goods Total')}</span>
+                                                <span className="font-black">{renderDualCurrency(goodsTotal, adjustedCurrency)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span>{__('GO Fee')} (5%)</span>
+                                                <span className="font-black">{renderDualCurrency(goFee, adjustedCurrency)}</span>
+                                            </div>
+
                                             {/* チップ内訳の表示 */}
                                             {data.tip_amount > 0 && (
                                                 <div className="flex justify-between items-center text-sm text-cyan-400">
-                                                    <span className="flex items-center gap-1"><Heart size={12} fill="currentColor" /> {__('Creator Tip')}</span>
-                                                    <span className="font-black">+¥{Number(data.tip_amount).toLocaleString()}</span>
+                                                    <span>{__('Tip')}</span>
+                                                    <span className="font-black">+{renderDualCurrency(data.tip_amount, adjustedCurrency)}</span>
                                                 </div>
                                             )}
 
-                                            <div className="flex justify-between items-center text-sm font-black text-white pt-2">
-                                                <span>{__('Payable Now')}</span>
+                                            <div className="flex justify-between items-end pt-4 border-t border-white/10">
+                                                <span className="text-xs font-black uppercase text-cyan-400">{__('Payable Now')}</span>
                                                 <div className="text-right">
-                                                    <span className="text-cyan-400 text-2xl tracking-tighter">
-                                                        {formatCurrency(totalAmount, currency)}
+                                                    <span className="text-3xl font-black italic block leading-none">
+                                                        {renderDualCurrency(totalAmount, adjustedCurrency)}
                                                     </span>
                                                     {currency.code !== 'JPY' && (
-                                                        <p className="text-[9px] text-slate-500 font-bold uppercase">(≈ ¥{totalAmount.toLocaleString()})</p>
+                                                        <p className="text-[8px] text-slate-500 font-medium italic mt-1 leading-tight">
+                                                            * Includes 5% forex spread
+                                                        </p>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {previousOrder?.payment_status !== 'failed' && (
+                                    {previousOrder?.payment_status !== 4 && (
                                         <div className="space-y-3">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{__('Shipping Destination')}</label>
                                             <div className="relative">
@@ -296,17 +413,22 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                     <div className="pt-4">
                                         {!auth.fan ? (
                                             <Link href={route('fan.login')} className="w-full bg-white text-slate-900 py-6 rounded-2xl font-black uppercase text-sm text-center block hover:bg-cyan-500 hover:text-white transition-all shadow-lg">{__('Login to Participate')}</Link>
-                                        ) : previousOrder?.payment_status === 'failed' ? (
+                                        ) : previousOrder?.payment_status === 4 ? (
                                             <button onClick={handleRetryPayment} disabled={processing || !isAgreed} className="w-full bg-rose-500 text-white py-6 rounded-2xl font-black uppercase tracking-[0.2em] text-sm hover:bg-white hover:text-rose-600 transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-30">
                                                 <CreditCard size={18} />{processing ? __('Processing...') : __('Retry Payment Now')}
                                             </button>
+                                        ) : isJoined ? (
+                                            <div className="w-full bg-emerald-500 text-white py-6 rounded-2xl font-black uppercase text-sm text-center flex items-center justify-center gap-3 shadow-lg shadow-emerald-100 cursor-default">
+                                                <CheckCircle size={18} strokeWidth={3} />
+                                                {__('Already Joined')}
+                                            </div>
                                         ) : (
                                             <button onClick={() => post(route('fan.go.join', go.id))} disabled={processing || totalAmount === 0 || isExpired || !isAgreed} className={`w-full py-6 rounded-2xl font-black uppercase text-sm transition-all shadow-lg flex items-center justify-center gap-3 ${(!isAgreed || processing || totalAmount === 0 || isExpired) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-white hover:text-slate-900'}`}>
                                                 {isExpired ? <AlertCircle size={18} /> : <Rocket size={18} />}
                                                 {isExpired ? __('Ended') : (processing ? __('Processing...') : __('Join Box'))}
                                             </button>
                                         )}
-                                        {!isAgreed && auth.fan && <p className="text-[9px] text-rose-400 font-bold mt-4 text-center animate-pulse">{__('Please agree to terms to proceed')}</p>}
+                                        {!isJoined && !isAgreed && auth.fan && <p className="text-[9px] text-rose-400 font-bold mt-4 text-center animate-pulse">{__('Please agree to terms to proceed')}</p>}
                                     </div>
                                 </div>
 

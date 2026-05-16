@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use App\Models\GroupOrder;
 
 class ProcessPrimaryPaymentJob implements ShouldQueue
 {
@@ -82,17 +83,17 @@ class ProcessPrimaryPaymentJob implements ShouldQueue
                     }
 
                     // --- 4. ステータス更新 ---
-                    $repo->updateParticipantStatus($participant->id, ['payment_status' => 2]);
+                    $repo->updateParticipantStatus($participant->id, ['payment_status' => GroupOrder::PAYMENT_STATUS_COMPLETED]);
                     $repo->updateOrderStatus($order->id, [
-                        'status'       => 2,
+                        'status'       => GroupOrder::PAYMENT_STATUS_PROCESSING,
                         'total_amount' => $finalAmount
                     ]);
                 }
             } catch (\Exception $e) {
                 Log::error("Payment Failed: " . $e->getMessage());
-                $repo->updateParticipantStatus($participant->id, ['payment_status' => 3]);
+                $repo->updateParticipantStatus($participant->id, ['payment_status' => GroupOrder::PAYMENT_STATUS_FAILED]);
             }
         }
-        $repo->updateStatus($this->goId, ['primary_payment_status' => 3]);
+        $repo->updateStatus($this->goId, ['primary_payment_status' => GroupOrder::PRIMARY_PAYMENT_STATUS_FAILED]);
     }
 }
