@@ -6,6 +6,7 @@ use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Models\PaymentMethod;
 use App\Models\Fan;
 use Illuminate\Database\Eloquent\Collection;
+use App\Enums\PaymentMethodType;
 
 class PaymentService
 {
@@ -28,52 +29,63 @@ class PaymentService
     /**
      * 2. クレジットカード情報の保存
      */
-    public function addCreditCard(int $fanId, array $stripeData): PaymentMethod
+        public function addSavedPaymentMethod(int $fanId, string $stripePaymentMethodId, bool $isDefault): PaymentMethod
     {
-        // Stripe APIキーの設定
         \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
 
-        $fan = Fan::findOrFail($fanId);
-
-        // 1. もしファンがまだ Stripe Customer ID を持っていなければ作成する
-        if (empty($fan->stripe_customer_id)) {
-            $customer = \Stripe\Customer::create([
-                'email' => $fan->email,
-                'name'  => $fan->name, // 必要に応じて
-                'metadata' => ['fan_id' => $fan->id]
-            ]);
-
-            $fan->update(['stripe_customer_id' => $customer->id]);
-            $customerId = $customer->id;
-        } else {
-            $customerId = $fan->stripe_customer_id;
-        }
-
-        // 2. 重要：取得したカード(pm_xxx)を Stripe 上の顧客に紐付ける
-        // これをしないと、後で「保存済みカード」として呼び出せません
-        $paymentMethod = \Stripe\PaymentMethod::retrieve($stripeData['id']);
+        // Stripeから確定した決済方法オブジェクトを回収
+        $stripePm = \Stripe\PaymentMethod::retrieve($stripePaymentMethodId);
         
-        // まだ紐付いていない場合のみ Attach する
-        if (empty($paymentMethod->customer)) {
-            $paymentMethod->attach(['customer' => $customerId]);
+        // Enumを使い決済タイプを抽象化判定
+        $methodType = PaymentMethodType::fromStripeType($stripePm->type);
+
+        // 各タイプに応じたメタデータのディープな抽出（extra_details等にカプセル化して商品・検閲情報の秘匿への布石に）
+        $brand = null;
+        $last4 = null;
+        $expMonth = null;
+        $expYear = null;
+        $extraDetails = [];
+
+        if ($stripePm->type === 'card') {
+            $brand = $stripePm->card->brand;
+            $last4 = $stripePm->card->last4;
+            $expMonth = $stripePm->card->exp_month;
+            $expYear = $stripePm->card->exp_year;
+        } else {
+            // PayPalやGrabPayなど、カード以外の情報がある場合
+            $typeStr = $stripePm->type;
+            if (isset($stripePm->$typeStr)) {
+                $targetDetails = $stripePm->$typeStr;
+
+                // 【修正】型をチェックして安全に配列に変換
+                if (is_array($targetDetails)) {
+                    $extraDetails = $targetDetails;
+                } elseif (is_object($targetDetails) && method_exists($targetDetails, 'toArray')) {
+                    $extraDetails = $targetDetails->toArray();
+                } else {
+                    $extraDetails = (array) $targetDetails;
+                }
+
+                $brand = $stripePm->type; // 表示用のブランド識別子として流用
+            }
         }
 
-        // 3. 既存のデフォルト設定を解除
-        if (isset($stripeData['is_default']) && $stripeData['is_default']) {
+        if ($isDefault) {
             $this->paymentRepo->resetDefault($fanId);
         }
 
-        // 4. 自社DB（payment_methodsテーブル）への保存
+        // 自社DB（payment_methodsテーブル）へマルチ決済方法として正規化保存
         return $this->paymentRepo->store([
-            'fan_id'      => $fanId,
-            'type'        => PaymentMethod::TYPE_CREDIT_CARD,
-            'provider'    => 'stripe',
-            'provider_id' => $stripeData['id'], // pm_xxx
-            'brand'       => $stripeData['brand'],
-            'last4'       => $stripeData['last4'],
-            'exp_month'   => $stripeData['exp_month'],
-            'exp_year'    => $stripeData['exp_year'],
-            'is_default'  => ($stripeData['is_default'] ?? false) ? 1 : 0,
+            'fan_id'        => $fanId,
+            'type'          => $methodType->value, // Enumの整数値 (10, 20, 50等)
+            'provider'      => 'stripe',           // 将来のマルチゲートウェイ（多ルート化）の識別子
+            'provider_id'   => $stripePaymentMethodId,
+            'brand'         => $brand,
+            'last4'         => $last4,
+            'exp_month'     => $expMonth,
+            'exp_year'      => $expYear,
+            'extra_details' => $extraDetails,
+            'is_default'    => $isDefault ? 1 : 0,
         ]);
     }
 

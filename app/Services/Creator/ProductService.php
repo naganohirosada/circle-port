@@ -49,17 +49,19 @@ class ProductService
 
             // 2. 本体保存
             $product = $this->repository->store([
-                'creator_id'        => auth()->id(),
-                'category_id'       => $data['category_id'],
-                'sub_category_id'   => $data['sub_category_id'] ?? null,
-                'product_type'      => $data['product_type'],
-                'sku'               => 'TEMP-' . uniqid(),
-                'price'             => $hasVariants ? null : $data['price'],
-                'stock_quantity'    => $isDigital ? 9999 : ($hasVariants ? null : $data['stock']),
-                'weight_g'          => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
-                'hs_code_id'        => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
-                'digital_file_path' => $digitalFilePath, // 前述のロジック
-                'status'            => Product::STATUS_PENDING, // 仮に「公開待ち」ステータスで開始
+                'creator_id'                   => auth()->id(),
+                'category_id'                  => $data['category_id'],
+                'sub_category_id'              => $data['sub_category_id'] ?? null,
+                'product_type'                 => $data['product_type'],
+                'domestic_shipping_method'     => $isDigital ? 10 : ($data['domestic_shipping_method'] ?? 10), // 【追加】デジタルならデフォルトで倉庫一括扱いに
+                'domestic_direct_shipping_fee' => ($isDigital || (int)($data['domestic_shipping_method'] ?? 10) !== 20) ? null : $data['domestic_direct_shipping_fee'], // 【追加】自己発送以外はnull
+                'sku'                          => 'TEMP-' . uniqid(),
+                'price'                        => $hasVariants ? null : $data['price'],
+                'stock_quantity'               => $isDigital ? 9999 : ($hasVariants ? null : $data['stock']),
+                'weight_g'                     => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
+                'hs_code_id'                   => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
+                'digital_file_path'            => $digitalFilePath,
+                'status'                       => Product::STATUS_PENDING,
             ]);
 
             $productSku = "CP-" . now()->format('Ymd') . "-" . str_pad($product->id, 5, '0', STR_PAD_LEFT);
@@ -145,14 +147,16 @@ class ProductService
 
             // 2. 本体更新
             $product = $this->repository->update($id, [
-                'category_id'     => $data['category_id'],
-                'sub_category_id' => $data['sub_category_id'] ?? null,
-                'product_type'    => $data['product_type'],
-                'price'           => $hasVariants ? null : $data['price'],
-                'stock'           => $isDigital ? 9999 : ($hasVariants ? null : $data['stock']),
-                'weight_g'          => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
-                'hs_code_id'      => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
-                'digital_file_path' => $data['digital_file_path'] ?? $product->digital_file_path,
+                'category_id'                  => $data['category_id'],
+                'sub_category_id'              => $data['sub_category_id'] ?? null,
+                'product_type'                 => $data['product_type'],
+                'domestic_shipping_method'     => $isDigital ? 10 : ($data['domestic_shipping_method'] ?? 10), // 【追加】
+                'domestic_direct_shipping_fee' => ($isDigital || (int)($data['domestic_shipping_method'] ?? 10) !== 20) ? null : $data['domestic_direct_shipping_fee'], // 【追加】
+                'price'                        => $hasVariants ? null : $data['price'],
+                'stock'                        => $isDigital ? 9999 : ($hasVariants ? null : $data['stock']),
+                'weight_g'                     => (!$isDigital && !$hasVariants) ? $data['weight'] : null,
+                'hs_code_id'                   => (!$isDigital && !$hasVariants) ? $data['hs_code_id'] : null,
+                'digital_file_path'            => $data['digital_file_path'] ?? $product->digital_file_path,
             ]);
 
             // 3. 翻訳更新

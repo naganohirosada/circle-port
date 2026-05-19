@@ -8,4 +8,5 @@ enum OrderStatus: int {
     case AT_WAREHOUSE = 3;// 倉庫到着
     case SHIPPING_PREPARATION = 4; // 出荷準備中
     case SHIPPED = 5;     // 国際発送完了
+    case DOMESTIC_DIRECT_SHIPPED = 6; // クリエイターからの国内直接発送完了
 }

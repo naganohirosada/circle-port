@@ -33,6 +33,8 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         description: { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' },
         category_id: '',
         sub_category_id: '',
+        domestic_shipping_method: 10,       // 10:倉庫一括, 20:自己発送
+        domestic_direct_shipping_fee: '',
         price: '',
         stock: '', 
         weight: '', 
@@ -327,6 +329,43 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                     </div>
                                     <InputError message={errors.hs_code_id} />
                                 </div>
+                            </div>
+                        )}
+
+                        {/* 【追加】現物取引時のみ出現する、国内配送設定ブロック */}
+                        {data.product_type === 1 && (
+                            <div className="pt-8 border-t border-gray-100 space-y-6 bg-slate-50/50 p-6 rounded-3xl">
+                                <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">📦 日本国内向けの配送設定</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">配送アプローチ</label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button type="button" onClick={() => setData('domestic_shipping_method', 10)}
+                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 10 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>
+                                                <span className="text-xl">🏢</span> 倉庫一括配送
+                                            </button>
+                                            <button type="button" onClick={() => setData('domestic_shipping_method', 20)}
+                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 20 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>
+                                                <span className="text-xl">🚲</span> 自社・自己発送
+                                            </button>
+                                        </div>
+                                        <InputError message={errors.domestic_shipping_method} className="mt-1" />
+                                    </div>
+
+                                    {data.domestic_shipping_method === 20 && (
+                                        <div className="animate-fadeIn">
+                                            <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">自己発送の全国一律配送料 (JPY)</label>
+                                            <input type="number" value={data.domestic_direct_shipping_fee} onChange={e => setData('domestic_direct_shipping_fee', e.target.value)}
+                                                className="w-full bg-white border-gray-200 rounded-2xl font-black p-4 focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="送料を入力（0で送料無料）" />
+                                            <InputError message={errors.domestic_direct_shipping_fee} className="mt-1" />
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-gray-400 font-bold leading-relaxed bg-white p-4 rounded-xl border border-gray-100">
+                                    {data.domestic_shipping_method === 10 
+                                        ? '💡 【倉庫一括配送】商品をまとめてサークルポート倉庫に1回送るだけで完結します。国内ファンへの梱包・個別配送（一律1200円）もシステムがすべて代行します。' 
+                                        : '💡 【サークル自己発送】国内からの注文に対し、サークル様自身が梱包して直接ファンへ発送していただきます（海外注文は通常通り倉庫中継されます）。ファンから集金した送料は、全額分配金としてサークル様にプールされます。'}
+                                </p>
                             </div>
                         )}
                     </section>

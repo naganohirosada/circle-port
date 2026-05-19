@@ -96,6 +96,11 @@ class GroupOrderService
         $go = $this->repository->findById($goId);
         $fan = Fan::find($fanId);
 
+        $shippingAddress = \App\Models\Address::find($input['address_id']);
+        if ($shippingAddress && $shippingAddress->country_code === 'JP') {
+            throw new \Exception(__('Group Orders are available for international shipping only. Please use standard checkout for domestic shipping.'));
+        }
+
         // 1. 期限チェック
         if ($go->recruitment_end_date && now()->isAfter($go->recruitment_end_date)) {
             throw new \Exception(__('Recruitment has ended.'));
@@ -111,44 +116,55 @@ class GroupOrderService
             throw new \Exception(__('This project has reached its maximum capacity.'));
         }
 
+        // 2. 金額計算（日本円ベース）
         $preparedItems = $this->prepareGoParticipantItems($input['items'], $go->id);
         $tipAmount = isset($input['tip_amount']) ? max(0, (int) round($input['tip_amount'])) : 0;
         $amounts = $this->calculateGoOrderAmounts($preparedItems, $tipAmount);
 
-        return DB::transaction(function () use ($go, $fan, $input, $preparedItems, $amounts, $tipAmount) {
+        // 3. 【多通貨対応】外貨決済額の計算（フロント表示・Stripe請求額と完全に同期）
+        $currency = $fan->currency ?? Currency::where('code', 'JPY')->first();
+        $baseRate = (float) ($currency->exchange_rate ?? 1.0);
+
+        // 設定通貨が日本円以外の場合、5%の為替スプレッドを適用
+        $spread = ($currency->code === 'JPY') ? 1.0 : (1.0 + config('circleport.checkout.forex_spread_max', 0.05));
+        $rate = $baseRate * $spread;
+        $settlementAmount = floor($amounts['total_amount'] * $rate);
+
+        return DB::transaction(function () use ($go, $fan, $input, $preparedItems, $amounts, $tipAmount, $currency, $rate, $settlementAmount) {
             // 1. 注文レコード作成
             $order = $this->repository->createOrder([
                 'group_order_id'      => $go->id,
                 'fan_id'              => $fan->id,
                 'shipping_address_id' => $input['address_id'],
-                'total_amount'        => $amounts['total_amount'],
+                'total_amount'        => $amounts['total_amount'], // JPYベース合計
+                'currency_id'         => $currency->id ?? config('circleport.default_currency_id'),
+                'settlement_currency' => $currency->code,
+                'settlement_rate'     => $rate,
+                'settlement_amount'   => $settlementAmount,        // スプレッド込外貨合計
                 'notes'               => $tipAmount > 0 ? json_encode(['creator_tip' => $tipAmount]) : null,
                 'items'               => $preparedItems,
                 'payment_status'      => GroupOrder::PAYMENT_STATUS_PENDING,
             ]);
 
             // 2. メインの決済手段(is_primary = 1)があるかチェック
-            $primaryMethod = $fan->paymentMethods()->where('is_primary', 1)->first();
+            $primaryMethod = $fan->paymentMethods()->where('is_default', 1)->first();
 
             if ($primaryMethod) {
-                // --- パターン1: 保存済みカードで即決済 ---
+                // --- パターン1: 保存済み決済手段（カード、PayPal等）で即時バックグラウンド決済を実行 ---
                 try {
                     $intent = $this->stripeService->chargeSavedCard($order, $primaryMethod);
                     
-                    if ($intent->status === 'succeeded') {
+                    if ($intent && $intent->status === 'succeeded') {
                         $order->update(['payment_status' => GroupOrder::PAYMENT_STATUS_COMPLETED]);
-                        // 即時決済成功時は Order オブジェクトを返す
                         return $order;
                     }
                 } catch (\Exception $e) {
-                    // カードエラー等の場合はパターン2（Checkout）へ流すかエラーを投げる
-                    Log::error("Immediate payment failed: " . $e->getMessage());
+                    Log::error("GO Immediate payment failed for Order #{$order->id}: " . $e->getMessage());
                 }
             }
 
             // --- パターン2: 新規登録または保存なし ---
             $session = $this->stripeService->createEscrowAndSaveCardSession($order);
-            // StripeのURL（文字列）を返す
             return $session->url;
         });
     }

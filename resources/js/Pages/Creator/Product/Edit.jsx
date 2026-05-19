@@ -40,6 +40,8 @@ const languages = [
         description: mapTranslations(product.translations, 'description'),
         category_id: product.category_id || '',
         sub_category_id: product.sub_category_id || '',
+        domestic_shipping_method: product.domestic_shipping_method || 10,       // 【追加】DBの値を初期バインド
+        domestic_direct_shipping_fee: product.domestic_direct_shipping_fee ?? '', // 【追加】
         price: product.price || '',
         stock: product.stock_quantity || '', 
         weight: product.weight_g || '',      
@@ -338,6 +340,37 @@ const languages = [
                                         {hs_codes.map(h => <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>)}
                                     </select>
                                     <InputError message={errors.hs_code_id} />
+                                </div>
+                            </div>
+                        )}
+                        {/* 【追加】現物作品の編集時のみ出現する、国内配送設定ブロック */}
+                        {data.product_type === 1 && (
+                            <div className="pt-8 border-t border-gray-100 space-y-6 bg-slate-50/50 p-6 rounded-3xl">
+                                <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">📦 日本国内向けの配送設定</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">配送アプローチ</label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button type="button" onClick={() => setData('domestic_shipping_method', 10)}
+                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 10 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>
+                                                <span className="text-xl">🏢</span> 倉庫一括配送
+                                            </button>
+                                            <button type="button" onClick={() => setData('domestic_shipping_method', 20)}
+                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 20 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>
+                                                <span className="text-xl">🚲</span> 自社・自己発送
+                                            </button>
+                                        </div>
+                                        <InputError message={errors.domestic_shipping_method} className="mt-1" />
+                                    </div>
+
+                                    {data.domestic_shipping_method === 20 && (
+                                        <div className="animate-fadeIn">
+                                            <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">自己発送の全国一律配送料 (JPY)</label>
+                                            <input type="number" value={data.domestic_direct_shipping_fee} onChange={e => setData('domestic_direct_shipping_fee', e.target.value)}
+                                                className="w-full bg-white border-gray-200 rounded-2xl font-black p-4 focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="送料を入力" />
+                                            <InputError message={errors.domestic_direct_shipping_fee} className="mt-1" />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

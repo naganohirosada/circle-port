@@ -92,8 +92,8 @@ export default function Show({ product, auth }) {
         post(route('fan.cart.add'), { preserveScroll: true });
     };
 
-    const maxQuantity = selectedVariation ? selectedVariation.stock : product.stock_quantity;
-    const isOutOfStock = !isDigital && (selectedVariation ? selectedVariation.stock <= 0 : product.stock_quantity <= 0);
+    const maxQuantity = selectedVariation ? (selectedVariation.stock_quantity ?? 0) : (product.stock_quantity ?? 0);
+    const isOutOfStock = !isDigital && (selectedVariation ? selectedVariation.stock_quantity <= 0 : product.stock_quantity <= 0);
 
     // 平均評価の算出
     const averageRating = product.reviews?.length > 0
@@ -173,22 +173,17 @@ export default function Show({ product, auth }) {
                                     </div>
                                 )}
                                 
-                                {displayPrice !== null ? (
-                                    <div className="text-5xl font-black text-slate-900 tracking-tighter">
-                                        {renderDualCurrency(displayPrice, adjustedCurrency)}
-                                    </div>
-                                ) : (
-                                    <div className="text-3xl font-black text-slate-900 tracking-tighter">
-                                        {currency.code === 'JPY' ? (
-                                            <>¥{priceRange.min.toLocaleString()} <span className="text-slate-300">~</span></>
-                                        ) : (
-                                            <>
-                                                ¥{priceRange.min.toLocaleString()} ({renderDualCurrency(priceRange.min, adjustedCurrency)})
-                                                <span className="ml-2 text-slate-300 text-xl font-bold">~</span>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+                                <div className="text-4xl font-black text-slate-900 tracking-tighter">
+                                    {displayPrice !== null ? (
+                                        renderDualCurrency(displayPrice, currency)
+                                    ) : (
+                                        <>
+                                            {renderDualCurrency(priceRange.min, currency)} 
+                                            <span className="text-slate-300 text-xl font-bold mx-2"> ~ </span> 
+                                            {renderDualCurrency(priceRange.max, currency)}
+                                        </>
+                                    )}
+                                </div>
 
                                 {currency.code !== 'JPY' && (
                                     <p className="text-[9px] text-slate-400 font-bold mt-3 uppercase italic">

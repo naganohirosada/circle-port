@@ -29,6 +29,11 @@ class ProductRequest extends FormRequest
             'sub_category_id'  => 'nullable|exists:sub_categories,id',
             'tag_ids'          => 'nullable|array',
             'tag_ids.*'        => 'exists:tags,id',
+
+            // 【追加】国内配送設定（現物作品のみ必須。10:倉庫一括, 20:自己発送）
+            'domestic_shipping_method'     => $isPhysical ? 'required|in:10,20' : 'nullable',
+            // 【追加】自己発送送料（現物かつ自己発送の場合のみ0以上の整数で必須）
+            'domestic_direct_shipping_fee' => ($isPhysical && $this->input('domestic_shipping_method') == 20) ? 'required|integer|min:0' : 'nullable|integer',
             
             // バリエーションがある場合は共通の価格・在庫等は任意（バリエーション側が優先）
             'price'            => $hasVariants ? 'nullable|integer|min:0' : 'required|integer|min:0',
@@ -87,6 +92,8 @@ class ProductRequest extends FormRequest
             'sub_category_id' => 'サブカテゴリー',
             'tag_ids'         => '検索タグ',
             'price'           => '価格',
+            'domestic_shipping_method'     => '国内配送方法',
+            'domestic_direct_shipping_fee' => '自己発送送料',
             'stock'           => '在庫数',
             'weight'          => '重量',
             'hs_code_id'      => 'HSコード',

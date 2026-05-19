@@ -55,6 +55,7 @@ Route::prefix('fan')->name('fan.')->group(function () {
         Route::get('/mypage', [MypageController::class, 'dashboard'])->name('mypage.dashboard');
         Route::get('/mypage/shipping-orders', [MypageController::class, 'shippingOrders'])->name('mypage.shipping-orders');
         Route::get('/mypage/consolidation-orders', [MypageController::class, 'consolidationOrders'])->name('mypage.consolidation-orders');
+        Route::get('/mypage/callback', [PaymentController::class, 'callback'])->name('mypage.payments.callback');
         Route::prefix('profile')->name('mypage.profile.')->group(function () {
             Route::get('/', [ProfileController::class, 'edit'])->name('edit');
             Route::patch('/', [ProfileController::class, 'update'])->name('update');

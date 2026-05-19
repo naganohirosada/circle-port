@@ -14,23 +14,37 @@ use Exception;
 use Illuminate\Support\Str;
 use App\Services\Fan\CartService;
 use Illuminate\Support\Facades\Log;
+use App\Models\PaymentMethod as MyPaymentMethod;
+use App\Services\Common\StripeService;
 
 
 class CheckoutService
 {
     protected $orderRepo;
     protected $cartService;
+    protected $stripeService;
 
     public function __construct(
         OrderRepositoryInterface $orderRepo,
-        CartService $cartService
+        CartService $cartService,
+        StripeService $stripeService
     ) {
         $this->orderRepo = $orderRepo;
         $this->cartService = $cartService;
+        $this->stripeService = $stripeService;
     }
 
     /**
      * 注文処理実行
+     * @param $fan
+     * @param array $cartData
+     * @param int $paymentMethodId
+     * @param int $shippingAddressId
+     * @param array $selectedCartKeys
+     * @param bool $isGoOrder
+     * @param array $tips
+     * @return Order
+     * @throws Exception
      */
     public function execute(
         $fan,
@@ -46,48 +60,77 @@ class CheckoutService
             throw new \Exception(__('Cart is empty.'));
         }
 
-        return DB::transaction(function () use ($fan, $cartItem, $cartData, $paymentMethodId, $shippingAddressId, $selectedCartKeys, $isGoOrder, $tips) {
-            // 1. 在庫の悲観的ロックとチェック
-            // 既存ロジック：各アイテムの在庫を確認
+        // フロントから送られてきた自社DBの決済IDを元に、登録済みの決済情報を取得
+        $myPaymentMethod = MyPaymentMethod::where('id', $paymentMethodId)
+            ->where('fan_id', $fan->id)
+            ->first();
+
+        if (!$myPaymentMethod) {
+            throw new \Exception(__('Selected payment method is invalid.'));
+        }
+
+        return DB::transaction(function () use ($fan, $cartItem, $cartData, $myPaymentMethod, $shippingAddressId, $selectedCartKeys, $isGoOrder, $tips) {
             $this->validateAndLockStock($cartItem);
 
-            // 3. サーバーサイドで正確な金額を計算（日本円ベース）
-            // 憲法第1条に基づき再計算
-            $amounts = $this->calculateFirstPhaseAmounts($cartItem, $isGoOrder, false, $tips);
+            $amounts = $this->calculateFirstPhaseAmounts($cartItem, $isGoOrder, $shippingAddressId, $tips);
 
-            // 4. 【多通貨対応】外貨決済額の計算
-            // ファンの優先通貨を取得し、決済時のレートと外貨額（切り捨て）を算出
+            // 3. 【多通貨対応】外貨決済額の計算（フロント表示およびStripe請求額と完全に同期）
             $currency = $fan->currency ?? Currency::where('code', 'JPY')->first();
-            $rate = (float) ($currency->exchange_rate ?? 1.0);
+            $baseRate = (float) ($currency->exchange_rate ?? 1.0);
+            
+            // 【修正】設定通貨が日本円以外の場合、5%の為替スプレッドを適用（外貨小数点1位の表示精度に対応）
+            $spread = ($currency->code === 'JPY') ? 1.0 : (1.0 + config('circleport.checkout.forex_spread_max', 0.05));
+            $rate = $baseRate * $spread;
             $settlementAmount = floor($amounts['total'] * $rate);
 
             // 5. 外部決済（Stripe等）の実行（本来はここでStripeServiceを呼び出す想定）
             $txId = 'pi_test_' . Str::random(20); 
 
-            // 6. データの準備（多通貨情報を追加して渡す）
+            // 決済が成功するまではSTATUS_PENDING等にしておくことで、不意のカードエラー時の整合性を守ります
             $preparedData = $this->prepareOrderData(
                 $fan, 
                 $amounts,
                 $cartItem,
                 $shippingAddressId,
-                $paymentMethodId,
-                $txId,
-                $currency,         // 追加：通貨モデル
-                $rate,             // 追加：決済レート
-                $settlementAmount,  // 追加：外貨額
-                $isGoOrder,        // 追加：GO注文フラグ
+                $myPaymentMethod->id,
+                'pm_pending_' . Str::random(10), // 仮のトランザクションID
+                $currency,
+                $rate,
+                $settlementAmount,
+                $isGoOrder
             );
 
             // 7. Repository を通じて一括保存
             $order = $this->orderRepo->createWithDetails($preparedData);
 
-            // 8. 在庫を実際に減らす
-            $this->reduceStock($cartItem);
+            try {
+                // 6. 【本実装】Stripeの保存済みカード/マルチ決済手段（Off-Session）に対して実決済を実行
+                $paymentIntent = $this->stripeService->chargeSavedCard($order, $myPaymentMethod);
 
-            // カート内を削除
-            $this->cartService->removeItemsFromSession($selectedCartKeys);
+                if ($paymentIntent && $paymentIntent->status === 'succeeded') {
+                    // 7. 決済成功：注文と決済レコードを『完了』ステータスに昇格更新
+                    $order->update(['status' => Order::STATUS_PAID]);
+                    if ($order->payment) {
+                        $order->payment->update([
+                            'external_transaction_id' => $paymentIntent->id,
+                            'status' => Payment::STATUS_SUCCEEDED
+                        ]);
+                    }
 
-            return $order;
+                    // 8. 在庫を実際に減少させ、カート内セッションを消去
+                    $this->reduceStock($cartItem);
+                    $this->cartService->removeItemsFromSession($selectedCartKeys);
+
+                    return $order;
+                } else {
+                    throw new \Exception(__('Payment authentication failed or required.'));
+                }
+
+            } catch (\Exception $stripeException) {
+                // 決済失敗時：ログに記録し、ロールバックのために例外を上に投げる
+                Log::warning("Stripe Checkout Execution Failed [Order ID: {$order->id}]: " . $stripeException->getMessage());
+                throw new \Exception(__('Payment declined. ') . $stripeException->getMessage());
+            }
         });
     }
 
@@ -127,9 +170,30 @@ class CheckoutService
 
     /**
      * 保存用データの整形（多通貨決済情報を統合）
+     * @param $fan
+     * @param array $amounts
+     * @param array $cartData   
+     * @param int $addressId
+     * @param int $pmId
+     * @param string $txId
+     * @param Currency $currency
+     * @param float $rate
+     * @param int $settlementAmount
+     * @param bool $isGoOrder
+     * @return array
      */
-    private function prepareOrderData($fan, $amounts, $cartData, $addressId, $pmId, $txId, $currency, $rate, $settlementAmount, $isGoOrder): array
-    {
+    private function prepareOrderData(
+        $fan,
+        $amounts,
+        $cartData,
+        $addressId,
+        $pmId,
+        $txId,
+        $currency,
+        $rate,
+        $settlementAmount,
+        $isGoOrder
+    ): array {
         $currencyId = $currency->id ?? config('circleport.default_currency_id');
 
         return [
@@ -172,20 +236,23 @@ class CheckoutService
      * 一次決済金額の計算（チップ対応版）
      * * @param array $cartItems 
      * @param bool $isGoOrder 
-     * @param bool $isInternational 
+     * @param int|null $shippingAddressId
      * @param array $tips クリエイターIDをキーとしたチップ額の配列 ['creator_id' => amount, ...]
      */
     private function calculateFirstPhaseAmounts(
         array $cartItems, 
         bool $isGoOrder = false, 
-        bool $isInternational = false,
+        int $shippingAddressId = null,
         array $tips = [] // 追加
     ): array {
         if (empty($cartItems)) {
-            throw new \Exception(__('Cart items are empty.')); // カートが空の場合の例外処理
+            throw new \Exception(__('Cart items are empty.'));
         }
 
         $taxRate  = config('circleport.checkout.tax_rate', 0.10);
+        $shippingAddress = $shippingAddressId ? Address::find($shippingAddressId) : null;
+        $isDomestic = $shippingAddress ? ($shippingAddress->country_code === 'JP') : true;
+        $isInternational = !$isDomestic;
 
         // 1. 手数料率の設定（GO注文 5% / 通常 8%）
         $feeRate = $isGoOrder
@@ -201,7 +268,6 @@ class CheckoutService
             $vId = $item['variation_id'] ?? null;
             if ($vId) {
                 $variation = ProductVariant::find($vId);
- 
                 $itemTotal += $variation->price * $item['quantity'];
                 if ($variation->product->product_type === Product::TYPE_PHYSICAL) $hasPhysical = true;
             } else {
@@ -211,13 +277,56 @@ class CheckoutService
             }
         }
 
-        // 3. 配送料の設定
-        if (!$hasPhysical) {
-            $shipping = 0;
-        } else if ($isInternational) {
-            $shipping = config('circleport.checkout.international_bundling_fee', 300);
-        } else {
-            $shipping = config('circleport.checkout.domestic_shipping_fee', 1200);
+        // 3. 【核心仕様】配送料の3パターン自動算出ロジック
+        $shipping = 0;
+        if ($hasPhysical) {
+            if ($isInternational) {
+                // パターンA: 国際配送（2段階決済の1次送料として倉庫中継バンドル費を適用）
+                $shipping = config('circleport.checkout.international_bundling_fee', 300);
+            } else {
+                // 国内配送：同一クリエイターで送料が重複しないよう、ショップ毎に仕分け計算
+                $shippingMatrix = [];
+                
+                foreach ($cartItems as $item) {
+                    $product = null;
+                    $vId = $item['variation_id'] ?? null;
+                    if ($vId) {
+                        $variation = ProductVariant::find($vId);
+                        $product = $variation ? $variation->product : null;
+                    } else {
+                        $product = Product::find($item['id']);
+                    }
+
+                    if ($product) {
+                        $cId = $product->creator_id;
+                        if (!isset($shippingMatrix[$cId])) {
+                            $shippingMatrix[$cId] = ['warehouse' => false, 'direct_fee' => 0];
+                        }
+
+                        // 10: 倉庫一括配送 (WAREHOUSE), 20: 自己発送 (DIRECT)
+                        if ($product->domestic_shipping_method === 20) {
+                            // 自己発送：同一クリエイター内の複数商品なら、設定送料の最大値を一括適用
+                            $shippingMatrix[$cId]['direct_fee'] = max(
+                                $shippingMatrix[$cId]['direct_fee'], 
+                                (int)($product->domestic_direct_shipping_fee ?? 0)
+                            );
+                        } else {
+                            // 倉庫一括配送フラグをON
+                            $shippingMatrix[$cId]['warehouse'] = true;
+                        }
+                    }
+                }
+
+                // マトリクスから最終配送料をマージ
+                foreach ($shippingMatrix as $creatorId => $info) {
+                    if ($info['warehouse']) {
+                        // パターンB: 国内一括配送（サークルポート規定の国内固定送料 1200円）
+                        $shipping += config('circleport.checkout.domestic_shipping_fee', 1200);
+                    }
+                    // パターンC: 国内自己発送（クリエイターが自ら設定した配送料）
+                    $shipping += $info['direct_fee'];
+                }
+            }
         }
 
         // 4. 税金計算（日本国内取引として各項目 floor 後に合算）
