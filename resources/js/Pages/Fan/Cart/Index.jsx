@@ -1,11 +1,13 @@
+// resources/js/Pages/Fan/Cart/Index.jsx
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { renderDualCurrency, __ } from '@/Utils/helpers';
+import { renderDualCurrency } from '@/Utils/helpers';
 import { 
     ShoppingBag, Trash2, Plus, Minus, ArrowRight, ShieldCheck, 
     MapPin, CreditCard, Loader2, ArrowLeft, CheckSquare, Square,
-    Heart, Info
+    Heart, Info, Globe
 } from 'lucide-react';
 
 export default function Index({ cart = { items: [] }, shippingAddresses, paymentMethods }) {
@@ -31,7 +33,6 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
         }
     }, [cart.items]);
 
-    // --- 【修正】より安全なグルーピングロジック ---
     const groupedItems = useMemo(() => {
         const items = cart?.items || [];
         const groups = {};
@@ -53,31 +54,36 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
         return groups;
     }, [cart.items]);
 
+    // 【大掃除バグ修正】商品詳細画面とシステム手数料(8%)の計算を完璧に一致させる
     const totals = useMemo(() => {
-        const { tax_rate, fee_rate, go_fee_rate, shipping_fee } = checkout_settings;
+        const { fee_rate, go_fee_rate } = checkout_settings;
         const items = cart?.items || [];
         const selectedItems = items.filter(item => selectedKeys.includes(item.cart_key));
         
         const itemTotal = selectedItems.reduce((sum, item) => sum + item.subtotal, 0);
         
         if (itemTotal === 0) {
-            return { itemTotal: 0, shipping: 0, tax: 0, fee: 0, tipTotal: 0, grandTotal: 0, selectedItems: [], isGoOrder: false, feeLabel: __('System Fee (8%)') };
+            return { itemTotal: 0, handlingFee: 0, tax: 0, fee: 0, tipTotal: 0, grandTotal: 0, selectedItems: [], isGoOrder: false, feeLabel: __('System Fee (8%)') };
         }
 
         const hasPhysical = selectedItems.some(item => item.product_type === 1);
-
         const isGoOrder = selectedItems.some(item => item.group_order_id);
         const appliedFeeRate = isGoOrder ? go_fee_rate : fee_rate;
         const feeLabel = isGoOrder ? __('GO Order Fee (5%)') : __('System Fee (8%)');
 
-        const shipping = hasPhysical ? shipping_fee : 0;
-        const tax = Math.floor((itemTotal + shipping) * tax_rate);
-        const fee = Math.ceil((itemTotal + shipping + tax) * appliedFeeRate);
-        const tipTotal = Object.values(tips).reduce((sum, val) => sum + (Number(val) || 0), 0);
+        // 倉庫中継手数料（1次決済固定：500円）
+        const handlingFee = hasPhysical ? 500 : 0;
         
-        const grandTotal = itemTotal + shipping + tax + fee + tipTotal;
+        // 免税輸出のため、消費税は常に0円
+        const tax = 0;
+        
+        // 【バグ修正・大掃除】詳細画面と同一ロジックへ修正。中継費を足さず、純粋な「作品代金小計」にのみ手数料率を適用
+        const fee = Math.ceil(itemTotal * appliedFeeRate);
+        
+        const tipTotal = Object.values(tips).reduce((sum, val) => sum + (Number(val) || 0), 0);
+        const grandTotal = itemTotal + handlingFee + tax + fee + tipTotal;
 
-        return { itemTotal, shipping, tax, fee, tipTotal, grandTotal, selectedItems, isGoOrder, feeLabel };
+        return { itemTotal, handlingFee, tax, fee, tipTotal, grandTotal, selectedItems, isGoOrder, feeLabel, hasPhysical };
     }, [cart.items, selectedKeys, checkout_settings, tips]);
 
     const toggleSelect = (key) => {
@@ -128,7 +134,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                     group_order_id: item.group_order_id || null,
                 })),
                 subtotal: totals.itemTotal,
-                shipping: totals.shipping,
+                shipping: totals.handlingFee,
                 tax: totals.tax,
                 fee: totals.fee,
                 tip_total: totals.tipTotal,
@@ -157,6 +163,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
 
                 {cart.items?.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+                        {/* LEFT: ITEMS LIST (レイアウト・白ベースは完全維持) */}
                         <div className="lg:col-span-7 space-y-12">
                             <button onClick={toggleSelectAll} className="flex items-center gap-3 text-slate-500 hover:text-slate-900 pb-4 border-b border-slate-100 w-full">
                                 {selectedKeys.length === cart.items.length ? <CheckSquare size={20} className="text-cyan-600" /> : <Square size={20} />}
@@ -169,20 +176,10 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                         <div className="flex items-center gap-3">
                                             {creator.image && (
                                                 <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white bg-white">
-                                                    <img 
-                                                        src={creator.image.startsWith('http') || creator.image.startsWith('/') 
-                                                            ? creator.image 
-                                                            : `/storage/${creator.image}`} 
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            e.target.onerror = null;
-                                                            e.target.style.display = 'none';
-                                                            e.target.parentNode.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-100"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>';
-                                                        }}
-                                                    />
+                                                    <img src={creator.image.startsWith('http') || creator.image.startsWith('/') ? creator.image : `/storage/${creator.image}`} className="w-full h-full object-cover" />
                                                 </div>
                                             )}
-                                            <span className="font-black text-slate-800 text-sm uppercase tracking-tight">{creator.shop_name}</span>
+                                            <span className="font-black text-slate-800 text-sm uppercase tracking-tight">{creator.shop_name || creator.name}</span>
                                         </div>
                                     </div>
 
@@ -202,11 +199,11 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                                     </div>
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg overflow-hidden scale-90 origin-left">
-                                                            <button onClick={() => updateQuantity(item.cart_key, item.quantity - 1)} className="px-2 py-1 text-slate-400"><Minus size={12} /></button>
+                                                            <button type="button" onClick={() => updateQuantity(item.cart_key, item.quantity - 1)} className="px-2 py-1 text-slate-400"><Minus size={12} /></button>
                                                             <span className="px-2 text-xs font-bold text-slate-700">{item.quantity}</span>
-                                                            <button onClick={() => updateQuantity(item.cart_key, item.quantity + 1)} className="px-2 py-1 text-slate-400"><Plus size={12} /></button>
+                                                            <button type="button" onClick={() => updateQuantity(item.cart_key, item.quantity + 1)} className="px-2 py-1 text-slate-400"><Plus size={12} /></button>
                                                         </div>
-                                                        <button onClick={() => removeItem(item.cart_key)} className="text-slate-300 hover:text-pink-500"><Trash2 size={14} /></button>
+                                                        <button type="button" onClick={() => removeItem(item.cart_key)} className="text-slate-300 hover:text-pink-500"><Trash2 size={14} /></button>
                                                     </div>
                                                 </div>
                                                 <div className="text-right py-1 min-w-[100px]">
@@ -218,7 +215,6 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                         ))}
                                     </div>
 
-                                    {/* チップセクション：IDが 'default' の場合は非表示にするなどの調整も可能 */}
                                     {creator.id !== 'default' && (
                                         <div className="bg-cyan-50/30 p-6 border-t border-slate-100">
                                             <div className="flex items-center gap-2 mb-4">
@@ -227,13 +223,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                             </div>
                                             <div className="flex flex-wrap gap-2 items-center">
                                                 {[500, 1000, 2000].map(amt => (
-                                                    <button 
-                                                        key={amt} 
-                                                        type="button" 
-                                                        onClick={() => handleTipChange(creator.id, amt)} 
-                                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all ${tips[creator.id] === amt ? 'bg-cyan-500 border-cyan-500 text-white' : 'bg-white border-slate-200 text-slate-500'}`}
-                                                    >
-                                                        {/* チップボタン内の表記も日本円固定で分かりやすく */}
+                                                    <button key={amt} type="button" onClick={() => handleTipChange(creator.id, amt)} className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all ${tips[creator.id] === amt ? 'bg-cyan-500 border-cyan-500 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
                                                         +¥{amt.toLocaleString()}
                                                     </button>
                                                 ))}
@@ -248,7 +238,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                             ))}
                         </div>
 
-                        {/* 右側サマリー（省略せず全表示） */}
+                        {/* RIGHT: ORDER SUMMARY (配置やネイビー配色 bg-[#0f172a] は完全維持) */}
                         <div className="lg:col-span-5">
                             <div className="bg-[#0f172a] rounded-[2.5rem] p-8 text-white sticky top-12 shadow-2xl">
                                 <h2 className="text-xl font-bold mb-10">{__('Order Summary')}</h2>
@@ -273,19 +263,22 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                             <span>{__('Subtotal')}</span>
                                             <span>{renderDualCurrency(totals.itemTotal, adjustedCurrency)}</span>
                                         </div>
-                                        {totals.shipping > 0 && (
+                                        
+                                        {totals.handlingFee > 0 && (
                                             <div className="flex justify-between text-sm text-slate-400">
-                                                <span>{__('Domestic Shipping')}</span>
-                                                <span>{renderDualCurrency(totals.shipping, adjustedCurrency)}</span>
+                                                <span>{__('Warehouse Handling Fee')}</span>
+                                                <span>{renderDualCurrency(totals.handlingFee, adjustedCurrency)}</span>
                                             </div>
                                         )}
-                                        {totals.hasPhysical && (
-                                            <div className="flex justify-between text-sm text-slate-400"><span>{__('Domestic Shipping')}</span><span>{renderDualCurrency(totals.shipping, adjustedCurrency)}</span></div>
-                                        )}
+                                        
                                         <div className="flex justify-between text-sm text-slate-400">
-                                            <span>{__('Tax')}</span>
-                                            <span>{renderDualCurrency(totals.tax, adjustedCurrency)}</span>
+                                            <span className="flex items-center gap-1">
+                                                {__('Tax')} 
+                                                <span className="text-[9px] font-black bg-slate-800 text-cyan-400 px-1.5 py-0.5 rounded uppercase tracking-wider scale-90">Tax-Free</span>
+                                            </span>
+                                            <span className="text-slate-500 font-bold">{renderDualCurrency(totals.tax, adjustedCurrency)}</span>
                                         </div>
+                                        
                                         <div className="flex justify-between text-sm text-slate-400">
                                             <span>{totals.feeLabel}</span>
                                             <span>{renderDualCurrency(totals.fee, adjustedCurrency)}</span>
@@ -310,6 +303,12 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                             )}
                                         </div>
                                     </div>
+                                    {totals.hasPhysical && (
+                                        <p className="text-[9px] text-slate-400 font-medium leading-normal bg-slate-800/40 p-3 rounded-xl border border-slate-800 flex items-center gap-2 mt-2">
+                                            <Globe size={14} className="text-cyan-500 flex-shrink-0" />
+                                            <span>{__('※International Freight will be calculated and billed later at Phase-2 arrival.')}</span>
+                                        </p>
+                                    )}
                                 </div>
                                 <button onClick={handleCheckout} disabled={isProcessing || totals.itemTotal === 0} className={`w-full py-6 rounded-2xl font-black uppercase flex items-center justify-center gap-3 transition-all ${ (isProcessing || totals.itemTotal === 0) ? 'bg-slate-700 text-slate-400' : 'bg-white text-slate-900 hover:bg-cyan-400' }`}>
                                     {isProcessing ? <Loader2 className="animate-spin" /> : <>{__('Complete Order')} <ArrowRight size={20} /></>}

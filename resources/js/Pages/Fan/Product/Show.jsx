@@ -4,11 +4,11 @@ import React, { useState, useMemo } from 'react';
 import { Head, usePage, Link, useForm } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import ReviewForm from '@/Components/models/product/ReviewForm';
-import { renderDualCurrency, __ } from '@/Utils/helpers';
+import { renderDualCurrency } from '@/Utils/helpers';
 import { 
     Tag, ShoppingBag, ChevronRight, Check, 
-    Loader2, Megaphone, Plus, Minus, Share2, AlertCircle, 
-    Box, Laptop, Star, MessageSquare, Image as ImageIcon , User
+    Megaphone, Plus, Minus, AlertCircle, 
+    Box, Laptop, Star, MessageSquare, User, Sparkles, Globe
 } from 'lucide-react';
 
 export default function Show({ product, auth }) {
@@ -23,10 +23,8 @@ export default function Show({ product, auth }) {
 
     const isDigital = product.product_type === 2;
     
-    // 【追加】バリエーションがあるかどうかを判定
     const hasVariations = product.variations && product.variations.length > 0;
 
-    // 価格範囲の計算
     const priceRange = useMemo(() => {
         if (!hasVariations) return null;
         const prices = product.variations.map(v => Number(v.price));
@@ -52,10 +50,28 @@ export default function Show({ product, auth }) {
         product.images?.find(img => img.is_primary)?.url || product.images?.[0]?.url || '/images/no-image.jpg'
     );
 
-    // 【追加】バリエーションがあるのに選択されていない状態を判定
     const isSelectionMissing = hasVariations && !selectedVariation;
 
-    // 商品・カテゴリ等の一般翻訳取得
+    // 【大掃除・新設】カートに入れる前の「1次決済お支払い額」のリアルタイムシミュレーション計算
+    const priceBreakdown = useMemo(() => {
+        const itemPrice = selectedVariation ? Number(selectedVariation.price) : Number(product.price);
+        const subtotal = itemPrice * data.quantity;
+        
+        // デジタルの場合は倉庫中継費は0円、現物の場合は500円 × 数量
+        const handlingFee = isDigital ? 0 : 500 * data.quantity;
+        
+        // 利用規約に提示された、ファン側が負担するシステム手数料 8.0%
+        const platformFee = Math.round(subtotal * 0.08);
+        const totalFirstPhase = subtotal + handlingFee + platformFee;
+
+        return {
+            subtotal,
+            handlingFee,
+            platformFee,
+            totalFirstPhase
+        };
+    }, [product, selectedVariation, data.quantity, isDigital]);
+
     const getTranslation = (item, field) => {
         const t = item?.translations?.find(t => t.locale === locale) || 
                 item?.translations?.find(t => t.locale === 'en') || 
@@ -87,7 +103,6 @@ export default function Show({ product, auth }) {
 
     const handleAddToCart = (e) => {
         e.preventDefault();
-        // 【追加】ガードを念のため処理内でも実行
         if (isSelectionMissing) return;
         post(route('fan.cart.add'), { preserveScroll: true });
     };
@@ -95,7 +110,6 @@ export default function Show({ product, auth }) {
     const maxQuantity = selectedVariation ? (selectedVariation.stock_quantity ?? 0) : (product.stock_quantity ?? 0);
     const isOutOfStock = !isDigital && (selectedVariation ? selectedVariation.stock_quantity <= 0 : product.stock_quantity <= 0);
 
-    // 平均評価の算出
     const averageRating = product.reviews?.length > 0
         ? (product.reviews.reduce((acc, r) => acc + r.rating, 0) / product.reviews.length).toFixed(1)
         : 0;
@@ -106,7 +120,8 @@ export default function Show({ product, auth }) {
                 <title>{`${getTranslation(product, 'name')} - CirclePort`}</title>
             </Head>
 
-            <div className="max-w-[1200px] mx-auto px-6 py-12">
+            {/* レイアウトや色合い（bg-slate-50）は前のまま完全維持 */}
+            <div className="max-w-[1200px] mx-auto px-6 py-12 font-sans text-slate-800">
                 <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-12">
                     <Link href={route('fan.products.index')} className="hover:text-cyan-600">{__('Artworks')}</Link>
                     <ChevronRight size={12} />
@@ -114,7 +129,7 @@ export default function Show({ product, auth }) {
                 </nav>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
-                    {/* 画像ギャラリー */}
+                    {/* 画像ギャラリー（配置は前のまま変更なし） */}
                     <div className="lg:col-span-7 space-y-6">
                         <div className="relative aspect-[4/5] rounded-[2.5rem] overflow-hidden bg-slate-50 border border-slate-100 shadow-2xl group">
                             <img src={activeImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="" />
@@ -135,7 +150,7 @@ export default function Show({ product, auth }) {
                         )}
                     </div>
 
-                    {/* 商品購入情報 */}
+                    {/* 商品購入情報（右側カラム。配置や白ベースは前のまま、内訳パネルをアドオン） */}
                     <div className="lg:col-span-5 space-y-10">
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -166,36 +181,37 @@ export default function Show({ product, auth }) {
                                 </div>
                                 <ChevronRight size={16} className="ml-2 text-slate-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
                             </Link>
-                            <div className="min-h-[4rem] pt-4">
+                            
+                            <div className="min-h-[4rem] pt-4 border-b border-slate-100 pb-4">
                                 {selectedVariationName && (
                                     <div className="text-sm font-black uppercase tracking-[0.25em] text-cyan-500 mb-2">
                                         {selectedVariationName}
                                     </div>
                                 )}
                                 
-                                <div className="text-4xl font-black text-slate-900 tracking-tighter">
-                                    {displayPrice !== null ? (
-                                        renderDualCurrency(displayPrice, currency)
-                                    ) : (
-                                        <>
-                                            {renderDualCurrency(priceRange.min, currency)} 
-                                            <span className="text-slate-300 text-xl font-bold mx-2"> ~ </span> 
-                                            {renderDualCurrency(priceRange.max, currency)}
-                                        </>
-                                    )}
+                                {/* 【大掃除・改修】すべてのメイン価格にスプレッドを正確に自動反映させた表記へ一本化 */}
+                                <div className="text-4xl font-black text-slate-900 tracking-tighter flex items-center justify-between">
+                                    <div>
+                                        {displayPrice !== null ? (
+                                            renderDualCurrency(displayPrice, adjustedCurrency)
+                                        ) : (
+                                            <>
+                                                {renderDualCurrency(priceRange.min, adjustedCurrency)} 
+                                                <span className="text-slate-300 text-xl font-bold mx-2"> ~ </span> 
+                                                {renderDualCurrency(priceRange.max, adjustedCurrency)}
+                                            </>
+                                        )}
+                                    </div>
+                                    <span className="text-[9px] font-black bg-cyan-50 text-cyan-600 px-2 py-1 rounded-md uppercase tracking-widest h-fit">
+                                        {__('Tax-Free Export')}
+                                    </span>
                                 </div>
-
-                                {currency.code !== 'JPY' && (
-                                    <p className="text-[9px] text-slate-400 font-bold mt-3 uppercase italic">
-                                        * {__('Price in your currency includes a 5% exchange spread.')}
-                                    </p>
-                                )}
                             </div>
                         </div>
 
-                        {/* バリエーション */}
+                        {/* バリエーション選択 */}
                         {hasVariations && (
-                            <div className="space-y-6 pt-8 border-t border-slate-100">
+                            <div className="space-y-6 pt-2">
                                 <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{__('Select Variation')}</label>
                                 <div className="grid grid-cols-1 gap-3">
                                     {product.variations.map((v) => (
@@ -223,33 +239,73 @@ export default function Show({ product, auth }) {
                             </div>
                         )}
 
-                        {/* 購入アクション */}
-                        <div className="pt-8 space-y-6 border-t border-slate-100">
+                        {/* 購入アクション（明細シミュレーターをここにスマートインサート） */}
+                        <div className="pt-2 space-y-6">
                             {!isOutOfStock && (
                                 <div className="flex items-center justify-between">
                                     <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{__('Quantity')}</span>
                                     <div className="flex items-center bg-slate-100 rounded-2xl p-1 px-2 border border-slate-200">
-                                        <button onClick={() => setData('quantity', Math.max(1, data.quantity - 1))} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"><Minus size={16} /></button>
+                                        <button type="button" onClick={() => setData('quantity', Math.max(1, data.quantity - 1))} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"><Minus size={16} /></button>
                                         <span className="w-12 text-center font-black text-sm">{data.quantity}</span>
-                                        <button onClick={() => setData('quantity', isDigital ? data.quantity + 1 : Math.min(maxQuantity, data.quantity + 1))} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"><Plus size={16} /></button>
+                                        <button type="button" onClick={() => setData('quantity', isDigital ? data.quantity + 1 : Math.min(maxQuantity, data.quantity + 1))} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"><Plus size={16} /></button>
                                     </div>
                                 </div>
                             )}
+
+                            {/* --- 【新設】1次決済シミュレーターパネル (白ベースに調和するクリーンライトグレー) --- */}
+                            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100/80 space-y-3.5">
+                                <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                        <Sparkles size={12} className="text-cyan-500" />
+                                        {__('Primary Phase Payment Simulation')}
+                                    </span>
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                        <Globe size={12} /> {currency.code}
+                                    </span>
+                                </div>
+                                
+                                <div className="text-xs space-y-2 font-medium text-slate-500">
+                                    <div className="flex justify-between">
+                                        <span>{__('Items Subtotal')}</span>
+                                        <span className="font-bold text-slate-800">{renderDualCurrency(priceBreakdown.subtotal, adjustedCurrency)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>{__('Warehouse Handling Fee')}</span>
+                                        <span className="font-bold text-slate-800">
+                                            {priceBreakdown.handlingFee === 0 ? __('FREE') : `+${renderDualCurrency(priceBreakdown.handlingFee, adjustedCurrency)}`}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>{__('Platform System Fee (8%)')}</span>
+                                        <span className="font-bold text-slate-800">+{renderDualCurrency(priceBreakdown.platformFee, adjustedCurrency)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-slate-200/60 pt-3 flex items-end justify-between">
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">{__('Total to check out now')}</p>
+                                        <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase leading-none">
+                                            {product.product_type === 1 ? __('※International Freight charged later at Phase 2') : __('※Instant unlock after payment')}
+                                        </p>
+                                    </div>
+                                    <p className="text-xl font-black text-slate-900 leading-none">
+                                        {renderDualCurrency(priceBreakdown.totalFirstPhase, adjustedCurrency)}
+                                    </p>
+                                </div>
+                            </div>
+
                             <div className="space-y-4">
-                                {/* 【修正】disabled 属性に isSelectionMissing（バリエーション未選択）を追加 */}
                                 <button 
                                     onClick={handleAddToCart} 
                                     disabled={processing || isOutOfStock || isSelectionMissing} 
-                                    className={`w-full py-6 rounded-[1.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 transition-all shadow-2xl active:scale-[0.98] ${
-                                        (isOutOfStock || isSelectionMissing) ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-cyan-600'
+                                    className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 transition-all shadow-xl active:scale-[0.98] ${
+                                        (isOutOfStock || isSelectionMissing) ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-slate-900 text-white hover:bg-cyan-600 shadow-slate-100'
                                     }`}
                                 >
                                     {isOutOfStock ? <AlertCircle size={20} /> : <ShoppingBag size={20} />}
-                                    {/* 【修正】テキストを動的に変更：売り切れ > バリエーション未選択 > カートに入れる */}
                                     {isOutOfStock ? __('Sold Out') : isSelectionMissing ? __('Please Select Variation') : __('Add to Cart')}
                                 </button>
                                 
-                                {/* 【追加】バリエーション未選択時に表示する警告メッセージ */}
                                 {isSelectionMissing && !isOutOfStock && (
                                     <p className="flex items-center gap-2 text-rose-500 text-[10px] font-bold uppercase italic justify-center animate-pulse">
                                         <AlertCircle size={12} />
@@ -257,7 +313,7 @@ export default function Show({ product, auth }) {
                                     </p>
                                 )}
 
-                                <Link href={route('fan.go.create', { item_id: product.id })} className="w-full border-2 border-slate-900 text-slate-900 py-6 rounded-[1.5rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-slate-900 hover:text-white transition-all active:scale-[0.98]">
+                                <Link href={route('fan.go.create', { item_id: product.id })} className="w-full border-2 border-slate-900 text-slate-900 py-5 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-slate-900 hover:text-white transition-all active:scale-[0.98]">
                                     <Megaphone size={20} /> {__('Create GO with this item')}
                                 </Link>
                             </div>
@@ -321,7 +377,7 @@ export default function Show({ product, auth }) {
 
                         <div className="lg:col-span-1">
                             <div className="sticky top-24">
-                                {auth.user ? (
+                                {auth?.user ? (
                                     <ReviewForm productId={product.id} language={language} />
                                 ) : (
                                     <div className="bg-slate-900 rounded-[2.5rem] p-10 text-center space-y-6 shadow-2xl">
@@ -331,7 +387,7 @@ export default function Show({ product, auth }) {
                                         <p className="text-white font-black text-lg leading-tight uppercase tracking-tighter">
                                             {__('Join the community to write a review!')}
                                         </p>
-                                        <Link href={route('login')} className="block w-full py-5 bg-white text-slate-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-cyan-400 transition-all">
+                                        <Link href={route('fan.login')} className="block w-full py-5 bg-white text-slate-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-cyan-400 transition-all">
                                             {__('Login to Review')}
                                         </Link>
                                     </div>

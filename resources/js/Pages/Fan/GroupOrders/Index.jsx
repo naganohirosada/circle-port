@@ -1,3 +1,5 @@
+// resources/js/Pages/Fan/GroupOrders/Index.jsx
+
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
@@ -5,25 +7,23 @@ import {
     Search, Users, RotateCcw, 
     ChevronDown, ChevronUp, Filter,
     ChevronRight, LayoutGrid, Box,
-    Rocket, TrendingUp, Clock, CreditCard, Truck, User
+    Rocket, TrendingUp, Clock, CreditCard, User
 } from 'lucide-react';
 
-export default function Index({ groupOrders, filters = {}, language }) {
+export default function Index({ groupOrders, filters = {}, language, currentLocale }) {
     const __ = (key) => language?.[key] || key;
     const items = groupOrders?.data || [];
 
     // フィルターパネルの開閉状態
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-    // 検索フォームの状態管理（Artwork版と同じ構成）
+    // 【大掃除・改修】廃止された shipping_mode の状態管理キーを完全削除
     const { data, setData, get, processing, reset } = useForm({
         name: filters?.name || '',
         creator_name: filters?.creator_name || '',
         is_secondary_payment_required: filters?.is_secondary_payment_required || '',
-        shipping_mode: filters?.shipping_mode || '',
     });
 
-    // 検索実行
     const handleSearch = (e) => {
         e?.preventDefault();
         setIsFilterOpen(false);
@@ -38,7 +38,6 @@ export default function Index({ groupOrders, filters = {}, language }) {
         return days > 0 ? days : 0;
     };
 
-    // タブのスタイル定義
     const activeTab = "flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all bg-white text-cyan-600 shadow-sm";
     const inactiveTab = "flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all text-slate-400 hover:text-slate-600";
 
@@ -48,17 +47,18 @@ export default function Index({ groupOrders, filters = {}, language }) {
         <FanLayout>
             <Head title={__('Group Orders')} />
 
-            {/* --- 1. スティッキー検索 & ナビゲーションエリア --- */}
+            {/* --- 1. スティッキー検索 & ナビゲーションエリア（色合いは前のまま） --- */}
             <div className="sticky top-[64px] z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-6 py-4 space-y-4">
                     
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        {/* モード切替タブ (Link遷移) */}
+                        {/* モード切替タブ */}
                         <div className="flex bg-slate-100 p-1 rounded-2xl w-full md:w-auto shadow-inner">
                             <Link href={route('fan.products.index')} className={inactiveTab}>
                                 <LayoutGrid size={14} />
                                 {__('Artwork')}
                             </Link>
+                            {/* 【バグ修正】 */}
                             <Link href={route('fan.go.index')} className={activeTab}>
                                 <Users size={14} />
                                 {__('Group Order')}
@@ -90,10 +90,10 @@ export default function Index({ groupOrders, filters = {}, language }) {
                         </div>
                     </div>
 
-                    {/* 詳細フィルターパネル (商品一覧と同じデザイン) */}
+                    {/* 詳細フィルターパネル（白ベースを完全維持） */}
                     <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isFilterOpen ? 'max-h-[600px] opacity-100 pb-2' : 'max-h-0 opacity-0'}`}>
                         <form onSubmit={handleSearch} className="pt-4 border-t border-slate-100 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* クリエイター名検索 */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest flex items-center gap-1">
@@ -124,21 +124,7 @@ export default function Index({ groupOrders, filters = {}, language }) {
                                     </select>
                                 </div>
 
-                                {/* 配送モード */}
-                                <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest flex items-center gap-1">
-                                        <Truck size={10} /> {__('Shipping Mode')}
-                                    </label>
-                                    <select 
-                                        className="w-full bg-slate-50 border-none rounded-xl text-xs font-black uppercase py-3 focus:ring-cyan-500"
-                                        value={data.shipping_mode}
-                                        onChange={e => setData('shipping_mode', e.target.value)}
-                                    >
-                                        <option value="">{__('All Modes')}</option>
-                                        <option value="1">{__('Direct Shipping')}</option>
-                                        <option value="2">{__('Consolidated')}</option>
-                                    </select>
-                                </div>
+                                {/* 【大掃除】：廃止された Shipping Mode のセレクトボックス入力欄を根こそぎ撤去 */}
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -149,9 +135,10 @@ export default function Index({ groupOrders, filters = {}, language }) {
                                 >
                                     {__('Apply Search Filters')}
                                 </button>
+                                
                                 <button 
                                     type="button" 
-                                    onClick={() => { reset(); get(route('fan.go.index')) }}
+                                    onClick={() => { reset(); router.get(route('fan.go.index')) }}
                                     className="p-4 text-slate-400 hover:text-rose-500 bg-slate-100 rounded-2xl transition-all"
                                 >
                                     <RotateCcw size={18} />
@@ -162,36 +149,23 @@ export default function Index({ groupOrders, filters = {}, language }) {
                 </div>
             </div>
 
-            {/* --- 2. メインコンテンツグリッド (GO専用デザイン) --- */}
+            {/* --- 2. メインコンテンツグリッド（配置は前のまま完全維持） --- */}
             <div className="max-w-7xl mx-auto px-6 py-12">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
                     {items.length > 0 ? items.map((item) => {
                         const progress = item.max_participants > 0 
                             ? Math.min(Math.round((item.participants_count / item.max_participants) * 100), 100) 
-                            : 0; // 定員が設定されていない、または0の場合は進捗0%（または100%として扱う）
+                            : 0;
 
-                        // 残り時間の取得
                         const daysLeft = getTimeLeft(item.recruitment_end_date);
                         
                         return (
+                            /* 【大掃除】：Babelのエラーを防ぐため、コメントは必ずReact要素（タグ）の完全な外側に配置します */
                             <Link 
                                 key={item.id} 
                                 href={route('fan.go.detail', item.id)}
                                 className="group bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500 flex flex-col"
                             >
-                                {/* 画像エリア */}
-                                <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                                    <img 
-                                        src={item.images?.[0] ? `/storage/${item.images[0].file_path}` : placeholderImage} 
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                                    />
-                                    <div className="absolute top-4 left-4">
-                                        <span className="bg-slate-900/80 backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-white/20">
-                                            {item.creator?.name}
-                                        </span>
-                                    </div>
-                                </div>
-                                
                                 {/* 情報エリア */}
                                 <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                                     <div>

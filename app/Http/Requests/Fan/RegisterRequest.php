@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Fan;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class RegisterRequest extends FormRequest
 {
@@ -17,7 +18,12 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:fans'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'country_id' => ['required', 'exists:countries,id'],
+            'country_id' => [
+                'required',
+                Rule::exists('countries', 'id')->where(function ($query) {
+                    $query->where('country_code', '!=', 'JP');
+                })
+            ],
             'language_id' => ['required', 'exists:languages,id'],
             'unique_id' => ['required', 'string', 'alpha_dash', 'min:4', 'max:15', 'unique:fans,unique_id'],
         ];
