@@ -47,6 +47,18 @@ export default function Index({ auth, shippings, success }) {
                                     <div className="font-bold text-gray-800">{s.creator?.name}</div>
                                     <div className="text-xs text-gray-500">{s.creator?.email}</div>
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    {/* 【コア拡張】配送プランの種別出し分け */}
+                                    {s.shipping_type === 30 ? (
+                                        <span className="px-2.5 py-1 inline-flex text-[10px] leading-5 font-black rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wider">
+                                            📦 倉庫への新規納品
+                                        </span>
+                                    ) : (
+                                        <span className={`px-2.5 py-1 inline-flex text-[10px] leading-5 font-black rounded-full border uppercase tracking-wider ${s.shipping_type === 20 ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+                                            {s.shipping_type === 20 ? '海外GO配送' : '通常注文配送'}
+                                        </span>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border">
                                         {s.items_count || 0} 種類

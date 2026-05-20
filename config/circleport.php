@@ -20,10 +20,10 @@ return [
         'international_gateway_fee_rate' => 0.030,
 
         // 国内送料固定額 (1200円)
-        'domestic_shipping_fee' => 1200,
+        'domestic_shipping_fee' => 800,
 
         // 国際配送同梱手数料 (300円)
-        'international_bundling_fee' => 300,
+        'international_bundling_fee' => 500,
 
         // 資材・ハンドリング費 (0円)
         'handling_fee' => 0,

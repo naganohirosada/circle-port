@@ -23,8 +23,8 @@ export default function Index({ auth, shippings }) {
                         <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                             <tr>
                                 <th className="p-4">配送ID / 追跡番号</th>
-                                <th className="p-4">対象注文</th>
-                                <th className="p-4">購入者</th>
+                                <th className="p-4">対象コンテキスト</th>
+                                <th className="p-4">発送元・購入者</th>
                                 <th className="p-4">ステータス</th>
                                 <th className="p-4">発送日</th>
                                 <th className="p-4 text-right">操作</th>
@@ -34,20 +34,36 @@ export default function Index({ auth, shippings }) {
                             {shippings.data.map((ship) => (
                                 <tr key={ship.id} className="hover:bg-gray-50/50 transition-colors">
                                     <td className="p-4">
-                                        <div className="text-sm font-bold text-gray-900">#{ship.id}</div>
+                                        <div className="text-sm font-bold text-gray-900">#{ship.domestic_shipping_number || ship.id}</div>
                                         <div className="text-[10px] font-mono text-gray-400">{ship.tracking_number || '追跡番号なし'}</div>
                                     </td>
                                     <td className="p-4">
-                                        <Link href={route('admin.orders.show', ship.order_id)} className="text-xs text-indigo-600 font-bold hover:underline">
-                                            ORDER #{ship.order_id}
-                                        </Link>
+                                        {/* 【修正】order_idの有無で条件分岐し、Ziggyのエラーを完全に防ぐ */}
+                                        {ship.order_id ? (
+                                            <Link href={route('admin.orders.show', ship.order_id)} className="text-xs text-indigo-600 font-bold hover:underline">
+                                                ORDER #{ship.order_id}
+                                            </Link>
+                                        ) : (
+                                            <span className="text-[10px] font-black px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wider">
+                                                📦 新規作品納品
+                                            </span>
+                                        )}
                                     </td>
-                                    <td className="p-4 text-sm text-gray-600">{ship.order?.fan?.name}</td>
+                                    <td className="p-4 text-sm">
+                                        {ship.order_id ? (
+                                            <div className="text-gray-600 font-medium">{ship.order?.fan?.name || '購入者不明'}</div>
+                                        ) : (
+                                            <div className="text-slate-800 font-black">
+                                                👤 {ship.creator?.name || 'クリエイター'} 
+                                                <span className="text-[10px] text-gray-400 block font-normal mt-0.5">{ship.creator?.shop_name}</span>
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="p-4">{getStatusBadge(ship.status)}</td>
                                     <td className="p-4 text-xs text-gray-400">{ship.shipped_at || '未発送'}</td>
                                     <td className="p-4 text-right">
-                                        <Link href={route('admin.shippings.domestic.show', ship.id)} className="text-xs font-black text-gray-400 hover:text-gray-900">
-                                            詳細を確認
+                                        <Link href={route('admin.inspections.show', ship.id)} className="text-xs font-black text-gray-400 hover:text-indigo-600">
+                                            詳細・検品を開始
                                         </Link>
                                     </td>
                                 </tr>

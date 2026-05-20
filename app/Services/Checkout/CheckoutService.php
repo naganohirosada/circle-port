@@ -282,7 +282,7 @@ class CheckoutService
         if ($hasPhysical) {
             if ($isInternational) {
                 // パターンA: 国際配送（2段階決済の1次送料として倉庫中継バンドル費を適用）
-                $shipping = config('circleport.checkout.international_bundling_fee', 300);
+                $shipping = config('circleport.checkout.international_bundling_fee', 500);
             } else {
                 // 国内配送：同一クリエイターで送料が重複しないよう、ショップ毎に仕分け計算
                 $shippingMatrix = [];
@@ -320,8 +320,8 @@ class CheckoutService
                 // マトリクスから最終配送料をマージ
                 foreach ($shippingMatrix as $creatorId => $info) {
                     if ($info['warehouse']) {
-                        // パターンB: 国内一括配送（サークルポート規定の国内固定送料 1200円）
-                        $shipping += config('circleport.checkout.domestic_shipping_fee', 1200);
+                        // パターンB: 国内一括配送（サークルポート規定の国内固定送料 800円）
+                        $shipping += config('circleport.checkout.domestic_shipping_fee', 800);
                     }
                     // パターンC: 国内自己発送（クリエイターが自ら設定した配送料）
                     $shipping += $info['direct_fee'];

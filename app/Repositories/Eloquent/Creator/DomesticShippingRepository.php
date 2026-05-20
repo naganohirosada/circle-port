@@ -82,18 +82,28 @@ class DomesticShippingRepository implements DomesticShippingRepositoryInterface
     public function create(array $data)
     {
         return DB::transaction(function () use ($data) {
+            $shippingType = match($data['type']) {
+                'regular'  => \App\Enums\DomesticShippingType::REGULAR,
+                'go'       => \App\Enums\DomesticShippingType::GO,
+                'stock_in' => \App\Enums\DomesticShippingType::STOCK_IN,
+            };
+
+            $shippingNumber = 'DS' . now()->format('ymd') . strtoupper(\Illuminate\Support\Str::random(4));
             $shipping = DomesticShipping::create([
-                'creator_id' => $data['creator_id'],
-                'warehouse_id' => $data['warehouse_id'],
-                'carrier_id' => $data['carrier_id'],
-                'tracking_number' => $data['tracking_number'],
-                'shipping_date' => $data['shipping_date'],
-                'status' => 'shipped',
-                'type' => $data['type'], // 'regular' or 'go'
+                'domestic_shipping_number' => $shippingNumber,
+                'creator_id'               => $data['creator_id'],
+                'warehouse_id'             => $data['warehouse_id'],
+                'carrier_id'               => $data['carrier_id'],
+                'tracking_number'          => $data['tracking_number'] ?? null,
+                'status'                   => DomesticShipping::STATUS_SHIPPED, // 登録と同時に発送済み（輸送中）ステータスへ
+                'shipping_type'            => $shippingType->value,
+                'shipped_at'               => $data['shipping_date'] ?? now(),
             ]);
 
             foreach ($data['items'] as $item) {
                 $shipping->items()->create([
+                    'product_id' => $item['product_id'],
+                    'product_variant_id' => $item['product_variant_id'] ?? null,
                     'order_item_id' => $data['type'] === 'regular' ? $item['order_item_id'] : null,
                     'group_order_id' => $data['type'] === 'go' ? $item['group_order_id'] : null,
                     'quantity' => $item['quantity'],

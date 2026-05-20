@@ -22,11 +22,12 @@ class DomesticShipping extends Model
         'warehouse_id',
         'status',
         'tracking_number',
-        'carrier',
+        'carrier_id',
         'shipped_at',
         'received_at',
         'order_id',
-        'group_order_id'
+        'group_order_id',
+        'shipping_type',
     ];
 
     protected $casts = [

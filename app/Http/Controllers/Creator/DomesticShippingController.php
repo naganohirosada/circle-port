@@ -77,13 +77,24 @@ class DomesticShippingController extends Controller
         ]);
     }
 
+    public function createStockIn()
+    {
+        $creatorId = auth()->id();
+        
+        return Inertia::render('Creator/Shipping/CreateStockIn', [
+            'products'   => $this->shippingService->getProductsForStockIn($creatorId),
+            'warehouses' => Warehouse::all(),
+            'carriers'   => Carrier::all(),
+        ]);
+    }
+
     /**
      * 配送登録の実行
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'type' => 'required|in:regular,go',
+            'type' => 'required|in:regular,go,stock_in',
             'warehouse_id' => 'required|exists:warehouses,id',
             'carrier_id' => 'required|exists:carriers,id',
             'tracking_number' => 'nullable|string|max:255',
@@ -92,6 +103,10 @@ class DomesticShippingController extends Controller
         ]);
 
         $this->shippingService->createDomesticShipping($validated, auth()->id());
+
+        $message = $validated['type'] === 'stock_in' 
+            ? '倉庫への新規納品プランを登録しました。対象の商品を梱包して発送手続きをお願いします。🚀'
+            : '国内配送を登録しました。';
 
         return redirect()->route('creator.shipping.index')
             ->with('success', '国内配送を登録しました。');

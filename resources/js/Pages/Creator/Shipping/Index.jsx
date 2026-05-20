@@ -7,8 +7,10 @@ import SecondaryButton from '@/Components/SecondaryButton';
 export default function Index({ auth, shippings = [] }) {
     // ステータスに応じた色設定
     const statusColors = {
+        'preparing': 'bg-amber-100 text-amber-800',
         'shipped': 'bg-blue-100 text-blue-800',
-        'arrived': 'bg-green-100 text-green-800',
+        'arrived': 'bg-indigo-100 text-indigo-800',
+        'received': 'bg-emerald-100 text-emerald-800',
         'inspecting': 'bg-yellow-100 text-yellow-800',
         'completed': 'bg-gray-100 text-gray-800',
     };
@@ -23,13 +25,21 @@ export default function Index({ auth, shippings = [] }) {
                         <h2 className="text-2xl font-semibold text-gray-800">国内配送管理</h2>
                         
                         <div className="flex space-x-3">
+
+                            {/* 【追加】新規作品の倉庫一括納品登録ボタン */}
+                            <Link href={route('creator.shipping.stock_in')}>
+                                <button className="bg-indigo-600 text-white font-black text-xs px-6 py-3 rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">
+                                    ✨ 新規作品・追加在庫の納品登録
+                                </button>
+                            </Link>
+
                             {/* 通常注文用の登録ボタン */}
                             <Link href={route('creator.shipping.regular')}>
                                 <SecondaryButton>
                                     通常注文の配送登録
                                 </SecondaryButton>
                             </Link>
-                            
+
                             {/* GO注文用の登録ボタン */}
                             <Link href={route('creator.shipping.go')}>
                                 <PrimaryButton>
@@ -62,9 +72,16 @@ export default function Index({ auth, shippings = [] }) {
                                                         <div className="text-xs text-gray-500">{shipping.shipping_date}</div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${shipping.type === 'go' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
-                                                            {shipping.type === 'go' ? 'GO注文' : '通常注文'}
-                                                        </span>
+                                                        {/* 【修正】stock_in 納品プラン用の条件分岐表示 */}
+                                                        {shipping.shipping_type === 30 || shipping.type === 'stock_in' ? (
+                                                            <span className="px-3 py-1 inline-flex text-[10px] leading-5 font-black rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wider">
+                                                                📦 倉庫への納品
+                                                            </span>
+                                                        ) : (
+                                                            <span className={`px-3 py-1 inline-flex text-[10px] leading-5 font-black rounded-full uppercase tracking-wider ${shipping.type === 'go' ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-orange-50 text-orange-600 border border-orange-100'}`}>
+                                                                {shipping.type === 'go' ? 'GO注文発送' : '通常注文発送'}
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         {shipping.warehouse?.name || '未指定'}

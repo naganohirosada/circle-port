@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Order;
 use App\Enums\DomesticShippingStatus;
 use App\Enums\OrderStatus;
+use Illuminate\Support\Facades\Log;
 
 class InspectionService
 {
@@ -21,12 +22,14 @@ class InspectionService
 
     /**
      * 検品完了処理
+     * @param int $domesticShippingId 国内配送ID
+      * @return DomesticShipping 更新された国内配送データ
      */
     public function completeInspection(int $domesticShippingId)
     {
         return DB::transaction(function () use ($domesticShippingId) {
             // 1. 国内配送データの取得
-            $shipping = DomesticShipping::with(['items', 'order', 'groupOrder.participants.order.items'])
+            $shipping = DomesticShipping::with(['items.product', 'order', 'groupOrder.participants.order.items'])
                 ->findOrFail($domesticShippingId);
 
             // 2. 国内配送を受領済みに更新
@@ -35,10 +38,37 @@ class InspectionService
                 'received_at' => now(),
             ]);
 
-            // 3. 配送タイプ（通常注文 or GO）に応じた国際配送データの作成
-            if ($shipping->order_id) {
+            // 3. 配送種別（新規納品プラン or 通常注文 or GO）に応じた分岐処理
+            // 3-A: 新規作品の倉庫一括納品プラン(STOCK_IN = 30)の場合
+            if ((int)$shipping->shipping_type->value === \App\Enums\DomesticShippingType::STOCK_IN->value) {
+                foreach ($shipping->items as $item) {
+
+                    if ($item->product) {
+                        // 倉庫で実際にカウントして受領した実数（quantity）を販売可能在庫として確実に上書き反映
+                        if ($item->product_variant_id) {
+                            $variant = \App\Models\ProductVariant::find($item->product_variant_id);
+                            if ($variant) {
+                                $variant->update(['stock_quantity' => $item->quantity]);
+                            }
+                        } else {
+                            $item->product->update(['stock_quantity' => $item->quantity]);
+                        }
+
+                        // 商品本体のステータスを「公開中（2: STATUS_PUBLISHED）」へ自動昇格
+                        $item->product->update([
+                            'status'       => \App\Models\Product::STATUS_PUBLISHED,
+                            'published_at' => now(),
+                        ]);
+                        Log::info("Product successfully published automatically via Stock-In Warehouse Inspection [Product ID: {$item->product_id}]");
+                    }
+                }
+            } 
+            // 3-B: 通常注文配送の場合
+            elseif ($shipping->order_id) {
                 $this->createInternationalFromRegularOrder($shipping);
-            } elseif ($shipping->group_order_id) {
+            } 
+            // 3-C: 海外GO共同購入の配送注文の場合
+            elseif ($shipping->group_order_id) {
                 $this->createInternationalFromGroupOrder($shipping);
             }
 
@@ -48,6 +78,7 @@ class InspectionService
 
     /**
      * GO注文からの生成ロジック
+     * @param DomesticShipping $shipping 国内配送データ（検品完了したもの）
      */
     protected function createInternationalFromGroupOrder(DomesticShipping $shipping)
     {
@@ -84,6 +115,8 @@ class InspectionService
 
     /**
      * 参加者の注文商品を在庫化し、指定の国際配送（箱）に紐付ける共通処理
+     * @param $participant GO注文の参加者モデル
+     * @param int $intlShippingId 紐付ける国際配送データのID（箱ID）
      */
     protected function processParticipantItems($participant, int $intlShippingId)
     {
@@ -104,6 +137,7 @@ class InspectionService
 
     /**
      * 通常注文からの生成ロジック
+     * @param DomesticShipping $shipping 国内配送データ（検品完了したもの）
      */
     protected function createInternationalFromRegularOrder(DomesticShipping $shipping)
     {

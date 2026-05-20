@@ -40,6 +40,7 @@ Route::prefix('creator')->name('creator.')->group(function () {
         Route::get('/shipping/create/regular', [DomesticShippingController::class, 'createRegular'])->name('shipping.regular');
         // GO注文用の配送登録
         Route::get('/shipping/create/go', [DomesticShippingController::class, 'createGo'])->name('shipping.go');
+        Route::get('/shipping/create/stock-in', [DomesticShippingController::class, 'createStockIn'])->name('shipping.stock_in');
         Route::post('/shipping/store', [DomesticShippingController::class, 'store'])->name('store');
         Route::get('/shipping/{domesticShipping}', [DomesticShippingController::class, 'show'])->name('show');
         Route::get('/shipping/{id}', [DomesticShippingController::class, 'show'])->name('shipping.show');

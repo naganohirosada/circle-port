@@ -177,4 +177,40 @@ class DomesticShippingService
     {
         return $this->shippingRepo->getByCreatorId($creatorId);
     }
+
+    /**
+     * 【追加】倉庫一括配送に設定されている、新規納品・追加納品可能な商品リストの取得
+     * @param int $creatorId クリエイターID
+      * @return Collection 商品コレクション（在庫化対象）
+     */
+    public function getProductsForStockIn(int $creatorId)
+    {
+        // クリエイター本人の所有する商品であり、
+        // かつ現物作品（product_type = 1）、かつ倉庫一括配送（domestic_shipping_method = 10）のものを抽出
+        return \App\Models\Product::with([
+                'images', 
+                'translations' => function($q) {
+                    $q->where('locale', app()->getLocale())->orWhere('locale', 'ja');
+                },
+                'variations.translations' => function($q) {
+                    $q->where('locale', app()->getLocale())->orWhere('locale', 'ja');
+                }
+            ])
+            ->where('creator_id', $creatorId)
+            ->where('product_type', 1) 
+            ->where('domestic_shipping_method', 10)
+            ->latest()
+            ->get()
+            ->map(function($product) {
+                // フロント表示用に名称をフォールバック成形
+                $product->display_name = $product->translations->first()?->name ?? 'Unnamed Product';
+                
+                $product->variations->map(function($variant) {
+                    $variant->display_name = $variant->translations->first()?->variant_name ?? 'Default Title';
+                    return $variant;
+                });
+                
+                return $product;
+            });
+    }
 }
