@@ -42,6 +42,8 @@ class GroupOrder extends Model
         'shipping_mode',
         'is_private',
         'is_secondary_payment_required',
+        'is_approval_required',
+        'is_approval_required'
     ];
 
     protected $casts = [
@@ -51,6 +53,7 @@ class GroupOrder extends Model
         'is_private' => 'boolean',
         'is_secondary_payment_required' => 'boolean',
         'primary_payment_status' => 'integer',
+        'is_approval_required' => 'boolean',
         'final_domestic_shipping_fee' => 'float',
     ];
     protected $appends = [

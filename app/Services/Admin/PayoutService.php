@@ -12,15 +12,15 @@ use Illuminate\Support\Facades\Log;
 
 class PayoutService
 {
-        public function recordPaymentToPayout(Payment $payment)
+    public function recordPaymentToPayout(Payment $payment)
     {
         // 1. 決済ステータスの確認 (Enum キャスト対応)
         if (!$payment->order_id || $payment->status !== \App\Enums\PaymentStatus::SUCCEEDED) {
             return;
         }
 
-        // 2. 注文情報からクリエイターIDを取得
-        $payment->order->loadMissing('orderItems.product', 'address');
+        // 2. 【バグ修正・大掃除】：定義済みの正しいリレーション名 "shippingAddress" をロードするように修正
+        $payment->order->loadMissing('orderItems.product', 'shippingAddress');
         
         $firstItem = $payment->order->orderItems->first();
         if (!$firstItem || !$firstItem->product) {
@@ -34,8 +34,8 @@ class PayoutService
             return;
         }
 
-        // 3. 【核心仕様】国内(JP)・海外および配送アプローチ（倉庫一括・自己発送）の精密判定
-        $address = $payment->order->address;
+        // 3. 【バグ修正・大掃除】：正しいリレーション名プロパティから住所オブジェクトをアトミックに取得
+        $address = $payment->order->shippingAddress;
         $isDomestic = $address ? ($address->country_code === 'JP') : true;
 
         // 10: 倉庫一括配送 (WAREHOUSE), 20: 自己発送 (DIRECT)

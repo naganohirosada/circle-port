@@ -1,12 +1,14 @@
+// resources/js/Pages/Fan/GroupOrders/Show.jsx
+
 import React, { useMemo, useState } from 'react';
 import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import ShareSection from '@/Components/models/go/GoCreateForm/ShareSection';
-import { renderDualCurrency, __ } from '@/Utils/helpers';
+import { renderDualCurrency } from '@/Utils/helpers';
 import { 
     Package, Users, Info, ShieldCheck, Clock, MapPin, Rocket, 
     TrendingUp, AlertCircle, ChevronRight, Minus, Plus, CreditCard,
-    AlertTriangle, Check, Home, UserCheck, Heart, CheckCircle
+    AlertTriangle, Check, Home, UserCheck, Heart, CheckCircle, Globe, Sparkles
 } from 'lucide-react';
 
 export default function Show({ go, addresses = [], language, previousOrder = null, isJoined = false }) {
@@ -30,7 +32,6 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
 
     const formattedDeadline = useMemo(() => {
         if (!go.recruitment_end_date) return '';
-        // ユーザー設定のタイムゾーン（未設定ならUTC）
         const userTimezone = auth.user?.timezone?.timezone || 'UTC';
         
         return new Intl.DateTimeFormat(locale, {
@@ -41,8 +42,8 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
             minute: '2-digit',
             second: '2-digit',
             timeZone: userTimezone,
-            hour12: false // 24時間表記
-        }).format(new Date(go.recruitment_end_date)).replace(/\//g, '/'); // 区切り文字の調整
+            hour12: false
+        }).format(new Date(go.recruitment_end_date)).replace(/\//g, '/');
     }, [go.recruitment_end_date, auth.user, locale]);
 
     const timeLeft = useMemo(() => {
@@ -54,23 +55,21 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
 
     const isExpired = timeLeft === 0;
 
-    // --- フォーム管理 (チップ額を追加) ---
+    // --- フォーム管理 ---
     const { data, setData, post, processing, errors } = useForm({
         items: safeItems.map(item => {
             const product = item.product;
-            // プライマリ画像、または最初の画像を取得
             const primaryImage = product?.images?.find(img => img.is_primary)?.url || product?.images?.[0]?.url;
 
             return { 
                 id: item.id,
                 product_id: item.product_id,
-                variant_id: null, // バリエーション選択用
+                variant_id: null,
                 quantity: 0, 
                 price: item.price || product?.price || 0,
-                // localeを使用して現在の言語の翻訳名を取得
                 name: product?.translations?.find(t => t.locale === locale)?.name || item.item_name || 'Art Item',
                 image: primaryImage,
-                product_data: product // バリエーション一覧を保持
+                product_data: product
             };
         }),
         address_id: (addresses || [])?.find(a => a.is_default)?.id || (addresses?.[0]?.id) || '',
@@ -78,26 +77,52 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
         total_amount: 0
     });
 
+    // 【新設】：選択された配送先住所オブジェクトのリアルタイム検知
+    const activeAddress = useMemo(() => {
+        return (addresses || []).find(addr => addr.id == data.address_id);
+    }, [addresses, data.address_id]);
+
+    // 【新設・5/20物理フロントガード】：配送先が日本（JP）住所かどうかの判定フラグ
+    const isDomesticAddress = useMemo(() => {
+        if (!activeAddress) return false;
+        const code = String(activeAddress.country_code || activeAddress.country?.country_code || '').toUpperCase();
+        return code === 'JP';
+    }, [activeAddress]);
+
     const goodsTotal = useMemo(() => {
         return data.items.reduce((acc, curr) => acc + (curr.quantity * curr.price), 0);
     }, [data.items]);
 
-    const goFee = useMemo(() => {
-        return Math.ceil(goodsTotal * GO_FEE_RATE);
-    }, [goodsTotal]);
+    // 【5/20仕様・計算式完全同期】：選択された現物アイテムの「総数量」を正確に合算
+    const totalPhysicalQty = useMemo(() => {
+        return data.items.reduce((acc, curr) => {
+            const isPhysical = curr.product_data?.product_type === 1;
+            return acc + (isPhysical ? curr.quantity : 0);
+        }, 0);
+    }, [data.items]);
 
-    // 最終合計金額の計算 (チップを加算)
+    // 倉庫中継ハンドリング費の動算（500円 × 現物アイテム総数量）
+    const warehouseHandlingFee = useMemo(() => {
+        return totalPhysicalQty * 500;
+    }, [totalPhysicalQty]);
+
+    // GOシステム手数料（5%）：バックエンドの仕様通り「作品代小計 ＋ 倉庫中継費」をベースに算出
+    const goFee = useMemo(() => {
+        const baseTotalForFee = goodsTotal + warehouseHandlingFee;
+        return goodsTotal > 0 ? Math.ceil(baseTotalForFee * GO_FEE_RATE) : 0;
+    }, [goodsTotal, warehouseHandlingFee]);
+
+    // 1次決済の最終合計請求金額の計算 (チップを加算)
     const totalAmount = useMemo(() => {
         const tip = Number(data.tip_amount) || 0;
-        return goodsTotal > 0 ? goodsTotal + goFee + tip : 0;
-    }, [goodsTotal, goFee, data.tip_amount]);
+        return goodsTotal > 0 ? goodsTotal + warehouseHandlingFee + goFee + tip : 0;
+    }, [goodsTotal, warehouseHandlingFee, goFee, data.tip_amount]);
 
     const handleQtyChange = (index, newQty) => {
         const val = Math.max(0, parseInt(newQty) || 0);
         const newItems = [...data.items];
         const product = newItems[index].product_data;
         
-        // バリエーションがあるのに未選択のまま数量を増やそうとした場合
         if (val > 0 && product?.variations?.length > 0 && !newItems[index].variant_id) {
             alert(__('Please select a variation first.'));
             return;
@@ -110,27 +135,22 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
     const handleVariantChange = (index, variantId) => {
         const newItems = [...data.items];
         const item = newItems[index];
-        // 選択されたバリエーション情報を取得
         const selectedVariant = item.product_data?.variations?.find(v => v.id === parseInt(variantId));
 
         item.variant_id = variantId ? parseInt(variantId) : null;
         if (selectedVariant) {
-            // バリエーションが選択されたらその価格をセット
             item.price = selectedVariant.price;
         } else {
-            // 未選択に戻った場合は、GOアイテムのデフォルト価格（または商品の基本価格）に戻す
             item.price = go.items[index].price || item.product_data?.price || 0;
         }
         setData('items', newItems);
     };
 
     const getPriceDisplay = (item) => {
-        // バリエーション確定済み
         if (item.variant_id) {
             return renderDualCurrency(item.price, adjustedCurrency);
         }
         
-        // バリエーション未選択で複数ある場合
         if (item.product_data?.variations?.length > 0) {
             const prices = item.product_data.variations.map(v => Number(v.price));
             const minPrice = Math.min(...prices);
@@ -142,7 +162,6 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
             return `${jpyMin} (${locMin}) 〜`;
         }
         
-        // 通常商品
         return renderDualCurrency(item.price, adjustedCurrency);
     };
 
@@ -165,7 +184,6 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
             <Head title={`${go.title} - Group Order`} />
 
             <div className="min-h-screen bg-slate-50/50 pb-20">
-                {/* パンくずリスト */}
                 <div className="bg-white border-b border-slate-100">
                     <div className="max-w-7xl mx-auto px-6 py-4">
                         <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -199,7 +217,6 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                         <div className="lg:col-span-8 space-y-10">
                             
-                            {/* 達成状況セクション */}
                             <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-2xl shadow-slate-100/50 space-y-8">
                                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                                     <div className="space-y-2">
@@ -227,7 +244,6 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                 </div>
                             </div>
 
-                            {/* アイテムリスト */}
                             <div className="space-y-6">
                                 <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3 ml-2"><Package size={16} /> {__('Available Items')}</h3>
                                 <div className="grid grid-cols-1 gap-4">
@@ -249,7 +265,7 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                                     {item.product_data?.variations?.length > 0 && (
                                                         <div className="max-w-[240px] relative mt-3">
                                                             <select 
-                                                                className="..."
+                                                                className="w-full bg-slate-50 border-none rounded-xl py-2 pl-4 pr-10 text-xs font-bold focus:ring-2 focus:ring-cyan-500 transition-all appearance-none cursor-pointer"
                                                                 value={item.variant_id || ''}
                                                                 onChange={(e) => handleVariantChange(index, e.target.value)}
                                                             >
@@ -257,12 +273,12 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                                                 {item.product_data.variations.map(v => (
                                                                     <option key={v.id} value={v.id} disabled={v.stock_quantity <= 0}>
                                                                         {v.translations?.find(t => t.locale === locale)?.variant_name || v.name_en}
-                                                                        {/* 修正：¥XXX (LocalXXX) の形式で表示 */}
-                                                                        {` - ${renderDualCurrency(v.price)}`}
+                                                                        {` - ${renderDualCurrency(v.price, adjustedCurrency)}`}
                                                                         {v.stock_quantity <= 0 ? ` - ${__('Sold Out')}` : ''}
                                                                     </option>
                                                                 ))}
                                                             </select>
+                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -277,7 +293,6 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                 </div>
                             </div>
 
-                            {/* --- 応援チップセクション --- */}
                             <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-cyan-50 rounded-full flex items-center justify-center text-cyan-500">
@@ -317,7 +332,7 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                 </p>
                             </div>
 
-                            {/* 利用規約と同意 */}
+                            {/* 【海外特化文言へシフト】：利用規約と同意説明ボード */}
                             <div className="bg-amber-50/50 rounded-[2.5rem] p-10 border border-amber-100 space-y-8">
                                 <h3 className="text-xs font-black uppercase tracking-[0.3em] text-amber-700 flex items-center gap-3"><AlertTriangle size={18} /> {__('Important Terms & Shipping')}</h3>
                                 
@@ -326,18 +341,18 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                         <div className="flex items-center gap-2">
                                             {go.shipping_mode === 'bulk_to_gom' ? <Home className="text-amber-600" size={18} /> : <UserCheck className="text-amber-600" size={18} />}
                                             <h4 className="text-[11px] font-black uppercase text-amber-900">
-                                                {go.shipping_mode === 'bulk_to_gom' ? __('Bulk Delivery to GOM') : __('Direct Individual Delivery')}
+                                                {go.shipping_mode === 'bulk_to_gom' ? __('Consolidated Port Export') : __('Direct Warehouse Forwarding')}
                                             </h4>
                                         </div>
                                         <p className="text-[11px] text-amber-800 leading-relaxed font-bold">
                                             {go.shipping_mode === 'bulk_to_gom' 
-                                                ? __('All items will be sent to the GOM in one box. Participants split the international shipping fee for big savings!') 
-                                                : __('Items are sent directly to each participant from our warehouse. Participants split the domestic shipping cost from the creator.')}
+                                                ? __('All allocated items are securely consolidated at CirclePort Central Terminal before tax-free collective export for maximum freight saving.') 
+                                                : __('Items are carefully verified through our central consolidation warehouse and forwarded directly to your registered international destination.')}
                                         </p>
                                     </div>
                                     <div className="space-y-3">
                                         <h4 className="text-[11px] font-black uppercase text-amber-900">{__('No Cancellations')}</h4>
-                                        <p className="text-[11px] text-amber-800 leading-relaxed font-bold">{__('Once the goal is met, cancellations are not accepted to ensure the shipping split remains fair for everyone.')}</p>
+                                        <p className="text-[11px] text-amber-800 leading-relaxed font-bold">{__('Once the box campaign achieves its goal, cancellations are strictly unavailable to ensure the shared freight split remains fair for all global participants.')}</p>
                                     </div>
                                 </div>
                                 
@@ -351,7 +366,7 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                             </div>
                         </div>
 
-                        {/* 注文サマリー（右サイド） */}
+                        {/* RIGHT SIDE: ORDER SUMMARY */}
                         <div className="lg:col-span-4 space-y-6">
                             <div className="sticky top-24 space-y-6">
                                 <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl space-y-8">
@@ -366,12 +381,20 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                                 <span>{__('Goods Total')}</span>
                                                 <span className="font-black">{renderDualCurrency(goodsTotal, adjustedCurrency)}</span>
                                             </div>
+
+                                            {/* 【5/20仕様反映】：数量に連動する倉庫中継ハンドリング費のシミュレーション行 */}
+                                            {warehouseHandlingFee > 0 && (
+                                                <div className="flex justify-between items-center text-sm text-cyan-400">
+                                                    <span>{__('Warehouse Handling Fee')}</span>
+                                                    <span className="font-black">+{renderDualCurrency(warehouseHandlingFee, adjustedCurrency)}</span>
+                                                </div>
+                                            )}
+
                                             <div className="flex justify-between items-center text-sm">
                                                 <span>{__('GO Fee')} (5%)</span>
                                                 <span className="font-black">{renderDualCurrency(goFee, adjustedCurrency)}</span>
                                             </div>
 
-                                            {/* チップ内訳の表示 */}
                                             {data.tip_amount > 0 && (
                                                 <div className="flex justify-between items-center text-sm text-cyan-400">
                                                     <span>{__('Tip')}</span>
@@ -380,9 +403,14 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                             )}
 
                                             <div className="flex justify-between items-end pt-4 border-t border-white/10">
-                                                <span className="text-xs font-black uppercase text-cyan-400">{__('Payable Now')}</span>
+                                                <div>
+                                                    <span className="text-xs font-black uppercase text-cyan-400 block leading-none">{__('Payable Now')}</span>
+                                                    <span className="text-[8px] font-black bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded uppercase tracking-wider block w-fit mt-1.5">
+                                                        Tax-Free Export
+                                                    </span>
+                                                </div>
                                                 <div className="text-right">
-                                                    <span className="text-3xl font-black italic block leading-none">
+                                                    <span className="text-3xl font-black italic block leading-none text-cyan-400">
                                                         {renderDualCurrency(totalAmount, adjustedCurrency)}
                                                     </span>
                                                     {currency.code !== 'JPY' && (
@@ -400,12 +428,26 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{__('Shipping Destination')}</label>
                                             <div className="relative">
                                                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                                                <select className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-xs font-bold focus:ring-2 focus:ring-cyan-500 transition-all appearance-none" value={data.address_id} onChange={e => setData('address_id', e.target.value)}>
+                                                <select className="w-full bg-slate-800 border-none rounded-2xl py-4 pl-12 pr-4 text-xs font-bold focus:ring-2 focus:ring-cyan-500 transition-all appearance-none cursor-pointer" value={data.address_id} onChange={e => setData('address_id', e.target.value)}>
                                                     <option value="">{__('Select Address')}</option>
                                                     {addresses.map(addr => (
                                                         <option key={addr.id} value={addr.id}>{addr.address_line1}, {addr.country?.name}</option>
                                                     ))}
                                                 </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">▼</div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 【新設・5/20物理フロントガード】：日本住所が選ばれた瞬間に美しく出現する警告パネル */}
+                                    {isDomesticAddress && (
+                                        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex gap-3 text-rose-400">
+                                            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5 text-rose-500" />
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-wide text-rose-500">{__('Domestic Order Prohibited')}</p>
+                                                <p className="text-[9px] font-bold leading-normal text-slate-400">
+                                                    {__('※CirclePort operates as an exclusive international shipping platform. Deliveries to addresses inside Japan are entirely unsupported. Please select an overseas destination.')}
+                                                </p>
                                             </div>
                                         </div>
                                     )}
@@ -423,7 +465,8 @@ export default function Show({ go, addresses = [], language, previousOrder = nul
                                                 {__('Already Joined')}
                                             </div>
                                         ) : (
-                                            <button onClick={() => post(route('fan.go.join', go.id))} disabled={processing || totalAmount === 0 || isExpired || !isAgreed} className={`w-full py-6 rounded-2xl font-black uppercase text-sm transition-all shadow-lg flex items-center justify-center gap-3 ${(!isAgreed || processing || totalAmount === 0 || isExpired) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-white hover:text-slate-900'}`}>
+                                            /* 日本国内の住所が選択されている場合は、安全のためボタンを一律完全ロック（disabled）します */
+                                            <button onClick={() => post(route('fan.go.join', go.id))} disabled={processing || totalAmount === 0 || isExpired || !isAgreed || isDomesticAddress} className={`w-full py-6 rounded-2xl font-black uppercase text-sm transition-all shadow-lg flex items-center justify-center gap-3 ${(!isAgreed || processing || totalAmount === 0 || isExpired || isDomesticAddress) ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none' : 'bg-cyan-500 text-white hover:bg-white hover:text-slate-900'}`}>
                                                 {isExpired ? <AlertCircle size={18} /> : <Rocket size={18} />}
                                                 {isExpired ? __('Ended') : (processing ? __('Processing...') : __('Join Box'))}
                                             </button>

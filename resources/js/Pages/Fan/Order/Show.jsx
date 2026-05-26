@@ -1,283 +1,281 @@
-import React from 'react';
+// resources/js/Pages/Fan/Order/Show.jsx
+
+import React, { useMemo } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { ArrowLeft, MapPin, CreditCard, ReceiptText, Calendar, AlertCircle, PackageCheck, Truck, Download } from 'lucide-react';
+import { renderDualCurrency } from '@/Utils/helpers';
+import { 
+    Package, Calendar, MapPin, CreditCard, ArrowLeft, 
+    CheckCircle2, Circle, Box, Globe, Sparkles
+} from 'lucide-react';
 
-// --- 定数定義 ---
-const STATUS_PENDING = 10;                // 支払い待ち
-const STATUS_PAID = 20;                   // 支払い完了（受注）
-const STATUS_SHIPPED_TO_WAREHOUSE = 30;   // クリエイターから倉庫へ発送中
-const STATUS_ARRIVED_AT_WAREHOUSE = 40;   // 倉庫に到着（検品済）
-const STATUS_COMPLETED = 50;              // 全工程完了
-const STATUS_CANCELLED = 90;              // キャンセル
-
-const TYPE_ITEM_TOTAL = 1;      // 商品代金合計
-const TYPE_DOMESTIC_SHIPPING = 2; // 国内送料
-const TYPE_INTL_SHIPPING = 3;   // 国際送料
-const TYPE_HANDLING_FEE = 4;    // 手数料
-const TYPE_TAX = 5;             // 税金
-const TYPE_DISCOUNT = 6;        // 割引
-
-export default function Show({ order }) {
-    const { language, locale } = usePage().props;
+export default function Show({ order, fee_breakdown = null }) {
+    const { language, currency } = usePage().props;
     const __ = (key) => (language && language[key]) ? language[key] : key;
 
-    // --- ステータス設定の取得 ---
-    const getStatusInfo = (status) => {
-        const s = Number(status);
-        const configs = {
-            [STATUS_PENDING]: { 
-                label: __('Waiting for Payment'), 
-                color: 'text-amber-600 bg-amber-50 border-amber-100',
-                icon: <CreditCard size={14} />
-            },
-            [STATUS_PAID]: { 
-                label: __('Paid'), 
-                color: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-                icon: <PackageCheck size={14} />
-            },
-            [STATUS_SHIPPED_TO_WAREHOUSE]: { 
-                label: __('In Transit to Warehouse'), 
-                color: 'text-blue-600 bg-blue-50 border-blue-100',
-                icon: <Truck size={14} />
-            },
-            [STATUS_ARRIVED_AT_WAREHOUSE]: { 
-                label: __('Arrived at Warehouse'), 
-                color: 'text-indigo-600 bg-indigo-50 border-indigo-100',
-                icon: <MapPin size={14} />
-            },
-            [STATUS_COMPLETED]: { 
-                label: __('Completed'), 
-                color: 'text-slate-600 bg-slate-50 border-slate-200',
-                icon: <PackageCheck size={14} />
-            },
-            [STATUS_CANCELLED]: { 
-                label: __('Cancelled'), 
-                color: 'text-rose-600 bg-rose-50 border-rose-100',
-                icon: <AlertCircle size={14} />
-            },
+    // 【新設・超堅牢ガード】：引数が足りない場合でもDBデータから内訳を自動逆算してクラッシュを永久防止
+    const finalBreakdown = useMemo(() => {
+        if (fee_breakdown) return fee_breakdown;
+
+        // order.breakdownsリレーション、または order_items の小計から安全に復元
+        const bItems = order?.breakdowns || [];
+        
+        // 1: 商品小計, 2: 倉庫中継費, 4: システム手数料
+        const itemTotal = bItems.find(b => b.type === 1)?.amount 
+            || order?.order_items?.reduce((sum, i) => sum + (Number(i.unit_price) * i.quantity), 0) 
+            || 0;
+            
+        const shipping = bItems.find(b => b.type === 2)?.amount || 0;
+        const fee = bItems.find(b => b.type === 4)?.amount || 0;
+        
+        // 注文メモ(notes)に格納されているチップ応援金を安全にデコード抽出
+        let tipTotal = 0;
+        if (order?.notes) {
+            try {
+                const decoded = JSON.parse(order.notes);
+                if (decoded && decoded.creator_tip) {
+                    tipTotal = Number(decoded.creator_tip);
+                }
+            } catch (e) {
+                tipTotal = 0;
+            }
+        }
+
+        return {
+            item_total: itemTotal,
+            shipping: shipping,
+            fee: fee,
+            tip_total: tipTotal,
+            total: Number(order?.total_amount || (itemTotal + shipping + fee + tipTotal))
         };
-        return configs[s] || { label: String(s), color: 'text-slate-500 bg-slate-50', icon: null };
-    };
+    }, [fee_breakdown, order]);
 
-    const statusInfo = getStatusInfo(order.status);
+    // クラファン風製造プロセスの動的ステップ定義
+    const currentStep = useMemo(() => {
+        switch (order?.status) {
+            case 'pending':
+            case 'authorized':
+                return 0; // 1次決済完了
+            case 'manufacturing':
+            case 'processing':
+                return 1; // 製造中
+            case 'arrived_at_warehouse':
+            case 'inspecting':
+                return 2; // 倉庫到着・検品中
+            case 'international_shipping':
+            case 'shipped':
+                return 3; // 国際配送中
+            case 'completed':
+            case 'delivered':
+                return 4; // 配達完了
+            default:
+                return 0;
+        }
+    }, [order?.status]);
 
-    // --- 金額内訳取得ヘルパー ---
-    const getAmount = (typeId) => {
-        const b = order.payment?.breakdowns?.find(item => Number(item.type) === typeId);
-        return b ? parseFloat(b.amount) : 0;
-    };
-
-    // --- 国名の翻訳取得 ---
-    const getCountryDisplayName = (country) => {
-        if (!country) return '';
-        const translation = country.translations?.find(t => t.locale === locale);
-        return translation?.name || country.name;
-    };
-
-    const address = order.shipping_address;
-    const pm = order.payment_method;
+    const steps = [
+        { label: __('Order Placed'), desc: __('Phase-1 Paid') },
+        { label: __('Manufacturing'), desc: __('サークル製造中') },
+        { label: __('Warehouse Arrived'), desc: __('倉庫到着・検品中') },
+        { label: __('Intl. Shipping'), desc: __('Phase-2 国際配送') },
+        { label: __('Delivered'), desc: __('ファンへお届け') }
+    ];
 
     return (
         <FanLayout>
-            <Head title={`${__('Order')} #${order.id}`} />
-            
-            <div className="max-w-[1000px] mx-auto px-6 py-12">
-                {/* ヘッダーセクション */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <Head title={`${__('Order Details')} #${order?.id} - CirclePort`} />
+
+            <div className="max-w-[1000px] mx-auto px-6 py-16 font-sans text-slate-800">
+                <Link href={route('fan.orders.index')} className="group inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 mb-8 transition-colors">
+                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                    {__('Back to Orders')}
+                </Link>
+
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 border-b border-slate-100 pb-8">
                     <div>
-                        <Link href={route('fan.orders.index')} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-6 w-fit transition-colors group">
-                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            <span className="text-xs font-black uppercase tracking-widest">{__('Back to History')}</span>
-                        </Link>
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-3xl font-bold text-slate-900">{__('Order')}</h1>
-                            <span className="text-3xl font-light text-slate-300">#{order.id}</span>
+                        <div className="flex items-center gap-3 text-xs font-black uppercase tracking-widest text-cyan-600 mb-2">
+                            <Package size={14} /> {__('Order Details')}
                         </div>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">
+                            Order #{order?.id}
+                        </h1>
                     </div>
-                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500 bg-white border border-slate-100 shadow-sm px-5 py-2.5 rounded-full">
-                        <Calendar size={14} className="text-slate-400" />
-                        {order.created_at ? new Date(order.created_at).toLocaleDateString() : '-'}
+                    <div className="flex items-center gap-6 text-xs text-slate-400 font-bold">
+                        <span className="flex items-center gap-1.5"><Calendar size={14} /> {order?.created_at ? new Date(order.created_at).toLocaleDateString() : ''}</span>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${order?.status === 'completed' || order?.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-cyan-50 text-cyan-600'}`}>
+                            {__(order?.status_label || order?.status)}
+                        </span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    {/* メインコンテンツ（左） */}
-                    <div className="lg:col-span-7 space-y-8">
-                        
-                        {/* 商品リストカード */}
-                        <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
-                            <h2 className="text-lg font-bold mb-8 flex items-center gap-3">
-                                <ReceiptText className="text-cyan-600" size={20} />
-                                {__('Order Items')}
-                            </h2>
-                            <div className="space-y-8">
-                                {order.order_items?.map((item) => (
-                                    <div key={item.id} className="flex gap-6 group">
-                                        <div className="w-20 h-24 bg-slate-50 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100 shadow-inner">
-                                            <img 
-                                                src={item.product?.images?.[0]?.url || item.product?.image} 
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                                            />
-                                        </div>
-                                        <div className="flex-1 py-1">
-                                            <h4 className="text-sm font-bold text-slate-900 mb-1 leading-snug">{item.product?.name}</h4>
-                                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4">
-                                                {item.variation?.name || 'Standard'}
-                                            </p>
+                {/* クラファン風の「視覚的製造ステータスバー」 */}
+                <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm mb-12">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center gap-2">
+                        <Sparkles size={12} className="text-cyan-500" />
+                        {__('Production & Fulfillment Status')}
+                    </p>
+                    
+                    <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-4">
+                        <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-slate-100 md:left-0 md:right-0 md:top-[15px] md:h-0.5 md:w-full -z-10">
+                            <div 
+                                className="bg-cyan-500 h-full md:h-full transition-all duration-1000 origin-left"
+                                style={{ width: '100%' }}
+                            />
+                        </div>
 
-                                            {item.product?.product_type === 2 && order.status >= STATUS_PAID && (
-                                                <a 
-                                                    href={route('fan.orders.download', [order.id, item.id])}
-                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-50 text-cyan-700 rounded-xl text-xs font-bold hover:bg-cyan-100 transition-colors mb-4"
-                                                >
-                                                    <Download size={14} />
-                                                    {__('Download Digital Content')}
-                                                </a>
-                                            )}
-                                            <p className="text-xs font-medium text-slate-500">
-                                                ¥{parseFloat(item.unit_price || 0).toLocaleString()} <span className="mx-1 text-slate-300">×</span> {item.quantity}
-                                            </p>
-                                        </div>
-                                        <div className="text-right py-1">
-                                            <span className="text-sm font-bold text-slate-900">
-                                                ¥{(parseFloat(item.unit_price || 0) * item.quantity).toLocaleString()}
-                                            </span>
-                                        </div>
+                        {steps.map((step, idx) => {
+                            const isDone = idx <= currentStep;
+                            const isCurrent = idx === currentStep;
+
+                            return (
+                                <div key={idx} className="flex md:flex-col items-center md:text-center gap-4 md:gap-3 flex-1 w-full relative z-10">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 ${
+                                        isDone ? 'bg-cyan-500 text-white ring-4 ring-cyan-50 shadow-lg shadow-cyan-100' : 'bg-white text-slate-300 border-2 border-slate-200'
+                                    }`}>
+                                        {isDone ? <CheckCircle2 size={16} strokeWidth={3} /> : <Circle size={10} className="fill-slate-200 text-transparent" />}
                                     </div>
-                                ))}
+                                    <div className="text-left md:text-center">
+                                        <p className={`text-xs font-black uppercase tracking-tight ${isCurrent ? 'text-cyan-600' : isDone ? 'text-slate-800' : 'text-slate-400'}`}>
+                                            {step.label}
+                                        </p>
+                                        <p className="text-[10px] font-medium text-slate-400 mt-0.5 leading-none">
+                                            {step.desc}
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                    {/* LEFT: ORDER ITEMS LIST */}
+                    <div className="lg:col-span-7 space-y-6">
+                        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                            <h2 className="text-lg font-black text-slate-900 mb-6 uppercase tracking-tight">{__('Ordered Items')}</h2>
+                            <div className="space-y-6">
+                                {order?.order_items?.map((item) => {
+                                    const displayName = item.product_variant 
+                                        ? (item.product_variant.translations?.[0]?.variant_name || item.product_variant.variant_name)
+                                        : (item.product?.translations?.[0]?.name || item.product?.name);
+
+                                    return (
+                                        <div key={item.id} className="flex gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                                            <div className="w-16 h-20 bg-white rounded-xl overflow-hidden border border-slate-200 flex-shrink-0">
+                                                <img 
+                                                    src={item.product?.images?.[0]?.url || '/images/no-image.jpg'} 
+                                                    className="w-full h-full object-cover" 
+                                                    alt="" 
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-sm font-bold text-slate-900 truncate">{displayName}</h3>
+                                                {item.product_variant && (
+                                                    <p className="text-[10px] font-black text-cyan-600 uppercase mt-0.5">
+                                                        {item.product?.translations?.[0]?.name}
+                                                    </p>
+                                                )}
+                                                <p className="text-xs text-slate-500 mt-2 font-medium">
+                                                    {__('Quantity')}: {item.quantity} × {renderDualCurrency(item.unit_price, currency)}
+                                                </p>
+                                            </div>
+                                            <div className="text-right justify-between flex flex-col">
+                                                <span className="text-sm font-black text-slate-900">
+                                                    {renderDualCurrency(item.unit_price * item.quantity, currency)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        {/* 配送先カード */}
-                        <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
-                            <h2 className="text-lg font-bold mb-6 flex items-center gap-3">
-                                <MapPin className="text-cyan-600" size={20} />
-                                {__('Shipping Address')}
-                            </h2>
-                            {address ? (
-                                <div className="bg-slate-50 rounded-[2rem] p-7 border border-slate-100">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div>
-                                            <p className="text-base font-bold text-slate-900 mb-1">{address.name}</p>
-                                            <p className="text-xs text-slate-500 font-medium">{address.phone}</p>
-                                        </div>
-                                        <span className="text-[10px] px-3 py-1 bg-white border border-slate-200 rounded-full text-slate-400 font-black uppercase tracking-tighter shadow-sm">
-                                            {__('Destination')}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="space-y-1.5 text-sm text-slate-600 border-t border-slate-200 pt-5">
-                                        <p className="font-bold text-slate-900 mb-2">〒{address.postal_code}</p>
-                                        <p>{address.state} {address.city}</p>
-                                        <p>{address.address_line1}</p>
-                                        {address.address_line2 && <p>{address.address_line2}</p>}
-                                        
-                                        <div className="mt-4 pt-4 border-t border-slate-200/60 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                                            <p className="text-slate-900 font-bold tracking-wide">
-                                                {getCountryDisplayName(address.country)}
-                                            </p>
-                                        </div>
+                        {/* 配送先 ＆ 決済方法情報 */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm space-y-3">
+                                <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><MapPin size={12} /> {__('Shipping Destination')}</label>
+                                <div className="text-xs font-bold text-slate-700 leading-relaxed">
+                                    <p className="font-black text-slate-900 text-sm mb-1">{order?.shipping_address?.name || order?.address?.name}</p>
+                                    <p>{order?.shipping_address?.address_line1 || order?.address?.address_line1}</p>
+                                    {order?.shipping_address?.address_line2 && <p>{order.shipping_address.address_line2}</p>}
+                                    <p>{order?.shipping_address?.city || order?.address?.city}, {order?.shipping_address?.state || order?.address?.state}</p>
+                                    <p className="text-cyan-600 font-black mt-1 uppercase tracking-wider">{order?.shipping_address?.country_code || order?.address?.country_code} {order?.shipping_address?.postal_code || order?.address?.postal_code}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm space-y-3">
+                                <label className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5"><CreditCard size={12} /> {__('Payment Method')}</label>
+                                <div className="text-xs font-bold text-slate-700">
+                                    <p className="font-black text-slate-900 text-sm mb-1 uppercase">{order?.payment_method?.brand || __('Credit Card')}</p>
+                                    <p className="font-mono text-slate-500">**** **** **** {order?.payment_method?.last4 || '****'}</p>
+                                    <div className="mt-3 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-900 text-white text-[9px] font-black tracking-widest uppercase">
+                                        <CheckCircle2 size={10} /> {__('Secured via Stripe')}
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-12 px-6 bg-slate-50 rounded-[2rem] text-slate-400 text-sm border border-dashed border-slate-200">
-                                    <AlertCircle size={24} className="mb-2 opacity-30" />
-                                    <p>{__('Address information is unavailable.')}</p>
-                                </div>
-                            )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* サイドバー（右） */}
+                    {/* RIGHT: BILLING SUMMARY (【安全ガード適用版】) */}
                     <div className="lg:col-span-5">
-                        <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white sticky top-8 shadow-xl">
-                            {/* ステータスバッジ */}
-                            <div className="mb-10">
-                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${statusInfo.color}`}>
-                                    {statusInfo.icon}
-                                    {statusInfo.label}
+                        <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-6">
+                            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{__('Payment Summary')}</h2>
+                            
+                            <div className="space-y-4 text-sm font-medium text-slate-500 border-b border-slate-200/60 pb-6">
+                                <div className="flex justify-between">
+                                    <span>{__('Items Subtotal')}</span>
+                                    <span className="font-bold text-slate-800">{renderDualCurrency(finalBreakdown.item_total, currency)}</span>
                                 </div>
-                            </div>
 
-                            <h3 className="text-xl font-bold mb-8">{__('Payment Summary')}</h3>
-
-                            {/* 金額内訳 */}
-                            <div className="space-y-4 mb-10 border-b border-slate-800 pb-10 text-sm text-slate-400">
-                                <div className="flex justify-between items-center">
-                                    <span>{__('Items Total')}</span>
-                                    <span className="text-white font-medium">¥{getAmount(TYPE_ITEM_TOTAL).toLocaleString()}</span>
-                                </div>
-                                
-                                {getAmount(TYPE_DOMESTIC_SHIPPING) > 0 && (
-                                    <div className="flex justify-between items-center">
-                                        <span>{__('Domestic Shipping')}</span>
-                                        <span className="text-white font-medium">¥{getAmount(TYPE_DOMESTIC_SHIPPING).toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                {getAmount(TYPE_INTL_SHIPPING) > 0 && (
-                                    <div className="flex justify-between items-center">
-                                        <span>{__('International Shipping')}</span>
-                                        <span className="text-white font-medium">¥{getAmount(TYPE_INTL_SHIPPING).toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                {getAmount(TYPE_HANDLING_FEE) > 0 && (
-                                    <div className="flex justify-between items-center">
-                                        <span>{__('Handling Fee')}</span>
-                                        <span className="text-white font-medium">¥{getAmount(TYPE_HANDLING_FEE).toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                {getAmount(TYPE_TAX) > 0 && (
-                                    <div className="flex justify-between items-center">
-                                        <span>{__('Tax')}</span>
-                                        <span className="text-white font-medium">¥{getAmount(TYPE_TAX).toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                {getAmount(TYPE_DISCOUNT) !== 0 && (
-                                    <div className="flex justify-between items-center text-emerald-400 font-bold">
-                                        <span>{__('Discount')}</span>
-                                        <span>-¥{Math.abs(getAmount(TYPE_DISCOUNT)).toLocaleString()}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* 合計金額 */}
-                            <div className="space-y-8">
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <span className="text-xs font-black uppercase text-slate-500 tracking-[0.2em] block mb-2">{__('Total Paid')}</span>
-                                        <p className="text-[10px] text-slate-500">{__('Includes all taxes and fees')}</p>
-                                    </div>
-                                    <span className="text-5xl font-light tracking-tighter text-white">
-                                        ¥{parseFloat(order.total_amount).toLocaleString()}
+                                <div className="flex justify-between">
+                                    <span>{__('Warehouse Handling Fee')}</span>
+                                    <span className="font-bold text-slate-800">
+                                        {finalBreakdown.shipping === 0 ? __('FREE') : `+${renderDualCurrency(finalBreakdown.shipping, currency)}`}
                                     </span>
                                 </div>
 
-                                {/* 支払いカード情報 */}
-                                <div className="pt-8 border-t border-slate-800 flex items-start gap-4">
-                                    <div className="p-3 bg-slate-800 rounded-2xl text-cyan-400 shadow-inner">
-                                        <CreditCard size={22} />
+                                <div className="flex justify-between">
+                                    <span>{order?.is_go_order ? __('GO Order Fee (5%)') : __('System Fee (8%)')}</span>
+                                    <span className="font-bold text-slate-800">+{renderDualCurrency(finalBreakdown.fee, currency)}</span>
+                                </div>
+
+                                {finalBreakdown.tip_total > 0 && (
+                                    <div className="flex justify-between text-cyan-600 font-bold">
+                                        <span>{__('Creator Support Tip')}</span>
+                                        <span>+{renderDualCurrency(finalBreakdown.tip_total, currency)}</span>
                                     </div>
-                                    <div className="text-xs">
-                                        <p className="text-slate-500 uppercase font-black tracking-widest mb-1.5">{__('Method')}</p>
-                                        {pm ? (
-                                            <div className="space-y-1">
-                                                <p className="text-white font-bold text-sm uppercase tracking-wide">
-                                                    {pm.brand} <span className="mx-1 opacity-20">/</span> •••• {pm.last4}
-                                                </p>
-                                                <p className="text-slate-500 font-medium">
-                                                    EXP {String(pm.exp_month).padStart(2, '0')} / {pm.exp_year}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <p className="text-white italic opacity-40">{__('Payment details unavailable')}</p>
-                                        )}
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <span className="text-xs font-black uppercase text-slate-400 tracking-wider block leading-none mb-1">{__('Phase-1 Total')}</span>
+                                        <span className="text-[9px] font-black bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded uppercase tracking-widest">
+                                            {__('Tax-Free Exported')}
+                                        </span>
                                     </div>
+                                    <div className="text-right">
+                                        <span className="text-2xl font-black italic text-cyan-600">
+                                            {renderDualCurrency(finalBreakdown.total, currency)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {currency?.code !== 'JPY' && (
+                                    <p className="text-[9px] text-slate-400 font-bold text-right italic pt-1">
+                                        {__('* Converted including 5% forex spread')}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="p-4 bg-white border border-slate-100 rounded-2xl flex gap-3 text-slate-500">
+                                <Box size={16} className="text-cyan-500 flex-shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-900">{__('Next Step: Phase-2')}</p>
+                                    <p className="text-[9px] font-medium leading-normal text-slate-400">
+                                        {__('When items arrive at the central warehouse, international freight will be measured. You will receive an invoice for the Phase-2 shipping fee.')}
+                                    </p>
                                 </div>
                             </div>
                         </div>

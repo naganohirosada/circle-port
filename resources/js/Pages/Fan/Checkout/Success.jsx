@@ -1,8 +1,10 @@
+// resources/js/Pages/Fan/Checkout/Success.jsx
+
 import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { CheckCircle, Package, ArrowRight, ShoppingBag, Mail, DollarSign } from 'lucide-react';
-import { renderDualCurrency, __ } from '@/Utils/helpers';
+import { CheckCircle, Package, ArrowRight, ShoppingBag, DollarSign } from 'lucide-react';
+import { renderDualCurrency } from '@/Utils/helpers';
 
 export default function Success({ order, fee_breakdown }) {
     const { language, currency } = usePage().props;
@@ -13,7 +15,7 @@ export default function Success({ order, fee_breakdown }) {
             <Head title={`${__('Order Completed')} - CirclePort`} />
 
             <div className="max-w-[800px] mx-auto px-6 py-24 text-center">
-                {/* 成功アイコンのアニメーション演出 */}
+                
                 <div className="mb-10 flex justify-center">
                     <div className="relative">
                         <div className="absolute inset-0 bg-cyan-400 blur-2xl opacity-20 animate-pulse"></div>
@@ -30,7 +32,7 @@ export default function Success({ order, fee_breakdown }) {
                     {__('We will notify you as soon as your items arrive at our warehouse.')}
                 </p>
 
-                {/* 注文情報カード */}
+                {/* 注文番号 ＆ 1次決済総請求額のネイビーハイライトボード */}
                 <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl mb-12">
                     <div className="flex flex-col md:flex-row items-center justify-around gap-8">
                         <div className="text-center md:text-left">
@@ -48,21 +50,21 @@ export default function Success({ order, fee_breakdown }) {
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 block mb-2">
                                 {__('Total Amount')}
                             </span>
-                            <span className="text-2xl font-light tracking-wider">
+                            <span className="text-2xl font-light tracking-wider text-cyan-400 font-bold">
                                 {renderDualCurrency(fee_breakdown.total, currency)}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* 料金内訳カード */}
+                {/* 金額内訳カード（【大掃除】：日本の国内消費税オブジェクトを完全撤廃） */}
                 <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl mb-12">
                     <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
                         <DollarSign size={20} className="text-slate-600" />
                         {__('Order Summary')}
                     </h2>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 text-left">
                         <div className="flex justify-between text-sm">
                             <span className="text-slate-600">{__('Items Total')}</span>
                             <span className="font-bold text-slate-900">
@@ -70,24 +72,11 @@ export default function Success({ order, fee_breakdown }) {
                             </span>
                         </div>
 
+                        {/* 【仕様変更統一】：Warehouse Handling Fee（倉庫中継手数料）の正確なコンバート表示 */}
                         <div className="flex justify-between text-sm">
-                            <span className="text-slate-600">{__('Tax')}</span>
-                            <span className="font-bold text-slate-900">
-                                {renderDualCurrency(fee_breakdown.item_tax, currency)}
-                            </span>
-                        </div>
-
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-600">{__('Shipping')}</span>
+                            <span className="text-slate-600">{__('Warehouse Handling Fee')}</span>
                             <span className="font-bold text-slate-900">
                                 {renderDualCurrency(fee_breakdown.shipping, currency)}
-                            </span>
-                        </div>
-
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-600">{__('Shipping Tax')}</span>
-                            <span className="font-bold text-slate-900">
-                                {renderDualCurrency(fee_breakdown.shipping_tax, currency)}
                             </span>
                         </div>
 
@@ -104,19 +93,18 @@ export default function Success({ order, fee_breakdown }) {
 
                         <div className="flex justify-between text-lg font-bold">
                             <span className="text-slate-900">{__('Total')}</span>
-                            <span className="text-slate-900">
+                            <span className="text-slate-950 text-xl font-black italic text-cyan-600">
                                 {renderDualCurrency(fee_breakdown.total, currency)}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* 注文商品リスト */}
-                                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl mb-12 text-left">
+                {/* 購入された同人グッズ・ボイス作品アイテムの明細リスト */}
+                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl mb-12 text-left">
                     <h2 className="text-xl font-bold text-slate-900 mb-6">{__('Order Items')}</h2>
                     <div className="space-y-4">
                         {order.order_items?.map((item) => {
-                            // 表示名の決定（バリエーションがあればそちらを優先）
                             const displayName = item.variation 
                                 ? (item.variation.translations?.[0]?.name || item.variation.name_en)
                                 : (item.product?.translations?.[0]?.name || item.product?.name_en);
@@ -154,11 +142,11 @@ export default function Success({ order, fee_breakdown }) {
                     </div>
                 </div>
 
-                {/* 次のアクションボタン */}
+                {/* 次の連続回遊・履歴確認アクションボタン一式 */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link 
                         href={route('fan.products.index')}
-                        className="w-full sm:w-auto px-10 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-cyan-600 transition-all flex items-center justify-center gap-3"
+                        className="w-full sm:w-auto px-10 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-cyan-600 transition-all flex items-center justify-center gap-3 shadow-md shadow-slate-100"
                     >
                         <ShoppingBag size={18} />
                         {__('Continue Shopping')}

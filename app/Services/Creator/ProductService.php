@@ -274,7 +274,9 @@ class ProductService
             'products'   => $this->repository->getFilteredProductsForCreator($creatorId, $filters),
             'filters'    => $filters,
             'categories' => Category::with('subCategories')->get(),
-            'tags'       => Tag::all(),
+            'tags'       => Tag::with(['translations' => function ($query) {
+                                $query->where('locale', 'ja');
+                            }])->get(),
         ];
     }
 }

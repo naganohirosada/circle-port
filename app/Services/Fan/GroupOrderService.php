@@ -10,6 +10,8 @@ use App\Models\GroupOrder;
 use App\Models\GroupOrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Order;
+use App\Models\Currency;
+use App\Enums\PaymentStatus;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
 use App\Services\Common\StripeService;
@@ -18,7 +20,7 @@ class GroupOrderService
 {
     protected $repository;
     protected $stripeService;
-    private const GO_FEE_RATE = 0.05;
+    private const GO_FEE_RATE = 0.05; // GO優遇手数料率：5%
 
     public function __construct(
         GroupOrderRepositoryInterface $repository,
@@ -31,22 +33,18 @@ class GroupOrderService
 
     /**
      * GOの作成ロジック
-     * 鉄則：親テーブル作成後に子テーブルをループで作成する
      */
     public function createGroupOrder(array $data)
     {
-
         return DB::transaction(function () use ($data) {
             try {
-                $data['status'] = GroupOrder::STATUS_RECRUITING; // 募集中
+                $data['status'] = GroupOrder::STATUS_RECRUITING;
 
-                // 2. 親テーブル(group_orders)の作成
                 $groupOrder = $this->repository->create($data);
-                // 3. 子テーブル(group_order_items)の作成
                 foreach ($data['items'] as $itemData) {
                     $this->repository->createItem($groupOrder->id, $itemData);
                 }
-                if (!empty($data['allowed_fans'] )) {
+                if (!empty($data['allowed_fans'])) {
                     foreach ($data['allowed_fans'] as $allowedFan) {
                         $this->repository->createAllowedFan($groupOrder->id, $allowedFan);
                     }
@@ -62,7 +60,7 @@ class GroupOrderService
     }
 
     /**
-     * 招待用のファン検索ロジック
+     * 招待用のファン検索
      */
     public function searchFanForInvitation(?string $uniqueId)
     {
@@ -74,13 +72,7 @@ class GroupOrderService
 
     public function searchPublicGroupOrders(array $filters)
     {
-        // データの取得自体はRepositoryに任せる
-        $results = $this->repository->searchPublic($filters);
-
-        // 例えば「検索結果が0件なら特定のロジックを走らせる」
-        // といった「ビジネス判断」をここに書く
-        
-        return $results;
+        return $this->repository->searchPublic($filters);
     }
 
     /**
@@ -91,6 +83,9 @@ class GroupOrderService
         return $this->repository->getCategoriesWithSub();
     }
 
+    /**
+     * 【5/20仕様変更】：GOM承認制に伴う仮売上ホールド（オーソリ）参加処理
+     */
     public function joinGroupOrder(int $goId, int $fanId, array $input)
     {
         $go = $this->repository->findById($goId);
@@ -99,6 +94,13 @@ class GroupOrderService
         $shippingAddress = \App\Models\Address::find($input['address_id']);
         if ($shippingAddress && $shippingAddress->country_code === 'JP') {
             throw new \Exception(__('Group Orders are available for international shipping only. Please use standard checkout for domestic shipping.'));
+        }
+
+        // 【新設・物理ガード】：主催者(GOM)と参加者の国コード一致チェック（同一国エリア同士で頭割りするため）
+        $gom = $go->organizer;
+        $gomAddress = $gom ? \App\Models\Address::find($gom->default_shipping_address_id) : null;
+        if ($gomAddress && $shippingAddress && $gomAddress->country_code !== $shippingAddress->country_code) {
+            throw new \Exception(__('You can only join Group Orders managed by an organizer located in your same country/region.'));
         }
 
         // 1. 期限チェック
@@ -111,60 +113,57 @@ class GroupOrderService
             throw new \Exception(__('This project is no longer accepting participants.'));
         }
 
-        // 3. 在庫/定員チェック
+        // 3. 定員制限チェック
         if ($go->max_participants > 0 && $go->participants_count >= $go->max_participants) {
             throw new \Exception(__('This project has reached its maximum capacity.'));
         }
 
-        // 2. 金額計算（日本円ベース）
+        // 4. 金額計算（中継ハンドリング費を個数ごとに累積する新生ロジック）
         $preparedItems = $this->prepareGoParticipantItems($input['items'], $go->id);
+        
+        // 厳格バリデーション：1サークルあたり1人3個までの購入上限チェック
+        $totalRequestQty = array_sum(array_column($preparedItems, 'quantity'));
+        if ($totalRequestQty > 3) {
+            throw new \Exception(__('According to fan-art guidelines, you can purchase up to 3 items per Group Order.'));
+        }
+
         $tipAmount = isset($input['tip_amount']) ? max(0, (int) round($input['tip_amount'])) : 0;
         $amounts = $this->calculateGoOrderAmounts($preparedItems, $tipAmount);
 
-        // 3. 【多通貨対応】外貨決済額の計算（フロント表示・Stripe請求額と完全に同期）
+        // 5. 多通貨対応：外貨与信ホールド額の計算（フロント表示と100%完全同期）
         $currency = $fan->currency ?? Currency::where('code', 'JPY')->first();
         $baseRate = (float) ($currency->exchange_rate ?? 1.0);
 
-        // 設定通貨が日本円以外の場合、5%の為替スプレッドを適用
+        // 日本円以外の場合、5%の為替スプレッドを正確に適用
         $spread = ($currency->code === 'JPY') ? 1.0 : (1.0 + config('circleport.checkout.forex_spread_max', 0.05));
         $rate = $baseRate * $spread;
         $settlementAmount = floor($amounts['total_amount'] * $rate);
 
         return DB::transaction(function () use ($go, $fan, $input, $preparedItems, $amounts, $tipAmount, $currency, $rate, $settlementAmount) {
-            // 1. 注文レコード作成
+            // 注文レコード作成（※決済ステータスはステップ1で拡張した AUTHORIZED_HOLD に設定）
             $order = $this->repository->createOrder([
                 'group_order_id'      => $go->id,
                 'fan_id'              => $fan->id,
                 'shipping_address_id' => $input['address_id'],
-                'total_amount'        => $amounts['total_amount'], // JPYベース合計
+                'total_amount'        => $amounts['total_amount'], 
                 'currency_id'         => $currency->id ?? config('circleport.default_currency_id'),
                 'settlement_currency' => $currency->code,
                 'settlement_rate'     => $rate,
-                'settlement_amount'   => $settlementAmount,        // スプレッド込外貨合計
+                'settlement_amount'   => $settlementAmount,        
                 'notes'               => $tipAmount > 0 ? json_encode(['creator_tip' => $tipAmount]) : null,
                 'items'               => $preparedItems,
-                'payment_status'      => GroupOrder::PAYMENT_STATUS_PENDING,
+                'payment_status'      => PaymentStatus::AUTHORIZED_HOLD->value, // 『仮売上（審査待ち）』へ
             ]);
 
-            // 2. メインの決済手段(is_primary = 1)があるかチェック
-            $primaryMethod = $fan->paymentMethods()->where('is_default', 1)->first();
+            // 【大掃除・ピボット】：即時決済を完全廃止し、Stripeの「manual capture（仮売上ホールド）」専用セッションを起動
+            $session = $this->stripeService->createEscrowAndSaveCardSession($order, [
+                'capture_method' => 'manual', // 与信枠のキープをStripeへ強制通知
+                'metadata' => [
+                    'order_type' => 'group_order_auth_hold',
+                    'group_order_id' => $go->id
+                ]
+            ]);
 
-            if ($primaryMethod) {
-                // --- パターン1: 保存済み決済手段（カード、PayPal等）で即時バックグラウンド決済を実行 ---
-                try {
-                    $intent = $this->stripeService->chargeSavedCard($order, $primaryMethod);
-                    
-                    if ($intent && $intent->status === 'succeeded') {
-                        $order->update(['payment_status' => GroupOrder::PAYMENT_STATUS_COMPLETED]);
-                        return $order;
-                    }
-                } catch (\Exception $e) {
-                    Log::error("GO Immediate payment failed for Order #{$order->id}: " . $e->getMessage());
-                }
-            }
-
-            // --- パターン2: 新規登録または保存なし ---
-            $session = $this->stripeService->createEscrowAndSaveCardSession($order);
             return $session->url;
         });
     }
@@ -213,16 +212,29 @@ class GroupOrderService
         return $prepared;
     }
 
+    /**
+     * 【5/20仕様変更対応】：GO専用の倉庫中継費・手数料合算ロジック
+     */
     private function calculateGoOrderAmounts(array $items, int $tipAmount = 0): array
     {
         $goodsTotal = array_reduce($items, fn($sum, $item) => $sum + ($item['price'] * $item['quantity']), 0);
-        $fee = (int) ceil($goodsTotal * self::GO_FEE_RATE);
+        
+        // 購入されるグッズの「総個数（数量）」を合算
+        $totalQuantity = array_reduce($items, fn($sum, $item) => $sum + $item['quantity'], 0);
+
+        // 【仕様変更】：GO注文でも、1個あたり500円の一括配送中継ハンドリング費を加算
+        $warehouseHandlingFee = $totalQuantity * 500;
+
+        // 【仕様変更】：GO手数料（5%）のベースは「作品代金小計 ＋ 一括配送中継費」の合算値
+        $baseTotalForFee = $goodsTotal + $warehouseHandlingFee;
+        $fee = (int) ceil($baseTotalForFee * self::GO_FEE_RATE);
 
         return [
-            'goods_total'   => $goodsTotal,
-            'go_fee'        => $fee,
-            'tip_amount'    => $tipAmount,
-            'total_amount'  => $goodsTotal + $fee + $tipAmount,
+            'goods_total'            => $goodsTotal,
+            'warehouse_handling_fee' => $warehouseHandlingFee,
+            'go_fee'                 => $fee,
+            'tip_amount'             => $tipAmount,
+            'total_amount'           => $baseTotalForFee + $fee + $tipAmount,
         ];
     }
 
@@ -233,7 +245,6 @@ class GroupOrderService
 
     /**
      * 期限切れGOのバッチ処理
-     * スケジューラから毎時呼び出す想定
      */
     public function processExpiredGroupOrders()
     {
@@ -243,18 +254,12 @@ class GroupOrderService
 
         foreach ($expiredGOs as $go) {
             DB::transaction(function () use ($go) {
-                // 現在の合計注文数を取得（Repository経由を推奨）
                 $currentQuantity = $go->participants()->sum('quantity');
 
                 if ($currentQuantity >= $go->min_quantity) {
-                    // 【成立】ステータス更新
                     $go->update(['status' => GroupOrder::STATUS_GOAL_MET]);
-                    // クリエイターへ通知
-                    // $this->notifyCreator($go);
                 } else {
-                    // 【不成立】ステータス更新
                     $go->update(['status' => GroupOrder::STATUS_FAILED]);
-                    // 全参加者に返金処理を実行
                     $this->refundParticipants($go);
                 }
             });
@@ -264,18 +269,12 @@ class GroupOrderService
     protected function refundParticipants(GroupOrder $go)
     {
         foreach ($go->participants as $participant) {
-            // Stripe等の決済サービスを通じて返金
-            // $this->paymentService->refund($participant->primaryOrder);
-            
-            // 注文ステータスをキャンセルに更新
             $participant->primaryOrder->update(['status' => 'refunded']);
         }
     }
 
     /**
      * 公開されている共同購入の検索
-     * * @param array $filters
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     public function searchPublic(array $filters = [])
     {

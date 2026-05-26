@@ -3,7 +3,7 @@ import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
 import { ChevronLeft, Save } from 'lucide-react';
 
-export default function Create({ countries }) {
+export default function Create({ countries = [] }) {
     const { language } = usePage().props;
     const __ = (key) => language?.[key] || key;
 
@@ -18,6 +18,19 @@ export default function Create({ countries }) {
         address_line2: '',
         is_default: false,
     });
+
+    // 【5/20仕様変更対応ハック】：国リストから日本（JP / Japan / 日本）を完全にフィルタリング排除
+    const filteredCountries = React.useMemo(() => {
+        return countries.filter(c => {
+            const code = String(c?.country_code || c?.code || '').toUpperCase();
+            const nameEn = String(c?.name_en || c?.name || '').toLowerCase();
+            const nameJa = String(c?.name_ja || c?.name || '');
+            
+            return code !== 'JP' && 
+                nameEn !== 'japan' && 
+                !nameJa.includes('日本');
+        });
+    }, [countries]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -37,7 +50,6 @@ export default function Create({ countries }) {
 
                 <form onSubmit={submit} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
                     
-                    {/* 名前 & 電話番号 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{__('Recipient Name')}</label>
@@ -51,50 +63,59 @@ export default function Create({ countries }) {
                         </div>
                     </div>
 
-                    {/* 国選択 */}
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{__('Country')}</label>
                         <select 
                             value={data.country_id} 
                             onChange={e => setData('country_id', e.target.value)}
-                            className="w-full bg-slate-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-500 transition-all"
+                            className="w-full bg-slate-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-500 transition-all cursor-pointer"
                         >
                             <option value="">{__('Select Country')}</option>
-                            {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            {filteredCountries.map(c => (
+                                <option key={c.id} value={c.id}>{c.name_en || c.name}</option>
+                            ))}
                         </select>
                         {errors.country_id && <div className="text-pink-500 text-xs ml-2">{errors.country_id}</div>}
                     </div>
 
-                    {/* 住所詳細 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{__('Postal Code')}</label>
                             <input type="text" value={data.postal_code} onChange={e => setData('postal_code', e.target.value)} className="w-full bg-slate-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-500 transition-all" />
+                            {errors.postal_code && <div className="text-pink-500 text-xs ml-2">{errors.postal_code}</div>}
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{__('State / Province')}</label>
                             <input type="text" value={data.state} onChange={e => setData('state', e.target.value)} className="w-full bg-slate-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-500 transition-all" />
+                            {errors.state && <div className="text-pink-500 text-xs ml-2">{errors.state}</div>}
                         </div>
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{__('City')}</label>
                         <input type="text" value={data.city} onChange={e => setData('city', e.target.value)} className="w-full bg-slate-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-500 transition-all" />
+                        {errors.city && <div className="text-pink-500 text-xs ml-2">{errors.city}</div>}
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{__('Address Line 1')}</label>
                         <input type="text" value={data.address_line1} onChange={e => setData('address_line1', e.target.value)} className="w-full bg-slate-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-500 transition-all" />
+                        {errors.address_line1 && <div className="text-pink-500 text-xs ml-2">{errors.address_line1}</div>}
                     </div>
 
-                    {/* デフォルト設定 */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{__('Address Line 2 (Optional)')}</label>
+                        <input type="text" value={data.address_line2 || ''} onChange={e => setData('address_line2', e.target.value)} className="w-full bg-slate-50 border-none rounded-2xl p-4 focus:ring-2 focus:ring-cyan-500 transition-all" />
+                        {errors.address_line2 && <div className="text-pink-500 text-xs ml-2">{errors.address_line2}</div>}
+                    </div>
+
                     <div className="flex items-center gap-3 pt-4 ml-2">
                         <input 
                             type="checkbox" 
                             id="is_default"
                             checked={data.is_default} 
                             onChange={e => setData('is_default', e.target.checked)}
-                            className="w-5 h-5 text-cyan-600 rounded border-slate-200 focus:ring-cyan-500"
+                            className="w-5 h-5 text-cyan-600 rounded border-slate-200 focus:ring-cyan-500 cursor-pointer"
                         />
                         <label htmlFor="is_default" className="text-sm font-bold text-slate-700 cursor-pointer">
                             {__('Set as default shipping address')}
@@ -104,7 +125,7 @@ export default function Create({ countries }) {
                     <div className="pt-6">
                         <button 
                             disabled={processing}
-                            className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-cyan-600 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
+                            className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-cyan-600 transition-all shadow-xl shadow-slate-200 disabled:opacity-50 active:scale-[0.99]"
                         >
                             <Save size={20} />
                             {processing ? __('Processing...') : __('Save Address')}

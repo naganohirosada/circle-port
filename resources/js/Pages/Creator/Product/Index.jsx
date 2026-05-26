@@ -1,14 +1,13 @@
 import React from 'react';
 import CreatorLayout from '@/Layouts/CreatorLayout';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
+import { FileDown } from 'lucide-react';
 
 export default function Index({ auth, products, categories, tags, filters }) {
     const { delete: destroy } = useForm();
-    // 削除失敗時などのエラーを取得
     const { errors, flash } = usePage().props;
     const formatCurrency = (amount) => new Intl.NumberFormat('ja-JP').format(amount || 0);
 
-    // ステータスバッジの定義（Admin側と統一）
     const getStatusBadge = (status) => {
         const config = {
             1: { label: "下書き", style: "bg-gray-100 text-gray-500 border-gray-200" },
@@ -62,47 +61,52 @@ export default function Index({ auth, products, categories, tags, filters }) {
             <Head title="作品一覧" />
 
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                {/* 削除失敗時などのエラー表示 (安全なアクセス) */}
                 {errors?.delete_error && (
                     <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-bold text-sm animate-in fade-in slide-in-from-top-4">
                         <span className="text-xl">🚫</span> {errors.delete_error}
                     </div>
                 )}
 
-                {/* 成功メッセージ表示 (?. を使って flash が undefined でも落ちないように修正) */}
                 {flash?.message && (
                     <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-600 font-bold text-sm animate-in fade-in slide-in-from-top-4">
                         <span className="text-xl">✅</span> {flash.message}
                     </div>
                 )}
-                {/* アクションエリア */}
-                <div className="flex justify-between items-end mb-8">
+
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8">
                     <div>
                         <h2 className="text-2xl font-black text-gray-900 tracking-tight">作品一覧</h2>
                         <p className="text-sm text-gray-400 font-bold mt-1">
-                            計 {products.total} 点の作品が登録されています
+                            計 {products.total} 点の作品が registered されています
                         </p>
                     </div>
-                    <Link
-                        href={route('creator.products.create')}
-                        className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
-                        新しい作品を登録する
-                    </Link>
+                    <div className="flex items-center gap-4">
+                        <Link
+                            href={route('creator.products.booth.import.index')}
+                            className="bg-white border-2 border-gray-200 text-gray-700 hover:text-indigo-600 hover:border-indigo-500 px-6 py-3 rounded-2xl font-black text-sm shadow-sm transition-all active:scale-95 flex items-center gap-2"
+                        >
+                            <FileDown size={18} className="text-indigo-500" />
+                            BOOTHからインポート
+                        </Link>
+
+                        <Link
+                            href={route('creator.products.create')}
+                            className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                            新しい作品を登録する
+                        </Link>
+                    </div>
                 </div>
 
-                {/* 検索パネル */}
                 <section className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 mb-8">
                     <form onSubmit={handleSearch} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {/* キーワード */}
                             <div className="md:col-span-2">
                                 <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">キーワード</label>
                                 <input type="text" value={data.keyword} onChange={e => setData('keyword', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-xl font-bold" placeholder="作品名・説明から検索" />
                             </div>
 
-                            {/* ステータス */}
                             <div>
                                 <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">ステータス</label>
                                 <select value={data.status} onChange={e => setData('status', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-xl font-bold">
@@ -112,7 +116,6 @@ export default function Index({ auth, products, categories, tags, filters }) {
                                 </select>
                             </div>
 
-                            {/* 作品形式 */}
                             <div>
                                 <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">作品種別</label>
                                 <select value={data.product_type} onChange={e => setData('product_type', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-xl font-bold">
@@ -124,7 +127,6 @@ export default function Index({ auth, products, categories, tags, filters }) {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {/* カテゴリ */}
                             <div>
                                 <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">カテゴリ</label>
                                 <select value={data.category_id} onChange={e => setData('category_id', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-xl font-bold">
@@ -133,7 +135,6 @@ export default function Index({ auth, products, categories, tags, filters }) {
                                 </select>
                             </div>
 
-                            {/* 子カテゴリ */}
                             <div>
                                 <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">サブカテゴリ</label>
                                 <select value={data.sub_category_id} onChange={e => setData('sub_category_id', e.target.value)} className="w-full bg-gray-50 border-transparent rounded-xl font-bold" disabled={!data.category_id}>
@@ -144,7 +145,6 @@ export default function Index({ auth, products, categories, tags, filters }) {
                                 </select>
                             </div>
 
-                            {/* 価格範囲 */}
                             <div className="md:col-span-2">
                                 <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">販売金額(JPY)</label>
                                 <div className="flex items-center gap-2">
@@ -164,7 +164,6 @@ export default function Index({ auth, products, categories, tags, filters }) {
                     </form>
                 </section>
 
-                {/* 作品リストカード */}
                 <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-50/50 border-b border-gray-100">
@@ -195,7 +194,6 @@ export default function Index({ auth, products, categories, tags, filters }) {
                                                     <span className="bg-gray-100 px-1.5 py-0.5 rounded">ID: {product.id}</span>
                                                     <span>SKU: {product.sku || '---'}</span>
                                                 </div>
-                                                {/* 却下理由がある場合のみ表示 */}
                                                 {product.status === 6 && product.rejection_reason && (
                                                     <div className="mt-2 text-[10px] text-rose-500 font-bold flex items-center gap-1">
                                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" /></svg>
@@ -226,7 +224,7 @@ export default function Index({ auth, products, categories, tags, filters }) {
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                             </Link>
                                             <button
-                                                onClick={() => handleDelete(product.id)}
+                                                onClick={() => handleDelete(product.id, product.name)}
                                                 className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                                                 title="削除"
                                             >
@@ -239,7 +237,6 @@ export default function Index({ auth, products, categories, tags, filters }) {
                         </tbody>
                     </table>
                     
-                    {/* 空の状態 */}
                     {products.data.length === 0 && (
                         <div className="p-20 text-center">
                             <div className="inline-flex p-6 bg-gray-50 rounded-full mb-4 text-gray-300">

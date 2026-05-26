@@ -13,6 +13,8 @@ use App\Http\Controllers\Creator\ProjectController;
 use App\Http\Controllers\Creator\AIController;
 use App\Http\Controllers\Creator\CreatorSettingsController;
 use App\Http\Controllers\Creator\ReviewController;
+use App\Http\Controllers\Creator\BoothImportController;
+use App\Http\Controllers\Creator\BenefitController;
 
 // 🎨 Creator (国内サークル向け)
 Route::prefix('creator')->name('creator.')->group(function () {
@@ -22,6 +24,16 @@ Route::prefix('creator')->name('creator.')->group(function () {
     Route::post('/register', [RegisterController::class, 'register'])->name('register.store');
 
     Route::middleware('auth:creator')->group(function () {
+        // 既存の商品管理ルートの近くに追記
+        Route::get('products/booth-import', [BoothImportController::class, 'index'])->name('products.booth.import.index');
+        Route::post('products/booth-import', [BoothImportController::class, 'store'])->name('products.booth.import.store');
+
+        // ファン感謝・応援チップ特典およびサンクスカード管理ルート
+        Route::get('benefits', [BenefitController::class, 'index'])->name('benefits.index');
+        Route::post('benefits/store', [BenefitController::class, 'storeBenefit'])->name('benefits.store');
+        Route::delete('benefits/{id}', [BenefitController::class, 'destroyBenefit'])->name('benefits.destroy');
+        Route::post('benefits/card-settings', [BenefitController::class, 'updateCardSettings'])->name('benefits.card-update');
+        
         Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/products', [ProductController::class, 'index'])->name('products.index');

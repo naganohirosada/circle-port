@@ -7,10 +7,10 @@ import { renderDualCurrency } from '@/Utils/helpers';
 import { 
     ShoppingBag, Trash2, Plus, Minus, ArrowRight, ShieldCheck, 
     MapPin, CreditCard, Loader2, ArrowLeft, CheckSquare, Square,
-    Heart, Info, Globe
+    Heart, Info, Globe, AlertTriangle
 } from 'lucide-react';
 
-export default function Index({ cart = { items: [] }, shippingAddresses, paymentMethods }) {
+export default function Index({ cart = { items: [] }, shippingAddresses = [], paymentMethods = [] }) {
     const { language, auth, checkout_settings, currency } = usePage().props;
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -26,6 +26,14 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
     const [tips, setTips] = useState({});
 
     const __ = (key) => (language && language[key]) ? language[key] : key;
+
+    // 【新設】：選択中の配送先住所オブジェクトを動的に追跡
+    const activeAddress = useMemo(() => {
+        return shippingAddresses.find(addr => addr.id == selectedAddressId);
+    }, [shippingAddresses, selectedAddressId]);
+
+    // 【新設・5/20仕様準拠】：日本国内住所（JP）かどうかの判定フラグ
+    const isDomesticAddress = activeAddress?.country_code === 'JP';
 
     useEffect(() => {
         if (cart.items) {
@@ -54,7 +62,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
         return groups;
     }, [cart.items]);
 
-    // 【大掃除バグ修正】商品詳細画面とシステム手数料(8%)の計算を完璧に一致させる
+    // 金額集計ロジック（【5/20仕様完全同期】：個数ごとの倉庫中継ハンドリング費の動算化）
     const totals = useMemo(() => {
         const { fee_rate, go_fee_rate } = checkout_settings;
         const items = cart?.items || [];
@@ -63,7 +71,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
         const itemTotal = selectedItems.reduce((sum, item) => sum + item.subtotal, 0);
         
         if (itemTotal === 0) {
-            return { itemTotal: 0, handlingFee: 0, tax: 0, fee: 0, tipTotal: 0, grandTotal: 0, selectedItems: [], isGoOrder: false, feeLabel: __('System Fee (8%)') };
+            return { itemTotal: 0, handlingFee: 0, tax: 0, fee: 0, tipTotal: 0, grandTotal: 0, selectedItems: [], isGoOrder: false, feeLabel: __('System Fee (8%)'), hasPhysical: false };
         }
 
         const hasPhysical = selectedItems.some(item => item.product_type === 1);
@@ -71,17 +79,20 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
         const appliedFeeRate = isGoOrder ? go_fee_rate : fee_rate;
         const feeLabel = isGoOrder ? __('GO Order Fee (5%)') : __('System Fee (8%)');
 
-        // 倉庫中継手数料（1次決済固定：500円）
-        const handlingFee = hasPhysical ? 500 : 0;
+        // 【仕様変更修正】：固定500円ではなく、選択された現物グッズの「総数量（総個数）」を正確に累積
+        const handlingFee = selectedItems.reduce((sum, item) => {
+            return sum + (item.product_type === 1 ? 500 * item.quantity : 0);
+        }, 0);
         
         // 免税輸出のため、消費税は常に0円
         const tax = 0;
         
-        // 【バグ修正・大掃除】詳細画面と同一ロジックへ修正。中継費を足さず、純粋な「作品代金小計」にのみ手数料率を適用
-        const fee = Math.ceil(itemTotal * appliedFeeRate);
+        // システム手数料の算出：作品代金小計 ＋ 倉庫中継費の合算ベースに手数料率を適用
+        const baseTotalForFee = itemTotal + handlingFee;
+        const fee = Math.ceil(baseTotalForFee * appliedFeeRate);
         
         const tipTotal = Object.values(tips).reduce((sum, val) => sum + (Number(val) || 0), 0);
-        const grandTotal = itemTotal + handlingFee + tax + fee + tipTotal;
+        const grandTotal = baseTotalForFee + tax + fee + tipTotal;
 
         return { itemTotal, handlingFee, tax, fee, tipTotal, grandTotal, selectedItems, isGoOrder, feeLabel, hasPhysical };
     }, [cart.items, selectedKeys, checkout_settings, tips]);
@@ -116,6 +127,12 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
         if (totals.selectedItems.length === 0) return;
         if (!selectedAddressId || !selectedPaymentId) {
             alert(__('Please select shipping address and payment method.'));
+            return;
+        }
+
+        // 【新設・5/20物理フロントガード】：日本住所取引のチェックアウトを水際で完全遮断
+        if (isDomesticAddress) {
+            alert(__('CirclePort is an exclusive international service. Domestic shipping inside Japan is unavailable.'));
             return;
         }
 
@@ -163,7 +180,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
 
                 {cart.items?.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-                        {/* LEFT: ITEMS LIST (レイアウト・白ベースは完全維持) */}
+                        {/* LEFT: ITEMS LIST */}
                         <div className="lg:col-span-7 space-y-12">
                             <button onClick={toggleSelectAll} className="flex items-center gap-3 text-slate-500 hover:text-slate-900 pb-4 border-b border-slate-100 w-full">
                                 {selectedKeys.length === cart.items.length ? <CheckSquare size={20} className="text-cyan-600" /> : <Square size={20} />}
@@ -238,11 +255,11 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                             ))}
                         </div>
 
-                        {/* RIGHT: ORDER SUMMARY (配置やネイビー配色 bg-[#0f172a] は完全維持) */}
+                        {/* RIGHT: ORDER SUMMARY */}
                         <div className="lg:col-span-5">
-                            <div className="bg-[#0f172a] rounded-[2.5rem] p-8 text-white sticky top-12 shadow-2xl">
-                                <h2 className="text-xl font-bold mb-10">{__('Order Summary')}</h2>
-                                <div className="space-y-6 mb-10">
+                            <div className="bg-[#0f172a] rounded-[2.5rem] p-8 text-white sticky top-12 shadow-2xl space-y-6">
+                                <h2 className="text-xl font-bold mb-4">{__('Order Summary')}</h2>
+                                <div className="space-y-6">
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2"><MapPin size={12} className="text-cyan-500" /> {__('Shipping to')}</label>
                                         <select value={selectedAddressId} onChange={(e) => setSelectedAddressId(e.target.value)} className="w-full bg-slate-800 border-none rounded-xl text-sm p-4 text-slate-200 cursor-pointer">
@@ -257,6 +274,20 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                             {paymentMethods.map(pm => <option key={pm.id} value={pm.id}>{pm.brand.toUpperCase()} **** {pm.last4}</option>)}
                                         </select>
                                     </div>
+
+                                    {/* 【新設・5/20仕様反映】：日本住所が選ばれた瞬間に美しく出現する警告パネル */}
+                                    {isDomesticAddress && (
+                                        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex gap-3 text-rose-400 animate-fadeIn">
+                                            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5 text-rose-500" />
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-wide text-rose-500">{__('Domestic Order Prohibited')}</p>
+                                                <p className="text-[9px] font-bold leading-normal font-sans text-slate-400">
+                                                    {__('※CirclePort operates as an exclusive international shipping platform. Deliveries to addresses inside Japan are entirely unsupported. Please select an overseas destination.')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="h-px bg-slate-800 my-4" />
                                     <div className="space-y-4">
                                         <div className="flex justify-between text-sm text-slate-400">
@@ -267,7 +298,7 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                         {totals.handlingFee > 0 && (
                                             <div className="flex justify-between text-sm text-slate-400">
                                                 <span>{__('Warehouse Handling Fee')}</span>
-                                                <span>{renderDualCurrency(totals.handlingFee, adjustedCurrency)}</span>
+                                                <span className="font-black text-cyan-400">+{renderDualCurrency(totals.handlingFee, adjustedCurrency)}</span>
                                             </div>
                                         )}
                                         
@@ -310,7 +341,13 @@ export default function Index({ cart = { items: [] }, shippingAddresses, payment
                                         </p>
                                     )}
                                 </div>
-                                <button onClick={handleCheckout} disabled={isProcessing || totals.itemTotal === 0} className={`w-full py-6 rounded-2xl font-black uppercase flex items-center justify-center gap-3 transition-all ${ (isProcessing || totals.itemTotal === 0) ? 'bg-slate-700 text-slate-400' : 'bg-white text-slate-900 hover:bg-cyan-400' }`}>
+
+                                {/* チェックアウトボタン（日本住所が選択された場合は無効化ロックさせます） */}
+                                <button 
+                                    onClick={handleCheckout} 
+                                    disabled={isProcessing || totals.itemTotal === 0 || isDomesticAddress} 
+                                    className={`w-full py-6 rounded-2xl font-black uppercase flex items-center justify-center gap-3 transition-all ${ (isProcessing || totals.itemTotal === 0 || isDomesticAddress) ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900 hover:bg-cyan-400' }`}
+                                >
                                     {isProcessing ? <Loader2 className="animate-spin" /> : <>{__('Complete Order')} <ArrowRight size={20} /></>}
                                 </button>
                             </div>

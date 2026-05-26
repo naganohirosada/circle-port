@@ -36,7 +36,11 @@ class Product extends Model implements HasMedia
         'published_at',
         'digital_file_path',
         'rejection_reason',
+        'target_ip',
+        'max_sale_limit',
+        'guideline_url',
     ];
+
     // 翻訳データとのリレーション
     public function translations(): HasMany {
         return $this->hasMany(ProductTranslation::class);

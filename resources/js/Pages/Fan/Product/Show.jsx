@@ -52,7 +52,7 @@ export default function Show({ product, auth }) {
 
     const isSelectionMissing = hasVariations && !selectedVariation;
 
-    // 【大掃除・新設】カートに入れる前の「1次決済お支払い額」のリアルタイムシミュレーション計算
+    // カートに入れる前の「1次決済お支払い額」のリアルタイムシミュレーション計算
     const priceBreakdown = useMemo(() => {
         const itemPrice = selectedVariation ? Number(selectedVariation.price) : Number(product.price);
         const subtotal = itemPrice * data.quantity;
@@ -120,16 +120,17 @@ export default function Show({ product, auth }) {
                 <title>{`${getTranslation(product, 'name')} - CirclePort`}</title>
             </Head>
 
-            {/* レイアウトや色合い（bg-slate-50）は前のまま完全維持 */}
             <div className="max-w-[1200px] mx-auto px-6 py-12 font-sans text-slate-800">
                 <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-12">
                     <Link href={route('fan.products.index')} className="hover:text-cyan-600">{__('Artworks')}</Link>
-                    <ChevronRight size={12} />
-                    <span className="text-slate-900">{getTranslation(product.category, 'name')}</span>
+                    <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-12">
+                        <Link href={route('fan.products.index')} className="hover:text-cyan-600">{__('Artworks')}</Link>
+                        <ChevronRight size={12} />
+                        <span className="text-slate-900">{getTranslation(product.category, 'name')}</span>
+                    </nav>
                 </nav>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
-                    {/* 画像ギャラリー（配置は前のまま変更なし） */}
                     <div className="lg:col-span-7 space-y-6">
                         <div className="relative aspect-[4/5] rounded-[2.5rem] overflow-hidden bg-slate-50 border border-slate-100 shadow-2xl group">
                             <img src={activeImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="" />
@@ -150,7 +151,6 @@ export default function Show({ product, auth }) {
                         )}
                     </div>
 
-                    {/* 商品購入情報（右側カラム。配置や白ベースは前のまま、内訳パネルをアドオン） */}
                     <div className="lg:col-span-5 space-y-10">
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -189,7 +189,6 @@ export default function Show({ product, auth }) {
                                     </div>
                                 )}
                                 
-                                {/* 【大掃除・改修】すべてのメイン価格にスプレッドを正確に自動反映させた表記へ一本化 */}
                                 <div className="text-4xl font-black text-slate-900 tracking-tighter flex items-center justify-between">
                                     <div>
                                         {displayPrice !== null ? (
@@ -209,7 +208,6 @@ export default function Show({ product, auth }) {
                             </div>
                         </div>
 
-                        {/* バリエーション選択 */}
                         {hasVariations && (
                             <div className="space-y-6 pt-2">
                                 <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{__('Select Variation')}</label>
@@ -239,7 +237,6 @@ export default function Show({ product, auth }) {
                             </div>
                         )}
 
-                        {/* 購入アクション（明細シミュレーターをここにスマートインサート） */}
                         <div className="pt-2 space-y-6">
                             {!isOutOfStock && (
                                 <div className="flex items-center justify-between">
@@ -252,7 +249,6 @@ export default function Show({ product, auth }) {
                                 </div>
                             )}
 
-                            {/* --- 【新設】1次決済シミュレーターパネル (白ベースに調和するクリーンライトグレー) --- */}
                             <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100/80 space-y-3.5">
                                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
@@ -285,7 +281,7 @@ export default function Show({ product, auth }) {
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">{__('Total to check out now')}</p>
                                         <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase leading-none">
-                                            {product.product_type === 1 ? __('※International Freight charged later at Phase 2') : __('※Instant unlock after payment')}
+                                            {product.product_type === 1 ? __('* International Freight charged later at Phase 2') : __('* Instant unlock after payment')}
                                         </p>
                                     </div>
                                     <p className="text-xl font-black text-slate-900 leading-none">
@@ -321,7 +317,6 @@ export default function Show({ product, auth }) {
                     </div>
                 </div>
 
-                {/* レビューセクション (変更なし) */}
                 <div className="pt-24 border-t border-slate-100">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
                         <div className="lg:col-span-2 space-y-12">

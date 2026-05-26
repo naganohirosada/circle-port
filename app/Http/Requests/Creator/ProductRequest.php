@@ -10,16 +10,13 @@ class ProductRequest extends FormRequest
 
     /**
      * バリデーションルール
-     * Create.jsx の useForm 初期値および送信データ構造に準拠
      */
     public function rules(): array
     {
         $isPhysical = $this->input('product_type') == 1;
         $isDigital  = $this->input('product_type') == 2;
-        // variations 配列が存在し、1つ以上データがあるか
         $hasVariants = $this->has('variations') && count($this->input('variations', [])) > 0;
 
-        // Create.jsx で定義されている全9言語
         $locales = ['ja', 'en', 'zh', 'th', 'id', 'vi', 'fr', 'de', 'ko'];
 
         $rules = [
@@ -30,12 +27,15 @@ class ProductRequest extends FormRequest
             'tag_ids'          => 'nullable|array',
             'tag_ids.*'        => 'exists:tags,id',
 
-            // 【追加】国内配送設定（現物作品のみ必須。10:倉庫一括, 20:自己発送）
+            // 二次創作ガイドライン・許諾確認
+            'target_ip'              => 'nullable|string|max:255',
+            'max_sale_limit'         => 'nullable|integer|min:1',
+            'guideline_url'          => 'nullable|url|max:255',
+            'is_guideline_certified' => 'required|accepted', // 誓約チェックを必須化
+
             'domestic_shipping_method'     => $isPhysical ? 'required|in:10,20' : 'nullable',
-            // 【追加】自己発送送料（現物かつ自己発送の場合のみ0以上の整数で必須）
             'domestic_direct_shipping_fee' => ($isPhysical && $this->input('domestic_shipping_method') == 20) ? 'required|integer|min:0' : 'nullable|integer',
             
-            // バリエーションがある場合は共通の価格・在庫等は任意（バリエーション側が優先）
             'price'            => $hasVariants ? 'nullable|integer|min:0' : 'required|integer|min:0',
             'stock'            => ($isPhysical && !$hasVariants) ? 'required|integer|min:0' : 'nullable|integer',
             'weight'           => ($isPhysical && !$hasVariants) ? 'required|integer|min:0' : 'nullable|integer',
@@ -47,14 +47,11 @@ class ProductRequest extends FormRequest
             'digital_file'     => ($isDigital && !$hasVariants) ? 'required|file|max:512000' : 'nullable',
         ];
 
-        // --- 多言語項目のバリデーション (name, description, material) ---
         foreach ($locales as $locale) {
-            // 日本語(ja)のみ必須、他は任意
             $rules["name.$locale"] = ($locale === 'ja') ? 'required|string|max:255' : 'nullable|string|max:255';
             $rules["description.$locale"] = ($locale === 'ja') ? 'required|string' : 'nullable|string';
             $rules["material.$locale"] = 'nullable|string|max:255';
             
-            // バリエーション内の多言語名
             if ($hasVariants) {
                 $rules["variations.*.variant_name.$locale"] = ($locale === 'ja') 
                     ? 'required_with:variations|string|max:255' 
@@ -62,7 +59,6 @@ class ProductRequest extends FormRequest
             }
         }
 
-        // --- バリエーション共通項目 ---
         if ($hasVariants) {
             $rules['variations.*.price']        = 'required|integer|min:0';
             $rules['variations.*.stock']        = $isPhysical ? 'required|integer|min:0' : 'nullable';
@@ -76,7 +72,6 @@ class ProductRequest extends FormRequest
 
     /**
      * 属性名の日本語訳
-     * Create.jsx の各 InputError の message キーと完全一致させる必要があります
      */
     public function attributes(): array
     {
@@ -100,19 +95,20 @@ class ProductRequest extends FormRequest
             'images'          => '商品画像',
             'digital_file'    => '配信ファイル',
             'variations'      => 'バリエーション',
+            // ガイドライン対応
+            'target_ip'              => '対象IP・キャラクター',
+            'max_sale_limit'         => '公式上限販売個数',
+            'guideline_url'          => '参照ガイドラインURL',
+            'is_guideline_certified' => 'ガイドラインおよび利用規約の遵守誓約チェック',
         ];
 
-        // 各言語ごとの属性名を生成
         foreach ($langNames as $code => $name) {
             $attrs["name.$code"] = "作品名($name)";
             $attrs["description.$code"] = "作品説明($name)";
             $attrs["material.$code"] = "素材($name)";
-            
-            // バリエーション内の名前（ドット記法 variations.*.variant_name.ja に対応）
             $attrs["variations.*.variant_name.$code"] = "バリエーション名($name)";
         }
 
-        // バリエーション詳細項目
         $attrs['variations.*.price'] = 'バリエーション価格';
         $attrs['variations.*.stock'] = 'バリエーション在庫数';
         $attrs['variations.*.weight'] = 'バリエーション重量';
@@ -136,6 +132,8 @@ class ProductRequest extends FormRequest
             'array'         => ':attribute は配列形式で入力してください。',
             'file'          => ':attribute はファイル形式である必要があります。',
             'required_if'   => ':other が :value の場合、:attribute は必須です。',
+            'accepted'      => ':attribute に同意する必要があります。',
+            'url'           => ':attribute は正しいURL形式で入力してください。',
         ];
     }
 }

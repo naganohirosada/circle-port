@@ -5,7 +5,6 @@ import InputError from '@/Components/InputError';
 import axios from 'axios';
 
 export default function Create({ auth, categories, hs_codes, tags }) {
-    // 1. ステート管理
     const [activeTab, setActiveTab] = useState('ja');
     const [subCategories, setSubCategories] = useState([]);
     const [imagePreviews, setImagePreviews] = useState([]);
@@ -25,15 +24,14 @@ export default function Create({ auth, categories, hs_codes, tags }) {
 
     const initialLangObj = { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' };
 
-    // 2. フォーム初期値 (product参照を完全に排除)
     const { data, setData, post, processing, errors } = useForm({
-        product_type: 1, // 1:現物, 2:デジタル
+        product_type: 1, 
         name: { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' },
         material: { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' },
         description: { ja: '', en: '', zh: '', th: '', id: '', vi: '', fr: '', de: '', ko: '' },
         category_id: '',
         sub_category_id: '',
-        domestic_shipping_method: 10,       // 10:倉庫一括, 20:自己発送
+        domestic_shipping_method: 10,       
         domestic_direct_shipping_fee: '',
         price: '',
         stock: '', 
@@ -44,15 +42,17 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         digital_file: null,
         variations: [],
         has_variants: false,
+        // 【5/20仕様変更対応追加】：二次創作ガイドライン用の初期値
+        target_ip: '',
+        max_sale_limit: '',
+        guideline_url: '',
+        is_guideline_certified: false,
     });
 
-    // 3. カテゴリ連動
     useEffect(() => {
         if (data.category_id) {
             const selected = categories.find(c => c.id == data.category_id);
             setSubCategories(selected?.sub_categories || []);
-            
-            // 親カテゴリにデフォルトHSコードがあればセット（サブカテゴリ選択で上書きされる前提）
             if (selected?.default_hs_code_id) {
                 setData(prev => ({ ...prev, hs_code_id: selected.default_hs_code_id }));
             }
@@ -61,11 +61,9 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         }
     }, [data.category_id]);
 
-    // サブカテゴリ選択時の連動
     useEffect(() => {
         if (data.sub_category_id) {
             const selectedSub = subCategories.find(sc => sc.id == data.sub_category_id);
-            // サブカテゴリ固有のHSコードがあれば、それを優先してセット
             if (selectedSub?.default_hs_code_id) {
                 setData('hs_code_id', selectedSub.default_hs_code_id);
             }
@@ -87,7 +85,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         }
         setIsTranslating(true);
         try {
-            // 注意: バックエンドの翻訳APIもこれら9言語を返す必要があります
             const response = await axios.post(route('creator.ai.translate'), {
                 name: data.name.ja,
                 description: data.description.ja,
@@ -258,7 +255,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                 </button>
                             ))}
                         </div>
-                        {/* 追加: タグのエラー表示 */}
                         <InputError message={errors.tag_ids} className="mt-2" />
                         {errors['tag_ids.0'] && <InputError message="タグの選択が正しくありません" className="mt-1" />}
                     </section>
@@ -266,7 +262,37 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                     {/* 05. 基本スペック */}
                     <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-8">
                         <h3 className="text-lg font-black text-gray-800 italic uppercase tracking-widest">05. 基本スペック</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        
+                        {/* 【5/20仕様変更対応追加】：ホロライブ等VTuber二次創作ガイドライン遵守専用コンテナ */}
+                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-6">
+                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                🛡️ 二次創作ガイドライン・許諾確認
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">対象IP・キャラクター（任意）</label>
+                                    <input type="text" placeholder="例: hololive / 星街すいせい" value={data.target_ip} onChange={e => setData('target_ip', e.target.value)} className="w-full bg-white border-gray-200 rounded-2xl font-bold p-3.5 text-xs shadow-sm" />
+                                    <InputError message={errors.target_ip} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">公式上限販売個数（任意）</label>
+                                    <input type="number" placeholder="例: 200" value={data.max_sale_limit} onChange={e => setData('max_sale_limit', e.target.value)} className="w-full bg-white border-gray-200 rounded-2xl font-bold p-3.5 text-xs shadow-sm" />
+                                    <InputError message={errors.max_sale_limit} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">参照ガイドラインURL（任意）</label>
+                                    <input type="url" placeholder="https://hololive.tv/terms" value={data.guideline_url} onChange={e => setData('guideline_url', e.target.value)} className="w-full bg-white border-gray-200 rounded-2xl font-bold p-3.5 text-xs shadow-sm" />
+                                    <InputError message={errors.guideline_url} />
+                                </div>
+                            </div>
+                            <label className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 cursor-pointer shadow-sm hover:bg-indigo-50/40 transition-colors">
+                                <input type="checkbox" checked={data.is_guideline_certified} onChange={e => setData('is_guideline_certified', e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500 w-4_h-4 border-gray-300" />
+                                <span className="text-[10px] font-black uppercase text-slate-700 tracking-tight">私は版権元の二次創作ガイドラインおよびcircle-portの販売規約を遵守してこの作品を出品することを誓約します。</span>
+                            </label>
+                            <InputError message={errors.is_guideline_certified} />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                             <div>
                                 <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1 tracking-widest">カテゴリー</label>
                                 <select className="w-full bg-gray-50 border-transparent rounded-2xl font-bold p-4" value={data.category_id} onChange={e => setData('category_id', e.target.value)}>
@@ -320,7 +346,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                                 <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>
                                             ))}
                                         </select>
-                                        {/* 自動入力された際のアシストテキスト */}
                                         {data.hs_code_id && (
                                             <p className="mt-2 text-[10px] text-indigo-500 font-bold ml-1">
                                                 ✨ カテゴリに基づき、最適なコードを自動選択しました。
@@ -332,7 +357,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                             </div>
                         )}
 
-                        {/* 【追加】現物取引時のみ出現する、国内配送設定ブロック */}
                         {data.product_type === 1 && (
                             <div className="pt-8 border-t border-gray-100 space-y-6 bg-slate-50/50 p-6 rounded-3xl">
                                 <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">📦 日本国内向けの配送設定</h4>
@@ -445,7 +469,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                     </div>
                 </form>
 
-                {/* AI翻訳用オーバーレイ (ロード画面) */}
                 {isTranslating && (
                     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-900/60 backdrop-blur-md">
                         <div className="relative text-center">

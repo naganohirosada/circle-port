@@ -12,7 +12,8 @@ import {
     ChevronDown,    // 追加
     UserCircle,     // 追加
     CreditCard,
-    Star
+    Star,
+    Gift
 } from 'lucide-react';
 
 export default function CreatorLayout({ children }) {
@@ -28,22 +29,16 @@ export default function CreatorLayout({ children }) {
             active: url.startsWith('/creator/dashboard')
         },
         { 
-            name: 'プロジェクト管理', 
-            href: route('creator.project.index'), 
-            icon: Layers,
-            active: url.startsWith('/creator/project') || route().current('creator.project.*')
-        },
-        { 
             name: '作品管理', 
             href: route('creator.products.index'), 
             active: route().current('creator.products.*'),
             icon: Package 
         },
         { 
-            name: '製作管理', 
-            href: route('creator.production.index'), 
-            icon: Package, 
-            active: url.startsWith('/creator/production')
+            name: 'ファン特典・同梱カード', 
+            href: route('creator.benefits.index'), 
+            icon: Gift,
+            current: route().current('creator.benefits.*')
         },
         { 
             name: '売上管理', 

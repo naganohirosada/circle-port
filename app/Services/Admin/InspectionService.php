@@ -11,6 +11,9 @@ use App\Models\Order;
 use App\Enums\DomesticShippingStatus;
 use App\Enums\OrderStatus;
 use Illuminate\Support\Facades\Log;
+use App\Models\TipBenefit;
+use App\Models\FanUnlockedBenefit;
+use Illuminate\Support\Facades\Http;
 
 class InspectionService
 {
@@ -169,6 +172,93 @@ class InspectionService
                 ]);
             }
         }
+    }
 
+    /**
+     * 検品仕分け完了と同時に、チップ特典デジタルアセットを解放し、
+     * かつ倉庫の物理プリンターから海外ファン専用のサンクスカードを排紙する
+     */
+    public function processInspectionComplete(int $orderId): array
+    {
+        return DB::transaction(function () use ($orderId) {
+            $order = Order::with(['fan', 'creator', 'shippingAddress', 'orderItems'])->findOrFail($orderId);
+
+            // 1. 注文メモ(notes)に記録されている応援チップ額をデコード抽出
+            $tipAmount = 0;
+            if (!empty($order->notes)) {
+                $decoded = json_decode($order->notes, true);
+                $tipAmount = isset($decoded['creator_tip']) ? (int)$decoded['creator_tip'] : 0;
+            }
+
+            // 2. 【チップ特典自動解放】：チップ額が条件を満たしているデジタル特典を全自動一本釣り解放
+            $eligibleBenefits = TipBenefit::where('creator_id', $order->creator_id)
+                ->where('min_tip_amount', '<=', $tipAmount)
+                ->get();
+
+            foreach ($eligibleBenefits as $benefit) {
+                // 重複解放の防止
+                $exists = DB::table('fan_unlocked_benefits')
+                    ->where('user_id', $order->user_id)
+                    ->where('tip_benefit_id', $benefit->id)
+                    ->exists();
+
+                if (!$exists) {
+                    DB::table('fan_unlocked_benefits')->insert([
+                        'user_id'        => $order->user_id,
+                        'order_id'       => $order->id,
+                        'tip_benefit_id' => $benefit->id,
+                        'unlocked_at'    => now(),
+                        'created_at'     => now(),
+                        'updated_at'     => now()
+                    ]);
+                }
+            }
+
+            // 3. 注文ステータスを「倉庫到着（検品中/Phase2案内前状態）」へ昇格
+            $order->status = 'arrived_at_warehouse';
+            $order->save();
+
+            // 4. 【海外D2Cの真髄：オンデマンド・サンクスカードの物理自動高速印刷発火】
+            $printStatus = $this->triggerWarehousePrinterServer($order, $tipAmount);
+
+            return [
+                'success'       => true,
+                'unlocked_count'=> $eligibleBenefits->count(),
+                'print_status'  => $printStatus
+            ];
+        });
+    }
+
+    /**
+     * 倉庫内の物理プリンターサーバーAPI（CUPS / インテリジェントプリンター）へ印刷指示を非同期送信
+     */
+    private function triggerWarehousePrinterServer(Order $order, int $tipAmount): string
+    {
+        try {
+            $fanName = $order->shippingAddress->name ?? $order->user->name ?? 'Global Fan';
+            $country = $order->shippingAddress->country_code ?? 'Overseas';
+            $creatorName = $order->creator->name ?? 'CirclePort Creator';
+
+            // 倉庫プリンターのWebhookエンドポイントへ、カード印字に必要なシリアルメタデータを射出
+            // 現地スタッフが手作業でカードを探す手間を100%引き算し、検品した瞬間に目の前のプリンターから自動排紙されます
+            $response = Http::timeout(3)->post(config('circleport.printer_server_url', 'http://192.168.1.100/api/print'), [
+                'template' => 'thanks_card_d2c',
+                'order_id' => $order->id,
+                'data' => [
+                    'fan_name'     => $fanName,
+                    'country_code' => strtoupper($country),
+                    'creator_name' => $creatorName,
+                    'tip_badge'    => $tipAmount >= 500 ? "⭐️ Special Supporter (¥" . number_format($tipAmount) . ")" : "Global Participant",
+                    'serial_code'  => 'CP-' . str_pad($order->id, 6, '0', STR_PAD_LEFT),
+                    'printed_at'   => now()->toDateTimeString()
+                ]
+            ]);
+
+            return $response->successful() ? 'printed_successfully' : 'printer_api_error';
+
+        } catch (\Exception $e) {
+            Log::warning("倉庫の物理プリンターサーバーが一時的に応答しません: " . $e->getMessage());
+            return 'printer_offline_logged_to_queue';
+        }
     }
 }
