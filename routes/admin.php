@@ -77,5 +77,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/payments/{payment}/refund', [PaymentController::class, 'refund'])->name('payments.refund');
 
         Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+
+        // 国際配送管理・オートメーションラベル発行ルート
+        Route::get('international-shippings', [InternationalShippingController::class, 'index'])->name('international-shippings.index');
+        Route::post('international-shippings/{id}/generate-label', [InternationalShippingController::class, 'processLabelGeneration'])->name('international-shippings.generate-label');
     });
 });

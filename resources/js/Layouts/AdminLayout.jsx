@@ -1,7 +1,9 @@
 import React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link,usePage } from '@inertiajs/react';
 
 export default function AdminLayout({ user, children, header }) {
+    const { auth } = usePage().props;
+    const adminUser = user || auth?.user;
     return (
         <div className="min-h-screen bg-gray-100 flex">
             {/* サイドバー */}
@@ -68,7 +70,7 @@ export default function AdminLayout({ user, children, header }) {
                     <h2 className="text-xl font-bold text-gray-800">{header}</h2>
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col items-end">
-                            <span className="text-sm font-bold text-gray-900">{user.name}</span>
+                            <span className="text-sm font-bold text-gray-900">{adminUser.name}</span>
                             <span className="text-xs text-gray-500">システム管理者</span>
                         </div>
                         <Link href={route('admin.logout')} method="post" as="button" className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">

@@ -7,11 +7,13 @@ use App\Repositories\Interfaces\InternationalShippingRepositoryInterface;
 use App\Enums\InternationalShippingStatus;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Services\Admin\InternationalShippingService;
 
 class InternationalShippingController extends Controller
 {
     public function __construct(
-        protected InternationalShippingRepositoryInterface $intlRepo
+        protected InternationalShippingRepositoryInterface $intlRepo,
+        protected InternationalShippingService $shippingService
     ) {}
 
     /**
@@ -67,6 +69,27 @@ class InternationalShippingController extends Controller
         } catch (\Exception $e) {
             Log::error("送料確定エラー: " . $e->getMessage());
             return back()->withErrors(['error' => '送料確定処理に失敗しました。']);
+        }
+    }
+
+    /**
+     * ワンクリック・国際キャリアAPI連携（配送ラベル・免税インボイスPDF全自動発行）
+     */
+    public function processLabelGeneration(Request $request, $id)
+    {
+        try {
+            $result = $this->shippingService->generateLabelAndInvoice((int)$id);
+
+            return redirect()->route('admin.international-shippings.index')->with(
+                'status',
+                "【国際出荷手続き完了】 追跡番号「{$result['tracking_number']}」をDHL/FedExから取得。通関インボイスおよび配送送り状PDF（全{$result['item_count']}品目）を全自動生成し、ファンへ追跡番号を解放通知しました！"
+            );
+
+        } catch (\Exception $e) {
+            return redirect()->route('admin.international-shippings.index')->with(
+                'error',
+                "国際物流キャリアとのAPI連携通信に失敗しました。理由: " . $e->getMessage()
+            );
         }
     }
 }
