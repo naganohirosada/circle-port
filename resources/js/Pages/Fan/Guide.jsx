@@ -27,6 +27,8 @@ export default function Guide() {
         { id: 'processing-time', title: 'Processing Time', icon: <Timer size={18} /> },
         { id: 'consolidation', title: 'About Consolidation Service', icon: <Boxes size={18} /> },
         { id: 'domestic-shipping', title: 'Domestic Shipping Methods', icon: <PackageCheck size={18} /> },
+        { id: 'tokushouho', title: '特定商取引法に基づく表記', icon: <ClipboardCheck size={18} /> },
+        { id: 'faq-legal', title: 'Customs & Order Policies (FAQ)', icon: <Shield size={18} /> },
         { id: 'precautions', title: 'Precautions List', icon: <AlertCircle size={18} /> },
     ];
 
@@ -370,6 +372,100 @@ export default function Guide() {
                                 </div>
                                 <div className="md:w-1/2 bg-slate-100 rounded-[3rem] p-12 flex items-center justify-center relative group">
                                     <Boxes size={100} className="text-slate-300 group-hover:scale-110 group-hover:text-cyan-500 transition-all duration-700" />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* 国内配送アプローチ */}
+                        <section id="domestic-shipping" className="scroll-mt-32 space-y-8">
+                            <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4">
+                                <PackageCheck className="text-cyan-500" size={32} />
+                                <h2 className="text-3xl font-black uppercase tracking-tighter">{__('Domestic Shipping Methods')}</h2>
+                            </div>
+                            <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                                <p className="text-xs text-slate-500 font-bold leading-relaxed">
+                                    {__('Creators choose between Warehouse Bulk Delivery or Direct shipping method. Regardless of the type, items bound for overseas destinations will pass through the central Japanese hub first for legal compliance checks and verification.')}
+                                </p>
+                            </div>
+                        </section>
+
+                        {/* 特定商取引法に基づく表記セクション */}
+                        <section id="tokushouho" className="scroll-mt-32 space-y-8 bg-slate-900 text-slate-100 p-8 md:p-12 rounded-[3.5rem] shadow-xl border border-slate-800">
+                            <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
+                                <Scale className="text-cyan-400" size={32} />
+                                <h2 className="text-2xl font-black tracking-tight text-white uppercase">{__('Specified Commercial Transactions Act')}</h2>
+                            </div>
+                            <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 text-xs text-cyan-400/90 font-bold leading-relaxed font-mono text-left">
+                                {__('CirclePort Specified Commercial Transactions Framework Agent Announcement')}
+                            </div>
+                            <div className="divide-y divide-slate-800/60 font-medium text-xs text-slate-300 text-left">
+                                <div className="py-4 grid grid-cols-1 md:grid-cols-4 gap-2">
+                                    <span className="text-slate-500 font-black">{__('Platform Operator')}</span>
+                                    <span className="md:col-span-3 text-white font-bold">{__('CirclePort Inc. Logistics Commerce Division')}</span>
+                                </div>
+                                <div className="py-4 grid grid-cols-1 md:grid-cols-4 gap-2">
+                                    <span className="text-slate-500 font-black">{__('Director in Charge')}</span>
+                                    <span className="md:col-span-3 text-white">{__('CP Logistics Executive Director')}</span>
+                                </div>
+                                <div className="py-4 grid grid-cols-1 md:grid-cols-4 gap-2">
+                                    <span className="text-slate-500 font-black">{__('Office & Warehouse Location')}</span>
+                                    <span className="md:col-span-3">{__('1-1 Ryutsu Center, Higashi-ku, Fukuoka-shi, Fukuoka, 813-0000 Japan')}</span>
+                                </div>
+                                <div className="py-4 grid grid-cols-1 md:grid-cols-4 gap-2">
+                                    <span className="text-slate-500 font-black">{__('Inquiry Desk')}</span>
+                                    <span className="md:col-span-3 font-mono">{__('support@circleport-lane.global (*Response within 24 hours excluding weekends and holidays)')}</span>
+                                </div>
+                                <div className="py-4 grid grid-cols-1 md:grid-cols-4 gap-2">
+                                    <span className="text-slate-500 font-black">{__('Required Charges Other Than Product Price')}</span>
+                                    <span className="md:col-span-3">
+                                        {__('System fee (Standard 8% / GO orders 5%), international shipping, customs duties and import taxes (DDU terms, borne by recipient when incurred)')}
+                                    </span>
+                                </div>
+                                <div className="py-4 grid grid-cols-1 md:grid-cols-4 gap-2">
+                                    <span className="text-slate-500 font-black">{__('Delivery Time')}</span>
+                                    <span className="md:col-span-3">
+                                        {__('Usually arrives in the destination country within 3-7 business days after international shipping (DHL/FedEx) is completed following manufacturing and warehousing by the circle.')}
+                                    </span>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* --- 【新設・海外ファン向けFAQ】：関税(DDU)・アンダーインボイス拒否・チャージバック厳罰化スロット --- */}
+                        <section id="faq-legal" className="scroll-mt-32 space-y-8 text-left">
+                            <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4">
+                                <Shield className="text-cyan-500" size={32} />
+                                <h2 className="text-3xl font-black uppercase tracking-tighter">{__('Customs & Order Policies (FAQ)')}</h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6">
+                                {/* 関税(Customs Duty / VAT) の負担明記 */}
+                                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-3.5">
+                                    <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                        <span className="text-cyan-500 font-mono">Q.</span> {__('FAQ Customs Duty & VAT Question')}
+                                    </h4>
+                                    <p className="text-xs text-slate-600 font-bold leading-relaxed pl-6 bg-white p-4 rounded-2xl border border-slate-100">
+                                        {__('FAQ Customs Duty & VAT Answer')}
+                                    </p>
+                                </div>
+
+                                {/* 脱税要求(アンダーインボイス)の拒否宣言 */}
+                                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-3.5">
+                                    <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                        <span className="text-cyan-500 font-mono">Q.</span> {__('FAQ Under-Invoicing Question')}
+                                    </h4>
+                                    <p className="text-xs text-slate-600 font-bold leading-relaxed pl-6 bg-white p-4 rounded-2xl border border-slate-100">
+                                        {__('FAQ Under-Invoicing Answer')}
+                                    </p>
+                                </div>
+
+                                {/* 不正チャージバックに対する厳罰化 */}
+                                <div className="p-8 bg-rose-50/20 rounded-[2.5rem] border border-rose-100 shadow-sm space-y-3.5">
+                                    <h4 className="text-lg font-black text-rose-800 flex items-center gap-2">
+                                        <span className="text-rose-500 font-mono">Q.</span> {__('FAQ Chargeback Dispute Question')}
+                                    </h4>
+                                    <p className="text-xs text-rose-600 font-bold leading-relaxed pl-6 bg-white p-4 rounded-2xl border border-rose-100/50">
+                                        {__('FAQ Chargeback Dispute Answer')}
+                                    </p>
                                 </div>
                             </div>
                         </section>

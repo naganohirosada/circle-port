@@ -4,11 +4,12 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import axios from 'axios';
 
-export default function Create({ auth, categories, hs_codes, tags }) {
+export default function Create({ auth, categories, hs_codes, tags, ips = [] }) {
     const [activeTab, setActiveTab] = useState('ja');
     const [subCategories, setSubCategories] = useState([]);
     const [imagePreviews, setImagePreviews] = useState([]);
     const [isTranslating, setIsTranslating] = useState(false);
+    const [selectedIpData, setSelectedIpData] = useState(null);
 
     const languages = [
         { code: 'ja', label: '日本語', flag: '🇯🇵' },
@@ -42,10 +43,7 @@ export default function Create({ auth, categories, hs_codes, tags }) {
         digital_file: null,
         variations: [],
         has_variants: false,
-        // 【5/20仕様変更対応追加】：二次創作ガイドライン用の初期値
-        target_ip: '',
-        max_sale_limit: '',
-        guideline_url: '',
+        ip_id: '',
         is_guideline_certified: false,
     });
 
@@ -69,6 +67,15 @@ export default function Create({ auth, categories, hs_codes, tags }) {
             }
         }
     }, [data.sub_category_id]);
+
+    useEffect(() => {
+        if (data.ip_id) {
+            const found = ips.find(item => item.id == data.ip_id);
+            setSelectedIpData(found || null);
+        } else {
+            setSelectedIpData(null);
+        }
+    }, [data.ip_id, ips]);
 
     useEffect(() => {
         setData('has_variants', data.variations.length > 0);
@@ -101,8 +108,11 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                     ...v, variant_name: { ...v.variant_name, ...t.variants[i] }
                 }))
             }));
-        } catch (e) { alert('翻訳エラーが発生しました'); }
-        finally { setIsTranslating(false); }
+        } catch (e) { 
+            alert('翻訳エラーが発生しました'); 
+        } finally { 
+            setIsTranslating(false); 
+        }
     };
 
     const handleImageChange = (e) => {
@@ -152,7 +162,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
             <div className="max-w-6xl mx-auto py-8 px-4 pb-32">
                 <form onSubmit={handleSubmit} className="space-y-10">
                     
-                    {/* 00. 作品形式選択 */}
                     <section className="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-2xl">
                         <h3 className="text-xl font-black italic mb-6 text-white text-center tracking-widest uppercase">00. 作品形式を選択</h3>
                         <div className="grid grid-cols-2 gap-6">
@@ -169,7 +178,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                         </div>
                     </section>
 
-                    {/* 01. 基本情報 */}
                     <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
                         <div className="px-8 py-6 border-b border-gray-50 flex flex-wrap justify-between items-center bg-gray-50/30 gap-4">
                             <h3 className="text-lg font-black text-gray-800 italic uppercase">01. 基本情報</h3>
@@ -210,14 +218,13 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                         </div>
                     </section>
 
-                    {/* 02. デジタル作品：配信ファイル */}
                     {data.product_type === 2 && (
                         <section className="bg-indigo-50 rounded-[2.5rem] border-2 border-indigo-100 p-8 space-y-4">
                             <h3 className="text-lg font-black text-indigo-900 italic tracking-widest uppercase">02. 配信ファイル</h3>
                             <div className={`bg-white p-10 rounded-[2rem] border-2 border-dashed ${errors.digital_file ? 'border-rose-500' : 'border-indigo-200'} text-center`}>
                                 <input type="file" onChange={e => setData('digital_file', e.target.files[0])} className="hidden" id="file-upload" />
                                 <label htmlFor="file-upload" className="cursor-pointer block">
-                                    <div className="text-5xl mb-4">📂</div>
+                                    <div className="text-5xl mb-4 text-indigo-200">📂</div>
                                     <p className="font-black text-indigo-600 uppercase tracking-widest">ファイルをアップロード</p>
                                     {data.digital_file && <p className="mt-2 text-[10px] font-bold text-indigo-600">{data.digital_file.name}</p>}
                                 </label>
@@ -226,7 +233,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                         </section>
                     )}
 
-                    {/* 03. プレビュー画像 */}
                     <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-8">
                         <h3 className="text-lg font-black text-gray-800 italic uppercase">03. プレビュー画像</h3>
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -244,7 +250,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                         <InputError message={errors.images} />
                     </section>
 
-                    {/* 04. 検索タグ */}
                     <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-6">
                         <h3 className="text-lg font-black text-gray-800 italic uppercase">04. 検索タグ</h3>
                         <div className="flex flex-wrap gap-2">
@@ -256,38 +261,74 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                             ))}
                         </div>
                         <InputError message={errors.tag_ids} className="mt-2" />
-                        {errors['tag_ids.0'] && <InputError message="タグの選択が正しくありません" className="mt-1" />}
                     </section>
 
-                    {/* 05. 基本スペック */}
                     <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-8">
                         <h3 className="text-lg font-black text-gray-800 italic uppercase tracking-widest">05. 基本スペック</h3>
                         
-                        {/* 【5/20仕様変更対応追加】：ホロライブ等VTuber二次創作ガイドライン遵守専用コンテナ */}
-                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-6">
-                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                                🛡️ 二次創作ガイドライン・許諾確認
-                            </h4>
+                        <div className="bg-slate-900 text-slate-100 p-6 rounded-3xl border border-slate-800 space-y-6 shadow-xl">
+                            <div className="space-y-1">
+                                <h4 className="text-xs font-black text-cyan-400 uppercase tracking-widest flex items-center gap-2">
+                                    🛡️ 二次創作マスタ統制スロット
+                                </h4>
+                                <p className="text-[10px] text-slate-400 font-medium">運営が管理する公式マスタから対象IPを選択してください。上限数およびURLはシステムにより一律自動執行されます。</p>
+                            </div>
+                            
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">対象IP・キャラクター（任意）</label>
-                                    <input type="text" placeholder="例: hololive / 星街すいせい" value={data.target_ip} onChange={e => setData('target_ip', e.target.value)} className="w-full bg-white border-gray-200 rounded-2xl font-bold p-3.5 text-xs shadow-sm" />
-                                    <InputError message={errors.target_ip} />
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">二次創作対象IP・キャラクター</label>
+                                    <select 
+                                        className="w-full bg-slate-950 border-slate-800 focus:border-cyan-500 rounded-2xl font-bold p-3.5 text-xs text-white shadow-sm"
+                                        value={data.ip_id} 
+                                        onChange={e => setData('ip_id', e.target.value)}
+                                    >
+                                        <option value="">オリジナル作品（IP指定なし）</option>
+                                        {ips.map(ip => (
+                                            <option key={ip.id} value={ip.id}>{ip.name}</option>
+                                        ))}
+                                    </select>
+                                    <InputError message={errors.ip_id} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">公式上限販売個数（任意）</label>
-                                    <input type="number" placeholder="例: 200" value={data.max_sale_limit} onChange={e => setData('max_sale_limit', e.target.value)} className="w-full bg-white border-gray-200 rounded-2xl font-bold p-3.5 text-xs shadow-sm" />
-                                    <InputError message={errors.max_sale_limit} />
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">生涯累計販売上限数（読み取り専用）</label>
+                                    <div className="w-full bg-slate-950/60 border border-slate-800/40 rounded-2xl font-black p-3.5 text-xs text-slate-400 shadow-inner">
+                                        {selectedIpData ? `${selectedIpData.max_sale_limit} 個` : '制限なし'}
+                                    </div>
+                                    {selectedIpData && (
+                                        <p className="mt-1.5 text-[9px] text-cyan-400/80 font-bold ml-1">
+                                            ✅ 運営により生涯通算の上限キャップが完全自動追跡されています。
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">参照ガイドラインURL（任意）</label>
-                                    <input type="url" placeholder="https://hololive.tv/terms" value={data.guideline_url} onChange={e => setData('guideline_url', e.target.value)} className="w-full bg-white border-gray-200 rounded-2xl font-bold p-3.5 text-xs shadow-sm" />
-                                    <InputError message={errors.guideline_url} />
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block ml-1 tracking-widest">公式ガイドラインURL（検証ソース）</label>
+                                    <div className="w-full bg-slate-950/60 border border-slate-800/40 rounded-2xl font-bold p-3.5 text-xs text-slate-500 truncate shadow-inner font-mono">
+                                        {selectedIpData ? (
+                                            <a href={selectedIpData.guideline_url} target="_blank" rel="noopener noreferrer" className="text-cyan-500 underline hover:text-cyan-400">
+                                                {selectedIpData.guideline_url} 🔗
+                                            </a>
+                                        ) : '---'}
+                                    </div>
                                 </div>
                             </div>
-                            <label className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 cursor-pointer shadow-sm hover:bg-indigo-50/40 transition-colors">
-                                <input type="checkbox" checked={data.is_guideline_certified} onChange={e => setData('is_guideline_certified', e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500 w-4_h-4 border-gray-300" />
-                                <span className="text-[10px] font-black uppercase text-slate-700 tracking-tight">私は版権元の二次創作ガイドラインおよびcircle-portの販売規約を遵守してこの作品を出品することを誓約します。</span>
+
+                            <div className="p-4.5 bg-slate-950/60 border border-slate-800/80 rounded-xl text-slate-400 text-[10px] leading-relaxed font-mono space-y-2">
+                                <p className="font-black text-rose-400 uppercase tracking-wider flex items-center gap-1">
+                                    ⚠️ サイト運営事業者（CirclePort）からの法的免責・仲介ステートメント
+                                </p>
+                                <p>
+                                    CirclePort（以下、本プラットフォーム）は、国内クリエイターと海外消費者間の越境売買、および免税通関・中継物流手続きをデジタルに仲介・支援する「取引の場を提供するシステム事業者」です。海外ファンとの間で成立する売買契約の直接の当事者・販売主体は出品者であるサークル様自身であり、本プラットフォームは商品の所有権、商標、著作権の保証、およびガイドライン違反に関する一切の直接責任を負いません。
+                                </p>
+                                <p>
+                                    また、国際航空便（DHL/FedEx）の保安基準に基づき、リチウムイオンバッテリー、引火性液体（香水・オイル等）、スプレー缶、特定の成人向け表現物などの「各国の禁制品・国際危険物」に該当する物品の海外輸出は法律で厳密に禁止されています。違反が発覚した場合、サークルアカウントは即座に永久停止処分となり、没収に伴う損害全額が賠償請求の対象となります。
+                                </p>
+                            </div>
+
+                            <label className="flex items-start gap-3 p-4 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer shadow-sm hover:border-cyan-500 transition-colors">
+                                <input type="checkbox" checked={data.is_guideline_certified} onChange={e => setData('is_guideline_certified', e.target.checked)} className="rounded text-cyan-500 focus:ring-cyan-500 w-4 h-4 border-slate-700 bg-slate-900 mt-0.5" />
+                                <span className="text-[10px] font-black uppercase text-slate-300 tracking-tight leading-normal">
+                                    私は、上記の本プラットフォームの仲介的地位を完全に理解し、版権元の二次創作ガイドライン、各国禁制品規制、およびcircle-port of 販売規約を100%遵守して自己の全責任においてこの作品を出品することを誓約します。
+                                </span>
                             </label>
                             <InputError message={errors.is_guideline_certified} />
                         </div>
@@ -346,11 +387,6 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                                 <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>
                                             ))}
                                         </select>
-                                        {data.hs_code_id && (
-                                            <p className="mt-2 text-[10px] text-indigo-500 font-bold ml-1">
-                                                ✨ カテゴリに基づき、最適なコードを自動選択しました。
-                                            </p>
-                                        )}
                                     </div>
                                     <InputError message={errors.hs_code_id} />
                                 </div>
@@ -365,36 +401,22 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                         <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">配送アプローチ</label>
                                         <div className="grid grid-cols-2 gap-4">
                                             <button type="button" onClick={() => setData('domestic_shipping_method', 10)}
-                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 10 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>
-                                                <span className="text-xl">🏢</span> 倉庫一括配送
-                                            </button>
+                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 10 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>🏢 倉庫一括配送</button>
                                             <button type="button" onClick={() => setData('domestic_shipping_method', 20)}
-                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 20 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>
-                                                <span className="text-xl">🚲</span> 自社・自己発送
-                                            </button>
+                                                className={`p-4 rounded-2xl border-2 font-black text-xs transition-all text-center flex flex-col items-center gap-2 ${data.domestic_shipping_method === 20 ? 'border-indigo-600 bg-white text-indigo-600 shadow-sm' : 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'}`}>🚲 自社・自己発送</button>
                                         </div>
-                                        <InputError message={errors.domestic_shipping_method} className="mt-1" />
                                     </div>
-
                                     {data.domestic_shipping_method === 20 && (
-                                        <div className="animate-fadeIn">
+                                        <div>
                                             <label className="text-[10px] font-black text-indigo-600 uppercase mb-2 block ml-1 tracking-widest">自己発送の全国一律配送料 (JPY)</label>
-                                            <input type="number" value={data.domestic_direct_shipping_fee} onChange={e => setData('domestic_direct_shipping_fee', e.target.value)}
-                                                className="w-full bg-white border-gray-200 rounded-2xl font-black p-4 focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="送料を入力（0で送料無料）" />
-                                            <InputError message={errors.domestic_direct_shipping_fee} className="mt-1" />
+                                            <input type="number" value={data.domestic_direct_shipping_fee} onChange={e => setData('domestic_direct_shipping_fee', e.target.value)} className="w-full bg-white border-gray-200 rounded-2xl font-black p-4" />
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-[10px] text-gray-400 font-bold leading-relaxed bg-white p-4 rounded-xl border border-gray-100">
-                                    {data.domestic_shipping_method === 10 
-                                        ? '💡 【倉庫一括配送】商品をまとめてサークルポート倉庫に1回送るだけで完結します。国内ファンへの梱包・個別配送（一律1200円）もシステムがすべて代行します。' 
-                                        : '💡 【サークル自己発送】国内からの注文に対し、サークル様自身が梱包して直接ファンへ発送していただきます（海外注文は通常通り倉庫中継されます）。ファンから集金した送料は、全額分配金としてサークル様にプールされます。'}
-                                </p>
                             </div>
                         )}
                     </section>
 
-                    {/* 06. バリエーション設定 */}
                     <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
                         <div className="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
                             <h3 className="text-lg font-black text-gray-800 italic uppercase">06. バリエーション設定</h3>
@@ -403,38 +425,38 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                         <div className="p-8 space-y-4">
                             <InputError message={errors.variations} className="mb-4" />
                             {data.variations.map((v, i) => (
-                                <div key={i} className={`bg-gray-50/50 rounded-[2rem] p-6 border transition-all relative group ${Object.keys(errors).some(k => k.startsWith(`variations.${i}`)) ? 'border-rose-300 bg-rose-50/20' : 'border-gray-100'}`}>
-                                    <button type="button" onClick={() => removeVariant(i)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white">
+                                <div key={i} className="bg-gray-50/50 rounded-[2rem] p-6 border border-gray-100 relative group">
+                                    <button type="button" onClick={() => removeVariant(i)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                                         <div className="md:col-span-2">
-                                            <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">名称 ({activeTab.toUpperCase()})</label>
+                                            <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1">名称 ({activeTab.toUpperCase()})</label>
                                             <input type="text" value={v.variant_name[activeTab]} onChange={e => updateVariant(i, activeTab, e.target.value, true)} className="w-full bg-white border-gray-100 rounded-xl font-bold text-sm" />
                                             <InputError message={errors[`variations.${i}.variant_name.${activeTab}`]} />
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">価格 (JPY)</label>
+                                            <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1">価格 (JPY)</label>
                                             <input type="number" value={v.price} onChange={e => updateVariant(i, 'price', e.target.value)} className="w-full bg-white border-gray-100 rounded-xl font-black text-sm" />
                                             <InputError message={errors[`variations.${i}.price`]} />
                                         </div>
                                         {data.product_type === 1 && (
                                             <div className="md:col-span-1">
-                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest uppercase">在庫</label>
+                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1">在庫</label>
                                                 <input type="number" value={v.stock} onChange={e => updateVariant(i, 'stock', e.target.value)} className="w-full bg-white border-gray-100 rounded-xl font-black text-sm" />
                                                 <InputError message={errors[`variations.${i}.stock`]} />
                                             </div>
                                         )}
                                         {data.product_type === 1 && (
                                             <div className="md:col-span-2">
-                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest text-[8px]">重量(g)</label>
+                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 text-[8px]">重量(g)</label>
                                                 <input type="number" value={v.weight} onChange={e => updateVariant(i, 'weight', e.target.value)} className="w-full bg-white border-gray-100 rounded-xl font-black text-sm" />
                                                 <InputError message={errors[`variations.${i}.weight`]} />
                                             </div>
                                         )}
                                         {data.product_type === 1 && (
                                             <div className={data.product_type === 1 ? "md:col-span-5" : "md:col-span-3"}>
-                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">HSコード</label>
+                                                <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1">HSコード</label>
                                                 <select className="w-full bg-white border-gray-100 rounded-xl font-bold text-[10px] p-2 h-[38px]" value={v.hs_code_id} onChange={e => updateVariant(i, 'hs_code_id', e.target.value)}>
                                                     <option value="">選択</option>
                                                     {hs_codes.map(h => <option key={h.id} value={h.id}>{h.code} - {h.name_ja}</option>)}
@@ -445,7 +467,7 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                                         {data.product_type === 2 && (
                                             <div className="md:col-span-4">
                                                 <div className="flex flex-col gap-1">
-                                                    <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1 tracking-widest">配信ファイル</label>
+                                                    <label className="text-[9px] font-black text-indigo-600 uppercase mb-1 block ml-1">配信ファイル</label>
                                                     <input type="file" onChange={e => updateVariant(i, 'digital_file', e.target.files[0])} className="text-[10px] w-full" />
                                                     <InputError message={errors[`variations.${i}.digital_file`]} />
                                                 </div>
@@ -457,27 +479,11 @@ export default function Create({ auth, categories, hs_codes, tags }) {
                         </div>
                     </section>
 
-                    {/* 固定フッター */}
                     <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex justify-between items-center z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
                         <Link href={route('creator.products.index')} className="text-xs font-black text-gray-400 hover:text-gray-600 uppercase tracking-widest px-4 py-2 text-center">キャンセル / 戻る</Link>
-                        <div className="flex items-center gap-4">
-                            {Object.keys(errors).length > 0 && <span className="text-[10px] font-black text-rose-500 uppercase">{Object.keys(errors).length}件のエラーを修正してください</span>}
-                            <button type="submit" disabled={processing} className="bg-indigo-600 text-white px-16 py-4 rounded-[1.5rem] font-black text-sm hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50">
-                                {processing ? '保存中...' : '審査に出す'}
-                            </button>
-                        </div>
+                        <button type="submit" disabled={processing} className="bg-indigo-600 text-white px-16 py-4 rounded-[1.5rem] font-black text-sm hover:bg-indigo-700 transition-all">審査に出す</button>
                     </div>
                 </form>
-
-                {isTranslating && (
-                    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-900/60 backdrop-blur-md">
-                        <div className="relative text-center">
-                            <div className="w-24 h-24 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin mx-auto"></div>
-                            <div className="absolute inset-0 flex items-center justify-center text-white text-2xl">✨</div>
-                            <h4 className="text-white text-xl font-black italic mt-8 uppercase tracking-widest text-center">AI Updating Translations...</h4>
-                        </div>
-                    </div>
-                )}
             </div>
         </CreatorLayout>
     );

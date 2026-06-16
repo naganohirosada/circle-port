@@ -10,6 +10,7 @@ use App\Http\Requests\Creator\ProductSearchRequest;
 use App\Models\{Product, Category, HsCode, Tag};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Models\Ip;
 
 class ProductController extends Controller
 {
@@ -61,6 +62,7 @@ class ProductController extends Controller
             'categories' => Category::with('subCategories')->get(),
             'hs_codes'   => HsCode::all(),
             'tags'       => $tags,
+            'ips'        => Ip::where('is_active', true)->get(),
         ]);
     }
 
@@ -75,7 +77,7 @@ class ProductController extends Controller
             $this->service->createProduct($request->validated());
 
             return redirect()->route('creator.products.index')
-                ->with('message', '作品を登録し、審査へ提出しました！✨');
+                ->with('message', '作品を登録し、運営事務局へ審査提出しました！審査承認後に海外へ向けて公開されます。✨');
         } catch (\Exception $e) {
             Log::error('Product Store Error: ' . $e->getMessage());
             return back()->withErrors(['error' => '保存中にエラーが発生しました。']);
@@ -94,7 +96,8 @@ class ProductController extends Controller
             'translations', 
             'images', 
             'tags', 
-            'variations.translations'
+            'variations.translations',
+            'ip'
         ])->where('creator_id', auth()->id())->findOrFail($id);
 
         return Inertia::render('Creator/Product/Edit', [
@@ -106,6 +109,7 @@ class ProductController extends Controller
                                 'id' => $t->id,
                                 'name' => $t->translations->first()?->name ?? $t->slug
                             ]),
+            'ips'        => Ip::where('is_active', true)->get(),
         ]);
     }
 

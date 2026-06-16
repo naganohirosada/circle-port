@@ -10,6 +10,8 @@ use App\Notifications\Fan\PaymentFailedNotification;
 use App\Enums\PaymentStatus;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
+use Illuminate\Support\Facades\DB;
+use App\Models\Payout;
 
 class SettleGroupOrderPayments extends Command
 {
@@ -63,8 +65,47 @@ class SettleGroupOrderPayments extends Command
                         if ($capturedIntent->status === 'succeeded') {
                             // 決済ステータスを『決済完了（SUCCEEDED）』へクリーンに更新
                             $order->update(['payment_status' => PaymentStatus::SUCCEEDED->value]);
+
+                            // 【資金決済法対策・1】：無登録為替取引を完全回避するため、売上確定のタイムスタンプ（captured_at）を即時刻印
                             DB::table('payments')->where('order_id', $order->id)->update([
                                 'status' => PaymentStatus::SUCCEEDED->value,
+                                'captured_at' => now(),
+                                'updated_at' => now()
+                            ]);
+
+                            // 【資金決済法対策密・2】：売上金のウォレット化（任意の引き出し機能）を絶対禁止するため、
+                            // システムが統制する次回定期自動精算スケジュール（例: 翌月20日払い）へ強制コミット
+                            $scheduledPayoutDate = now()->addMonths(1)->startOfMonth()->addDays(19); // 翌月20日を強制清算日に設定（180日プールルールを大幅にクリアする安全圏）
+
+                            // 当該クリエイター向けに、その精算日のPayout（親枠）が既に存在するかチェック、なければ生成
+                            $payoutId = DB::table('payouts')
+                                ->where('creator_id', $go->creator_id)
+                                ->where('scheduled_date', $scheduledPayoutDate->toDateString())
+                                ->whereNotIn('status', [Payout::STATUS_PAID, Payout::STATUS_CANCELLED]) // すでに完了しているものは除く
+                                ->value('id');
+
+                            $netAmount = $payment->calculated_net_amount ?? round($order->total_amount * 0.92); // 手数料を引いた純手取り額
+
+                            if (!$payoutId) {
+                                $payoutId = DB::table('payouts')->insertGetId([
+                                    'creator_id'     => $go->creator_id,
+                                    'amount'         => $netAmount,
+                                    'status'         => Payout::STATUS_PENDING, // STATUS_SCHEDULED (未処理・振込予約中)
+                                    'scheduled_date' => $scheduledPayoutDate->toDateString(),
+                                    'created_at'     => now(),
+                                    'updated_at'     => now()
+                                ]);
+                            } else {
+                                // 既存の定期精算枠がある場合は、今回の純利益分を合算加算
+                                DB::table('payouts')->where('id', $payoutId)->increment('amount', $netAmount);
+                            }
+
+                            // 精算明細（子テーブル）に今回の決済IDを直結結合し、収納代行のエビデンスチェーンを成立させる
+                            DB::table('payout_details')->insert([
+                                'payout_id'  => $payoutId,
+                                'payment_id' => $payment->id ?? null,
+                                'amount'     => $netAmount,
+                                'created_at' => now(),
                                 'updated_at' => now()
                             ]);
                             

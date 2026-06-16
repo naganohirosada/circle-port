@@ -1,10 +1,10 @@
 import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import FanLayout from '@/Layouts/FanLayout';
-import { renderDualCurrency, __ } from '@/Utils/helpers';
+import { renderDualCurrency } from '@/Utils/helpers';
 import {
     ArrowLeft, Truck, Package, CreditCard, CheckCircle,
-    MapPin, Calendar, DollarSign, AlertCircle
+    MapPin, Calendar, DollarSign, AlertCircle, ShieldAlert
 } from 'lucide-react';
 
 export default function Show({ shipping, fee_breakdown }) {
@@ -139,7 +139,7 @@ export default function Show({ shipping, fee_breakdown }) {
                         </div>
                     </div>
 
-                    {/* 右側：料金内訳 & 決済 */}
+                    {/* 右側：料金内訳 & 決済 ＆【新設：関税・DDU配送条件リスク防衛エリア】 */}
                     <div className="space-y-8">
                         {/* 料金内訳 */}
                         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl">
@@ -174,6 +174,26 @@ export default function Show({ shipping, fee_breakdown }) {
                             </div>
                         </div>
 
+                        {/* --- 【法的リスク対策修正】：関税・DDU条件・アンダーインボイス拒絶の特記パネル --- */}
+                        <div className="bg-amber-50/70 border border-amber-200/80 rounded-[2.5rem] p-6.5 space-y-4 text-left shadow-sm">
+                            <div className="flex items-center gap-2 text-amber-800 font-black text-xs uppercase tracking-wider">
+                                <ShieldAlert size={16} className="text-amber-600" />
+                                {__('Customs Duty & VAT Notice')}
+                            </div>
+                            
+                            <div className="space-y-3 text-[10px] text-amber-900/90 font-medium leading-relaxed font-sans">
+                                <p className="bg-white/80 p-2.5 rounded-xl border border-amber-200/40">
+                                    📍 <span className="font-bold">{__('DDU Term Standard Note Header')}</span>: {__('Incoterms DDU Framework Text Detail')}
+                                </p>
+                                <p className="bg-white/80 p-2.5 rounded-xl border border-amber-200/40">
+                                    🛑 <span className="font-bold">{__('Refusal to Receive Penalty Title')}</span>: {__('Refusal to Receive Penalty Notice Detail')}
+                                </p>
+                                <p className="bg-white/80 p-2.5 rounded-xl border border-amber-200/40">
+                                    ⚖️ <span className="font-bold">{__('Under-Invoicing Refusal Title')}</span>: {__('Under-Invoicing Refusal Declaration Detail')}
+                                </p>
+                            </div>
+                        </div>
+
                         {/* 決済ボタン */}
                         {shipping.status === 20 && (
                             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl">
@@ -202,7 +222,7 @@ export default function Show({ shipping, fee_breakdown }) {
                                                 }
                                             });
                                         }}
-                                        className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold uppercase tracking-widest transition-colors"
+                                        className="w-full py-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold uppercase tracking-widest transition-colors shadow-lg active:scale-[0.99]"
                                     >
                                         {__('Pay')} {renderDualCurrency(fee_breakdown.total_amount, currency)}
                                     </button>
@@ -218,7 +238,7 @@ export default function Show({ shipping, fee_breakdown }) {
                                     <h3 className="text-lg font-bold text-green-900 mb-2">
                                         {__('Payment Completed')}
                                     </h3>
-                                    <p className="text-green-700">
+                                    <p className="text-green-700 text-xs font-semibold">
                                         {__('Your international shipping payment has been processed successfully.')}
                                     </p>
                                 </div>

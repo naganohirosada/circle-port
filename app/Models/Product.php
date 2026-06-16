@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\{Model, SoftDeletes, Relations\HasMany};
 use Spatie\MediaLibrary\{HasMedia, InteractsWithMedia};
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Product extends Model implements HasMedia
 {
@@ -37,9 +38,22 @@ class Product extends Model implements HasMedia
         'digital_file_path',
         'rejection_reason',
         'target_ip',
+        'ip_id',
         'max_sale_limit',
         'guideline_url',
     ];
+
+    /**
+     * モデルのブート時フック：水際対策として新規作成時は一律で審査待ち(STATUS_PENDING)を強制執行
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($product) {
+            $product->status = self::STATUS_PENDING;
+        });
+    }
 
     // 翻訳データとのリレーション
     public function translations(): HasMany {
@@ -138,5 +152,13 @@ class Product extends Model implements HasMedia
     public function getAverageRatingAttribute()
     {
         return $this->reviews()->avg('rating') ?: 0;
+    }
+
+    /**
+     * 所属するIPマスターへのリレーション
+     */
+    public function ip(): BelongsTo
+    {
+        return $this->belongsTo(Ip::class, 'ip_id');
     }
 }

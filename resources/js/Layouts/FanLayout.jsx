@@ -95,12 +95,18 @@ export default function FanLayout({ children }) {
                 {children}
             </main>
             
-            {/* Footer */}
-            <footer className="bg-slate-50 border-t border-slate-100 py-12 mt-20">
-                <div className="max-w-[1400px] mx-auto px-6 text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">
-                        &copy; 2026 CirclePort Project. All rights reserved.
+            {/* 共通フッター：仲介者リーガルディスクレイマーの多言語配備 */}
+            <footer className="bg-slate-950 text-slate-400 text-[11px] py-14 px-6 border-t border-slate-800 mt-20 no-print">
+                <div className="max-w-[1400px] mx-auto space-y-4 text-left leading-relaxed">
+                    <div className="text-white font-black uppercase tracking-widest text-xs flex items-center gap-2">
+                        <span>🛡️</span> {__('Legal Disclaimer & Mediation Statement')}
+                    </div>
+                    <p className="text-slate-400 font-medium max-w-5xl">
+                        {__('CirclePort Footer Disclaimer Long Text')}
                     </p>
+                </div>
+                <div className="max-w-[1400px] mx-auto text-center border-t border-slate-900 mt-10 pt-6 text-slate-500 font-black tracking-widest uppercase text-[9px]">
+                    &copy; 2026 CirclePort Project. All rights reserved.
                 </div>
             </footer>
         </div>

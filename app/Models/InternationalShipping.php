@@ -11,6 +11,11 @@ class InternationalShipping extends Model
     const TYPE_REGULAR = 1;      // 通常配送
     const TYPE_CONSOLIDATED = 2; // 同梱配送
 
+    const STATUS_PENDING = 10;   // 配送待ち
+    const STATUS_SHIPPED = 20;   // 発送済み
+    const STATUS_DELIVERED = 30; // 配送完了
+    const STATUS_FAILED = 90;    // 配送失敗
+
     protected $fillable = [
         'fan_id', 'address_id', 'carrier_id', 'tracking_number', 
         'status', 'total_weight', 'shipping_fee', 'dimensions', 'shipped_at', 'type'

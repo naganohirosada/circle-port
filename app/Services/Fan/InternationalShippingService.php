@@ -129,6 +129,22 @@ class InternationalShippingService
 
         $customerId = $fan->stripe_customer_id;
 
+        // --- 【実務防衛の核心】：Stripeの決済ログ自体を「運営会社の絶対無敵のリーガルの盾」へ変貌させるメタデータマトリクス ---
+        $legalMetadata = [
+            'shipping_id'                 => (string)$id,
+            'payment_id'                  => (string)$payment->id,
+            'base_shipping_fee'           => (string)$baseShippingFee,
+            'international_fee'           => (string)$internationalFee,
+            // 1. インコタームズ「DDU条件」への明確な事前同意の証跡
+            'incoterms_term'              => 'DDU (Delivered Duty Unpaid) - Customer is solely responsible for local Customs/VAT/GST',
+            // 2. 受取拒否時の返金・キャンセル不可、及び往復運賃実費求償ポリシーの刻印
+            'refusal_to_receive_policy'   => 'NO_REFUND - Return freight costs fully charged to the customer if customs payment is refused',
+            // 3. 脱税（アンダーインボイス）の要求をシステム・規約として100%永久に拒絶している宣言のバインド
+            'under_invoice_policy'        => 'ABSOLUTELY_REJECTED - Under-invoicing requests are banned by international trade law',
+            // 4. 不正なクレジットカード紛争（チャージバック）発生時のアカウント永久凍結処分のロギング
+            'fraud_dispute_protection'    => 'PERMANENT_ACCOUNT_FREEZE - Implemented immediately upon unjust chargeback filings'
+        ];
+
         $session = $stripe->checkout->sessions->create([
             'payment_method_types' => ['card'],
             'line_items' => [[
@@ -144,14 +160,10 @@ class InternationalShippingService
             'cancel_url' => route('fan.international-shippings.index'),
             'payment_intent_data' => [
                 'setup_future_usage' => 'off_session',
-                'metadata' => [
-                    'shipping_id' => $id,
-                    'payment_id'  => $payment->id,
-                    'base_shipping_fee' => $baseShippingFee,
-                    'international_fee' => $internationalFee,
-                ],
+                'metadata' => $legalMetadata,
             ],
             'customer' => $customerId ?: null,
+            'metadata' => $legalMetadata,
             'customer_email' => $customerId ? null : $fan->email,
         ]);
 

@@ -88,5 +88,7 @@ Route::prefix('creator')->name('creator.')->group(function () {
         });
 
         Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
+
+        Route::get('/sales/csv', [SalesController::class, 'exportCsv'])->name('sales.csv');
     });
 });

@@ -8,7 +8,7 @@ import { renderDualCurrency } from '@/Utils/helpers';
 import { 
     Tag, ShoppingBag, ChevronRight, Check, 
     Megaphone, Plus, Minus, AlertCircle, 
-    Box, Laptop, Star, MessageSquare, User, Sparkles, Globe
+    Box, Laptop, Star, MessageSquare, User, Sparkles, Globe,ShieldCheck 
 } from 'lucide-react';
 
 export default function Show({ product, auth }) {
@@ -291,6 +291,15 @@ export default function Show({ product, auth }) {
                             </div>
 
                             <div className="space-y-4">
+                                {/* ① 二次創作ガイドライン適合マーク（バッジ） */}
+                                <div className="flex items-center gap-2.5 p-3.5 bg-emerald-50/60 border border-emerald-100/80 rounded-2xl text-emerald-800 shadow-sm transition-all animate-fadeIn">
+                                    <ShieldCheck size={18} className="text-emerald-500 flex-shrink-0" />
+                                    <div className="text-[10px] font-bold leading-normal text-left">
+                                        <span className="font-black uppercase block tracking-wider text-emerald-600 mb-0.5">{__('Guideline Compliant Badge')}</span>
+                                        {__('This item complies with the secondary creation guidelines.')}
+                                    </div>
+                                </div>
+
                                 <button 
                                     onClick={handleAddToCart} 
                                     disabled={processing || isOutOfStock || isSelectionMissing} 
@@ -308,6 +317,11 @@ export default function Show({ product, auth }) {
                                         {__('Please select a variation to continue')}
                                     </p>
                                 )}
+
+                                {/* ② 仲介者に関する極小テキスト免言（ファン向け） */}
+                                <p className="text-[9px] text-slate-400 font-medium leading-relaxed px-1 text-center font-mono">
+                                    {__('CirclePort Show Page Mediation Terms Notice')}
+                                </p>
 
                                 <Link href={route('fan.go.create', { item_id: product.id })} className="w-full border-2 border-slate-900 text-slate-900 py-5 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-slate-900 hover:text-white transition-all active:scale-[0.98]">
                                     <Megaphone size={20} /> {__('Create GO with this item')}

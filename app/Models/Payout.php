@@ -18,10 +18,10 @@ class Payout extends Model
     ];
 
     // ステータス定数
-    const STATUS_PENDING = 10;
-    const STATUS_PROCESSING = 20;
-    const STATUS_PAID = 30;
-    const STATUS_CANCELLED = 90;
+    const STATUS_PENDING = 10; // 支払い待ち
+    const STATUS_PROCESSING = 20; // 支払い処理中
+    const STATUS_PAID = 30; // 支払い完了
+    const STATUS_CANCELLED = 90; // 支払いキャンセル
 
     public function creator(): BelongsTo
     {

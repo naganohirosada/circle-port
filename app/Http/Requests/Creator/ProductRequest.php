@@ -31,6 +31,7 @@ class ProductRequest extends FormRequest
             'target_ip'              => 'nullable|string|max:255',
             'max_sale_limit'         => 'nullable|integer|min:1',
             'guideline_url'          => 'nullable|url|max:255',
+            'ip_id'                  => 'nullable|exists:ips,id',
             'is_guideline_certified' => 'required|accepted', // 誓約チェックを必須化
 
             'domestic_shipping_method'     => $isPhysical ? 'required|in:10,20' : 'nullable',
@@ -97,6 +98,7 @@ class ProductRequest extends FormRequest
             'variations'      => 'バリエーション',
             // ガイドライン対応
             'target_ip'              => '対象IP・キャラクター',
+            'ip_id'                  => '二次創作対象IPマスタ',
             'max_sale_limit'         => '公式上限販売個数',
             'guideline_url'          => '参照ガイドラインURL',
             'is_guideline_certified' => 'ガイドラインおよび利用規約の遵守誓約チェック',

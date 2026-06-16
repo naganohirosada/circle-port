@@ -31,9 +31,9 @@ class SalesService
 
         foreach ($payments as $payment) {
             // 配送条件の判定のため、リレーション（注文商品と配送住所）をまとめてロード
-            $payment->order->loadMissing(['orderItems.product', 'address']);
+            $payment->order->loadMissing(['orderItems.product', 'shippingAddress']);
             
-            $address = $payment->order->address;
+            $address = $payment->order->shippingAddress;
             $isDomestic = $address ? ($address->country_code === 'JP') : true;
             
             $firstItem = $payment->order->orderItems->first();
